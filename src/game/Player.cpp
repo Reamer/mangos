@@ -2557,7 +2557,7 @@ void Player::GiveXP(uint32 xp, Unit* victim)
     uint32 level = getLevel();
 
     //prevent Northrend Level Leeching :P
-    if(level < 66 && GetMapId() == 571)
+    if(level < 68 && GetMapId() == 571)
         return;
 
     // XP to money conversion processed in Player::RewardQuest

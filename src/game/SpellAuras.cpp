@@ -2025,10 +2025,39 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                         return;
                     }
                     case 13139:                             // net-o-matic
+                    {
                         // root to self part of (root_target->charge->root_self sequence
                         if (Unit* caster = GetCaster())
                             caster->CastSpell(caster, 13138, true, NULL, this);
                         return;
+                    }
+                    case 28832:                             // Mark of Korth'azz
+                    case 28833:                             // Mark of Blaumeux
+                    case 28834:                             // Mark of Rivendare
+                    case 28835:                             // Mark of Zeliek
+                    {
+                         Aura* aur = target->GetAura(GetId(), EFFECT_INDEX_0);
+                         if (!aur)
+                             return;
+
+                         uint8 stacks = aur->GetStackAmount();
+                         int32 damage = 0;
+
+                         if (stacks == 2)
+                            damage = 500;
+                         else if (stacks == 3)
+                            damage = 1500;
+                         else if (stacks == 4)
+                            damage = 4000;
+                         else if (stacks == 5)
+                            damage = 12500;
+                         else if (stacks > 5)
+                            damage = 20000 + 1000 * (stacks - 6);
+
+                         if (Unit* caster = GetCaster())
+                              caster->CastCustomSpell(target, 28836, &damage, NULL, NULL, true, NULL, this, caster->GetGUID());
+                         return;
+                    }
                     case 31606:                             // Stormcrow Amulet
                     {
                         CreatureInfo const * cInfo = ObjectMgr::GetCreatureTemplate(17970);
@@ -6519,7 +6548,7 @@ void Aura::HandleShapeshiftBoosts(bool apply)
                     if ((*i)->GetSpellProto()->SpellIconID == 240 && (*i)->GetModifier()->m_miscvalue == 3)
                     {
                         int32 HotWMod = (*i)->GetModifier()->m_amount;
-                        if(GetModifier()->m_miscvalue == FORM_CAT)
+                        if(GetModifier()->m_miscvalue == FORM_CAT || GetModifier()->m_miscvalue == FORM_BEAR || GetModifier()->m_miscvalue == FORM_DIREBEAR)
                             HotWMod /= 2;
 
                         target->CastCustomSpell(target, HotWSpellId, &HotWMod, NULL, NULL, true, NULL, this);
@@ -9727,7 +9756,24 @@ void SpellAuraHolder::RefreshHolder()
 {
     for (int32 i = 0; i < MAX_EFFECT_INDEX; ++i)
         if (Aura *aura = m_auras[i])
+        {
+            if (Unit* caster = aura->GetCaster())
+            {
+                Unit::AuraList const& mModByHaste = caster->GetAurasByType(SPELL_AURA_MOD_PERIODIC_HASTE);
+                for (Unit::AuraList::const_iterator itr = mModByHaste.begin(); itr != mModByHaste.end(); ++itr)
+                {
+                    if ((*itr)->isAffectedOnSpell(aura->GetSpellProto()))
+                    {   
+                        //only Corruption has a Refresh and SPELL_AURA_MOD_PERIODIC_HASTE
+                        uint32 duration = GetSpellDuration(aura->GetSpellProto());
+                        // Apply haste to duration
+                        aura->SetAuraMaxDuration(int32(duration * caster->GetFloatValue(UNIT_MOD_CAST_SPEED)));
+                        aura->GetModifier()->periodictime = aura->GetAuraMaxDuration() / aura->GetAuraMaxTicks();
+                    }
+                }
+            }
             aura->SetAuraDuration(aura->GetAuraMaxDuration());
+        }
 
     SendAuraUpdate(false);
 }
