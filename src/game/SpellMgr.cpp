@@ -845,6 +845,16 @@ bool IsPositiveEffect(uint32 spellId, SpellEffectIndex effIndex)
                     if(spellproto->Id==42792)               // Recently Dropped Flag (prevent cancel)
                         return false;
                     break;
+                case SPELL_AURA_PHASE:
+                    switch(spellproto->Id)
+                    {
+                        case 57508:                         // Insanity Phase 16
+                        case 57509:                         // Insanity Phase 32
+                        case 57510:                         // Insanity Phase 64
+                        case 57511:                         // Insanity Phase 128
+                        case 57512:                         // Insanity Phase 256
+                            return false;
+                    }
                 default:
                     break;
             }
