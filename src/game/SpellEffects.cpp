@@ -388,6 +388,13 @@ void Spell::EffectSchoolDMG(SpellEffectIndex effect_idx)
                         }
                         break;
                     }
+                    // Touch the Nightmare
+                    case 50341:
+                    {
+                        if(effect_idx == EFFECT_INDEX_2)
+                            damage = unitTarget->GetMaxHealth() * 0.3;
+                        break;
+                    }
                     // Tympanic Tantrum
                     case 62775:
                     {
