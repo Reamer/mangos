@@ -8746,7 +8746,21 @@ void SpellAuraHolder::_RemoveSpellAuraHolder()
 
         // Mechanic bleed aura state
         if(GetAllSpellMechanicMask(m_spellProto) & (1 << (MECHANIC_BLEED-1)))
-            m_target->ModifyAuraState(AURA_STATE_MECHANIC_BLEED, false);
+        {
+            // Look for another auras with same mechanic
+            bool found = false;
+            Unit::AuraList const& mPerDmg = m_target->GetAurasByType(SPELL_AURA_PERIODIC_DAMAGE);
+            for(Unit::AuraList::const_iterator itr = mPerDmg.begin(); itr != mPerDmg.end(); ++itr)
+            {
+                if (GetAllSpellMechanicMask((*itr)->GetSpellProto()) & (1<<(MECHANIC_BLEED-1)))
+                {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found)
+                m_target->ModifyAuraState(AURA_STATE_MECHANIC_BLEED, false);
+        }
 
         uint32 removeState = 0;
         uint64 removeFamilyFlag = m_spellProto->SpellFamilyFlags;
