@@ -781,6 +781,11 @@ LexicsCutterNoActionOnGM = 1
 #        Default: 1 (true)
 #                 0 (false)
 #
+#    ShowProgressBars
+#        Control show progress bars for load steps at server startup
+#        Default: 1 (true)
+#                 0 (false)
+#
 #    WaitAtStartupError
 #        After startup error report wait <Enter> or some time before continue (and possible close console window)
 #                 -1 (wait until <Enter> press)
@@ -856,6 +861,7 @@ AllowFlightOnOldMaps = 0
 ClientCacheVersion = 0
 Event.Announce = 0
 BeepAtStart = 1
+ShowProgressBars = 1
 WaitAtStartupError = 0
 Motd = "Welcome to the Massive Network Game Object Server."
 
@@ -1340,6 +1346,21 @@ Visibility.Distance.Grey.Object = 10
 #         Default: 0  - no decrease
 #                  75 - in 2 times each 75 skill points
 #
+#    SkillFail.Loot.Fishing
+#         For fishing instead fail provided junk loot
+#         Default: 1 (enabled)
+#                  0 (disabled)
+#
+#    SkillFail.Gain.Fishing
+#         For fishing skill gain possible at fail also
+#         Default: 1 (enabled)
+#                  0 (disabled)
+#
+#    SkillFail.Possible.FishingPool
+#         For fishing pool impossible fail from low skill by default
+#         Default: 0 (disabled)
+#                  1 (enabled)
+#
 #    DurabilityLossChance.Damage
 #         Chance lost one from equiped items durability point at damage apply or receive.
 #         Default: 0.5 (100/0.5 = 200) Each 200 damage apply one from 19 possible equipped items
@@ -1373,6 +1394,11 @@ Visibility.Distance.Grey.Object = 10
 #         Enable/disable creating bones instead corpse at resurrection (in normal zones/instacnes, or battleground/arenas)
 #         Default: 1 (enabled)
 #                  0 (disabled)
+#
+#    Death.Ghost.RunSpeed.World
+#    Death.Ghost.RunSpeed.Battleground
+#         Modifies the speed of player's ghosts, removed upon reviving, not permanent/saved, in non-BG and BG maps
+#         Default: 1.0 (normal speed)
 #
 ###################################################################################################################
 
@@ -1423,6 +1449,9 @@ SkillChance.Green  = 25
 SkillChance.Grey   = 0
 SkillChance.MiningSteps   = 0
 SkillChance.SkinningSteps = 0
+SkillFail.Loot.Fishing = 1
+SkillFail.Gain.Fishing = 1
+SkillFail.Possible.FishingPool = 0
 DurabilityLossChance.Damage = 0.5
 DurabilityLossChance.Absorb = 0.5
 DurabilityLossChance.Parry  = 0.05
@@ -1432,6 +1461,8 @@ Death.CorpseReclaimDelay.PvP = 1
 Death.CorpseReclaimDelay.PvE = 1
 Death.Bones.World = 1
 Death.Bones.BattlegroundOrArena = 1
+Death.Ghost.RunSpeed.World = 1.0
+Death.Ghost.RunSpeed.Battleground = 1.0
 
 ###################################################################################################################
 # BATTLEGROUND CONFIG
@@ -1772,3 +1803,18 @@ Anticheat.GmLevel = 0
 CharDelete.Method = 1
 CharDelete.MinLevel = 10
 CharDelete.KeepDays = 30
+
+###################################################################################################################
+#    Refer-A-Friend system by Mas0n
+#    RAF.MaxGrantLevel       = 60  (max level for granting level bonuses)
+#    RAF.MaxReferals         = 5   (max referals for one account)
+#    RAF.MaxReferers         = 5   (max referred accounts for one account)
+#    Rate.RAF.XP             = 3   (XP bonus for referred friends in party)
+#    Rate.RAF.LevelPerLevel  = 0.5 (bonus levels per referal level)
+#
+###################################################################################################################
+RAF.MaxGrantLevel       = 60
+RAF.MaxReferals         = 5
+RAF.MaxReferers         = 5
+Rate.RAF.XP             = 3
+Rate.RAF.LevelPerLevel  = 0.5
