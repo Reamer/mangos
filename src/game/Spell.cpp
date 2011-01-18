@@ -3213,9 +3213,6 @@ void Spell::cast(bool skipCheck)
             else if ((m_spellInfo->SpellFamilyFlags & UI64LIT(0x0000020000000000)) && m_spellInfo->Category==1209)
                 if (m_caster->HasAura(58375))               // Glyph of Blocking
                     AddTriggeredSpell(58374);               // Glyph of Blocking
-            // Shattering Throw
-            else if (m_spellInfo->Id == 64382)
-                AddTriggeredSpell(64380);                     // Shattering Throw
             break;
         }
         case SPELLFAMILY_PRIEST:
@@ -5621,6 +5618,25 @@ SpellCastResult Spell::CheckCast(bool strict)
                     if(!m_caster->isInCombat()) 
                         return SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW; 
                 break;
+            }
+            case SPELL_EFFECT_TRANS_DOOR:
+            {
+                if(m_caster->GetTypeId() == TYPEID_PLAYER)
+                {
+                    if(m_spellInfo->Id == 698)
+                        if(((Player*)m_caster)->GetMap()->IsBattleGround())
+                            return SPELL_FAILED_NOT_HERE;
+                }
+                break;
+            }
+            case SPELL_EFFECT_TALENT_SPEC_SELECT:
+            {
+                // can't change during already started arena/battleground
+                if (m_caster->GetTypeId() == TYPEID_PLAYER)
+                {
+                    if (((Player*)m_caster)->GetBattleGround() && ((Player*)m_caster)->GetBattleGround()->GetStatus() == STATUS_IN_PROGRESS)
+                        return SPELL_FAILED_NOT_IN_BATTLEGROUND;
+                }
             }
             default:break;
         }
