@@ -2441,18 +2441,15 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                 if (m_caster->hasUnitState(UNIT_STAT_NO_FREE_MOVE))
                     return;
 
-                if (unitTarget->isVisibleForOrDetect(m_caster,m_caster,false))
+                switch(m_spellInfo->Id)
                 {
-                    switch(m_spellInfo->Id)
-                    {
-                        case 50286: m_caster->CastSpell(unitTarget, 50288, true); return;
-                        case 53196: m_caster->CastSpell(unitTarget, 53191, true); return;
-                        case 53197: m_caster->CastSpell(unitTarget, 53194, true); return;
-                        case 53198: m_caster->CastSpell(unitTarget, 53195, true); return;
-                        default:
-                            sLog.outError("Spell::EffectDummy: Unhandeled Starfall spell rank %u",m_spellInfo->Id);
-                            return;
-                    }
+                    case 50286: m_caster->CastSpell(unitTarget, 50288, true); return;
+                    case 53196: m_caster->CastSpell(unitTarget, 53191, true); return;
+                    case 53197: m_caster->CastSpell(unitTarget, 53194, true); return;
+                    case 53198: m_caster->CastSpell(unitTarget, 53195, true); return;
+                    default:
+                        sLog.outError("Spell::EffectDummy: Unhandeled Starfall spell rank %u",m_spellInfo->Id);
+                        return;
                 }
             }
             break;
