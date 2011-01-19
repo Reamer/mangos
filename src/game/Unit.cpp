@@ -2333,6 +2333,14 @@ void Unit::CalculateDamageAbsorbAndResist(Unit *pCaster, SpellSchoolMask schoolM
                         RemainingDamage -= RemainingDamage * currentAbsorb / 100;
                     continue;
                 }
+                // Moonkin Form passive
+                if (spellProto->Id == 69366)
+                {
+                    //reduces all damage taken while Stunned
+                    if (unitflag & UNIT_FLAG_STUNNED)
+                        RemainingDamage -= RemainingDamage * currentAbsorb / 100;
+                    continue;
+                }
                 break;
             }
             case SPELLFAMILY_ROGUE:
@@ -3477,7 +3485,24 @@ SpellMissInfo Unit::SpellHitResult(Unit *pVictim, SpellEntry const *spell, bool 
     {
         // Check for immune
         if (pVictim->IsImmuneToSpell(spell))
-            return SPELL_MISS_IMMUNE;
+        {
+            //Shattering Throw
+            if(spell->Id == 64382)
+            {
+                if (MeleeSpellHitResult(pVictim, spell) == SPELL_MISS_NONE)
+                {
+                    // remove immunity effects
+                    pVictim->RemoveAurasDueToSpell(642); // Divine Shield
+                    pVictim->RemoveAurasDueToSpell(1022); // Hand of Protection rank 1
+                    pVictim->RemoveAurasDueToSpell(5599); // Hand of Protection rank 2
+                    pVictim->RemoveAurasDueToSpell(10278); // Hand of Protection rank 3
+                    pVictim->RemoveAurasDueToSpell(45438); // Ice Block
+                    return SPELL_MISS_NONE;
+                } else
+                    return SPELL_MISS_MISS;
+            } else
+                return SPELL_MISS_IMMUNE;
+        }
 
         // All positive spells can`t miss
         // TODO: client not show miss log for this spells - so need find info for this in dbc and use it!
@@ -11682,6 +11707,7 @@ void Unit::EnterVehicle(VehicleKit *vehicle, int8 seatId)
     InterruptNonMeleeSpells(false);
     RemoveSpellsCausingAura(SPELL_AURA_MOUNTED);
     RemoveSpellsCausingAura(SPELL_AURA_MOD_SHAPESHIFT);
+    RemoveSpellsCausingAura(SPELL_AURA_MOD_STEALTH);
 
     if (!vehicle->AddPassenger(this, seatId))
         return;
