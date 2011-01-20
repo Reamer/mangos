@@ -3525,7 +3525,10 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(Unit *pVictim, uint32 d
                 break;
             }
             if (auraSpellInfo->Id == 50421)             // Scent of Blood
+            {
                 trigger_spell_id = 50422;
+                RemoveAuraHolderFromStack(50421);
+            }
             break;
         case SPELLFAMILY_WARLOCK:
         {
