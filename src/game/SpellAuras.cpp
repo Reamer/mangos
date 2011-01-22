@@ -5211,6 +5211,23 @@ void Aura::HandleAuraPeriodicDummy(bool apply, bool Real)
     SpellEntry const*spell = GetSpellProto();
     switch( spell->SpellFamilyName)
     {
+        case SPELLFAMILY_GENERIC:
+        {
+            Unit* caster = GetCaster();
+            if(!apply)
+            {
+                switch(spell->Id)
+                {
+                    case 49555:
+                        caster->CastSpell(target,49618,true);
+                        break;
+                    case 59807:
+                        caster->CastSpell(target,59809,true);
+                        break;
+                }
+            }
+            break;
+        }
         case SPELLFAMILY_ROGUE:
         {
             if(!apply)
