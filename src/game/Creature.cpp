@@ -1444,6 +1444,10 @@ void Creature::SetDeathState(DeathState s)
             UpdateSpeed(MOVE_RUN, false);
         }
 
+        // FIXME: may not be blizzlike
+        if (Pet* pet = GetPet())
+            pet->Unsummon(PET_SAVE_AS_DELETED, this);
+
         // return, since we promote to CORPSE_FALLING. CORPSE_FALLING is promoted to CORPSE at next update.
         if (CanFly() && FallGround())
             return;
@@ -1477,10 +1481,11 @@ bool Creature::FallGround()
     // use larger distance for vmap height search than in most other cases
     float tz = GetTerrain()->GetHeight(GetPositionX(), GetPositionY(), GetPositionZ(), true, MAX_FALL_DISTANCE);
 
-    if (tz < INVALID_HEIGHT)
+    if (tz <= INVALID_HEIGHT)
     {
         DEBUG_LOG("FallGround: creature %u at map %u (x: %f, y: %f, z: %f), not able to retrive a proper GetHeight (z: %f).",
             GetEntry(), GetMap()->GetId(), GetPositionX(), GetPositionX(), GetPositionZ(), tz);
+        return false;
     }
 
     // Abort too if the ground is very near
@@ -1730,7 +1735,8 @@ void Creature::SendAIReaction(AiReaction reactionType)
 
 void Creature::CallAssistance()
 {
-    if( !m_AlreadyCallAssistance && getVictim() && !IsPet() && !isCharmed())
+    // FIXME: should player pets call for assistance?
+    if (!m_AlreadyCallAssistance && getVictim() && !isCharmed())
     {
         SetNoCallAssistance(true);
 
