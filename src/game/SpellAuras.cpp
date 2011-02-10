@@ -5231,10 +5231,10 @@ void Aura::HandleAuraPeriodicDummy(bool apply, bool Real)
             {
                 switch(spell->Id)
                 {
-                    case 49555:
+                    case 49555:                                 // Corpse Explode
                         caster->CastSpell(target,49618,true);
                         break;
-                    case 59807:
+                    case 59807:                                 // Corpse Explode hero
                         caster->CastSpell(target,59809,true);
                         break;
                 }
