@@ -489,7 +489,6 @@ void Creature::Update(uint32 update_diff, uint32 diff)
         }
         case CORPSE:
         {
-            Unit::_UpdateSpells( update_diff );
             if (m_isDeadByDefault)
                 break;
 
