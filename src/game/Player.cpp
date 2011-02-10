@@ -7793,7 +7793,58 @@ void Player::CastItemCombatSpell(Unit* Target, WeaponAttackType attType)
                 if(IsPositiveSpell(pEnchant->spellid[s]))
                     CastSpell(this, pEnchant->spellid[s], true, item);
                 else
+                {
                     CastSpell(Target, pEnchant->spellid[s], true, item);
+
+                    // Deadly Poison effect of applying second item poison
+                    if(pEnchant->aura_id == 26)
+                    {
+                        SpellEntry const * pSpellEntry = sSpellStore.LookupEntry(pEnchant->spellid[s]);
+                        if(!pSpellEntry || pSpellEntry->EffectApplyAuraName[0] != SPELL_AURA_PERIODIC_DAMAGE)
+                            return;
+
+                        Aura *poison = 0;
+                        bool hasTalentPassed = false;
+                        // Lookup for Deadly poison (only attacker applied)
+                        Unit::AuraList const& auras = Target->GetAurasByType(SPELL_AURA_PERIODIC_DAMAGE);
+                        for(Unit::AuraList::const_iterator itr = auras.begin(); itr!=auras.end(); ++itr)
+                            if( (*itr)->GetSpellProto()->SpellFamilyName==SPELLFAMILY_ROGUE &&
+                                ((*itr)->GetSpellProto()->SpellFamilyFlags & UI64LIT(0x10000)) &&
+                                (*itr)->GetCasterGUID()== GetGUID() )
+                            {
+                                poison = *itr;
+                                break;
+                            }
+
+                        if(poison && poison->GetStackAmount() >= 5)
+                        {
+                            Item *item = GetWeaponForAttack(attType == BASE_ATTACK ? OFF_ATTACK : BASE_ATTACK );
+                            if (!item)
+                                return;
+
+                            // all poison enchantments is temporary
+                            uint32 enchant_id = item->GetEnchantmentId(TEMP_ENCHANTMENT_SLOT);
+                            if (!enchant_id)
+                                return;
+
+                            SpellItemEnchantmentEntry const *pSecondEnchant = sSpellItemEnchantmentStore.LookupEntry(enchant_id);
+                            if (!pSecondEnchant)
+                                return;
+
+                            for (uint8 s = 0; s < 3; ++s)
+                            {
+                                if (pSecondEnchant->type[s]!=ITEM_ENCHANTMENT_TYPE_COMBAT_SPELL)
+                                    continue;
+
+                                SpellEntry const* combatEntry = sSpellStore.LookupEntry(pSecondEnchant->spellid[s]);
+                                if (!combatEntry || combatEntry->Dispel != DISPEL_POISON)
+                                    continue;
+
+                                    CastSpell(Target, combatEntry, true, item);
+                            }
+                        }
+                    }
+                }
             }
         }
     }
