@@ -382,6 +382,10 @@ SpellSpecific GetSpellSpecific(uint32 spellId)
                 // SpellIcon 2560 is Spell 46687, does not have this flag
                 if ((spellInfo->AttributesEx2 & SPELL_ATTR_EX2_FOOD_BUFF) || spellInfo->SpellIconID == 2560)
                     return SPELL_WELL_FED;
+
+                else if (spellInfo->EffectApplyAuraName[EFFECT_INDEX_0] == SPELL_AURA_MOD_STAT &&  spellInfo->Attributes & SPELL_ATTR_NOT_SHAPESHIFT &&
+                     spellInfo->SchoolMask & SPELL_SCHOOL_MASK_NATURE && spellInfo->PreventionType == SPELL_PREVENTION_TYPE_SILENCE)
+                     return SPELL_SCROLL;
             }
             break;
         }
@@ -1964,6 +1968,10 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
                     // Dragonmaw Illusion (multi-family check)
                     if (spellId_1 == 40216 && spellId_2 == 42016)
                         return false;
+                    
+                    // Drums of the Wild and Gift of the Wild
+                    if( spellInfo_1->Id == 72588 && spellInfo_2->SpellFamilyFlags & UI64LIT(0x40000))
+                        return true;
 
                     break;
                 }
@@ -1998,6 +2006,19 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
                     // *Band of Eternal Champion and Seal of Command(multi-family check)
                     if (spellId_1 == 35081 && spellInfo_2->SpellIconID==561 && spellInfo_2->SpellVisual[0]==7992)
                         return false;
+                    // Drums of Forgotten Kings and Blessing of Kings
+                    if( spellInfo_1->Id == 72586 && spellInfo_2->SpellFamilyFlags & UI64LIT(0x10000000))
+                        return true;
+                }
+                case SPELLFAMILY_PRIEST:
+                {
+                    // Frenzy (Grand Widow Faerlina) and Mind Trauma
+                    if( spellInfo_1->SpellIconID == 95 && spellInfo_2->SpellFamilyFlags & UI64LIT(0x84000000))
+                        return false;
+
+                    // Runescroll of Fortitude and Power Word: Fortitude
+                    if( spellInfo_1->Id == 72590 && spellInfo_2->SpellFamilyFlags & UI64LIT(0x8))
+                        return true;
                 }
             }
             // Dragonmaw Illusion, Blood Elf Illusion, Human Illusion, Illidari Agent Illusion, Scarlet Crusade Disguise
@@ -2135,6 +2156,9 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
                     (spellInfo_2->SpellIconID == 566 && spellInfo_1->SpellIconID == 2820))
                     return false;
             }
+            // Power Word: Fortitude and Runescroll of Fortitude
+            if( spellInfo_1->SpellFamilyFlags & UI64LIT(0x8) && spellInfo_2->Id == 72590 )
+                return true;
             break;
         case SPELLFAMILY_DRUID:
             if (spellInfo_2->SpellFamilyName == SPELLFAMILY_DRUID)
@@ -2200,6 +2224,10 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
             // Dragonmaw Illusion (multi-family check)
             if (spellId_1 == 42016 && spellId_2 == 40216 )
                 return false;
+            
+            // Gift of the Wild and Drums of the Wild
+            if( spellInfo_1->SpellFamilyFlags & UI64LIT(0x40000) && spellInfo_2->Id == 72588)
+                return true;
 
             break;
         case SPELLFAMILY_ROGUE:
@@ -2331,6 +2359,10 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
             // *Seal of Command and Band of Eternal Champion (multi-family check)
             if (spellInfo_1->SpellIconID==561 && spellInfo_1->SpellVisual[0]==7992 && spellId_2 == 35081)
                 return false;
+
+            // Blessing of Kings and Drums of Forgotten Kings
+            if( spellInfo_1->SpellFamilyFlags & UI64LIT(0x10000000) && spellInfo_2->Id == 72586)
+                return true;
             break;
 
         case SPELLFAMILY_SHAMAN:
