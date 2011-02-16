@@ -7123,7 +7123,7 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                 }
                 case 58941:                                 // Rock Shards
                 {
-                    if (unitTarget && m_originalCaster && roll_chance_i(33))
+                    if (unitTarget && m_originalCaster && roll_chance_i(50))
                     {
                         for (uint32 i = 0; i < 3; ++i)
                         {
