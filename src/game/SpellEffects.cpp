@@ -7178,6 +7178,15 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
 
                     return;
                 }
+                case 62705:                                 // Auto-repair
+                {
+                    if (!unitTarget)
+                        return;
+                    unitTarget->SetHealth(unitTarget->GetMaxHealth());
+                    if (VehicleKit* vehicle = unitTarget->GetVehicleKit())
+                        if (Unit* seat = vehicle->GetPassenger(1))
+                            seat->ModifyPower(POWER_ENERGY,50);
+                }
                 case 69200:                                 // Raging Spirit
                 {
                     if (!unitTarget)
