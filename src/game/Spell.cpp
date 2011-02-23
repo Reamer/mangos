@@ -1100,18 +1100,21 @@ void Spell::DoAllEffectOnTarget(TargetInfo *target)
         if (target->reflectResult == SPELL_MISS_NONE)       // If reflected spell hit caster -> do all effect on him
             DoSpellHitOnUnit(m_caster, mask);
     }
-
-    if(missInfo == SPELL_MISS_MISS || missInfo == SPELL_MISS_RESIST)
+    else if(missInfo == SPELL_MISS_MISS || missInfo == SPELL_MISS_RESIST)
     {
-        Unit* realCaster = GetAffectiveCaster();
-        if(realCaster && realCaster != unit)
+        if(real_caster && real_caster != unit)
         {
-            if (!unit->isInCombat() && unit->GetTypeId() != TYPEID_PLAYER && ((Creature*)unit)->AI())
-                ((Creature*)unit)->AI()->AttackedBy(realCaster);
+            // can cause back attack (if detected)
+            if (!(m_spellInfo->AttributesEx3 & SPELL_ATTR_EX3_NO_INITIAL_AGGRO) && !IsPositiveSpell(m_spellInfo->Id) &&
+                m_caster->isVisibleForOrDetect(unit, unit, false))
+            {
+                if (!unit->isInCombat() && unit->GetTypeId() != TYPEID_PLAYER && ((Creature*)unit)->AI())
+                    ((Creature*)unit)->AI()->AttackedBy(real_caster);
 
-            unit->AddThreat(realCaster);
-            unit->SetInCombatWith(realCaster);
-            realCaster->SetInCombatWith(unit);
+                unit->AddThreat(real_caster);
+                unit->SetInCombatWith(real_caster);
+                real_caster->SetInCombatWith(unit);
+            }
         }
     }
 
@@ -4728,6 +4731,7 @@ SpellCastResult Spell::CheckCast(bool strict)
         return SPELL_FAILED_AFFECTING_COMBAT;
 
     if (m_caster->GetTypeId() == TYPEID_PLAYER && !((Player*)m_caster)->isGameMaster() &&
+        sWorld.getConfig(CONFIG_BOOL_VMAP_INDOOR_CHECK) &&
         VMAP::VMapFactory::createOrGetVMapManager()->isLineOfSightCalcEnabled())
     {
         if (m_spellInfo->Attributes & SPELL_ATTR_OUTDOORS_ONLY &&
@@ -6033,9 +6037,25 @@ SpellCastResult Spell::CheckCasterAuras() const
     SpellCastResult prevented_reason = SPELL_CAST_OK;
     // Have to check if there is a stun aura. Otherwise will have problems with ghost aura apply while logging out
     uint32 unitflag = m_caster->GetUInt32Value(UNIT_FIELD_FLAGS);     // Get unit state
-    if (unitflag & UNIT_FLAG_STUNNED && (!(m_spellInfo->AttributesEx5 & SPELL_ATTR_EX5_USABLE_WHILE_STUNNED) ||
-        (m_spellInfo->Id == 33206 && !m_caster->HasAura(63248))))
-        prevented_reason = SPELL_FAILED_STUNNED;
+    if (unitflag & UNIT_FLAG_STUNNED)
+    {
+        // spell is usable while stunned, check if caster has only mechanic stun auras, another stun types must prevent cast spell
+        if (m_spellInfo->AttributesEx5 & SPELL_ATTR_EX5_USABLE_WHILE_STUNNED)
+        {
+            bool is_stun_mechanic = true;
+            Unit::AuraList const& stunAuras = m_caster->GetAurasByType(SPELL_AURA_MOD_STUN);
+            for (Unit::AuraList::const_iterator itr = stunAuras.begin(); itr != stunAuras.end(); ++itr)
+                if (!(*itr)->HasMechanic(MECHANIC_STUN))
+                {
+                    is_stun_mechanic = false;
+                    break;
+                }
+            if (!is_stun_mechanic)
+                prevented_reason = SPELL_FAILED_STUNNED;
+        }
+        else
+            prevented_reason = SPELL_FAILED_STUNNED;
+    }
     else if (unitflag & UNIT_FLAG_CONFUSED && !(m_spellInfo->AttributesEx5 & SPELL_ATTR_EX5_USABLE_WHILE_CONFUSED))
         prevented_reason = SPELL_FAILED_CONFUSED;
     else if (unitflag & UNIT_FLAG_FLEEING && !(m_spellInfo->AttributesEx5 & SPELL_ATTR_EX5_USABLE_WHILE_FEARED))
@@ -6084,7 +6104,7 @@ SpellCastResult Spell::CheckCasterAuras() const
                         switch(aura->GetModifier()->m_auraname)
                         {
                             case SPELL_AURA_MOD_STUN:
-                                if (!(m_spellInfo->AttributesEx5 & SPELL_ATTR_EX5_USABLE_WHILE_STUNNED))
+                                if (!(m_spellInfo->AttributesEx5 & SPELL_ATTR_EX5_USABLE_WHILE_STUNNED) || !aura->HasMechanic(MECHANIC_STUN))
                                     return SPELL_FAILED_STUNNED;
                                 break;
                             case SPELL_AURA_MOD_CONFUSE:
@@ -6158,19 +6178,38 @@ bool Spell::CanAutoCast(Unit* target)
 
 SpellCastResult Spell::CheckRange(bool strict)
 {
-    float range_mod;
+    Unit *target = m_targets.getUnitTarget();
 
-    // self cast doesn't need range checking -- also for Starshards fix
-    if (m_spellInfo->rangeIndex == 1)
-        return SPELL_CAST_OK;
+    // special range cases
+    switch(m_spellInfo->rangeIndex)
+    {
+        // self cast doesn't need range checking -- also for Starshards fix
+        case SPELL_RANGE_IDX_SELF_ONLY:
+            return SPELL_CAST_OK;
+        // combat range spells are treated differently
+        case SPELL_RANGE_IDX_COMBAT:
+        {
+            if (target)
+            {
+                if (target == m_caster)
+                    return SPELL_CAST_OK;
 
-    if (strict)                                             //add radius of caster
-        range_mod = 1.25;
-    else                                                    //add radius of caster and ~5 yds "give"
-        range_mod = 6.25;
+                float range_mod = strict ? 0.0f : 5.0f;
+                float base = ATTACK_DISTANCE;
+                if (Player* modOwner = m_caster->GetSpellModOwner())
+                    range_mod += modOwner->ApplySpellMod(m_spellInfo->Id, SPELLMOD_RANGE, base, this);
+
+                // with additional 5 dist for non stricted case (some melee spells have delay in apply
+                return m_caster->CanReachWithMeleeAttack(target, range_mod) ? SPELL_CAST_OK : SPELL_FAILED_OUT_OF_RANGE;
+            }
+            break;                                          // let continue in generic way for no target
+        }
+    }
+
+    //add radius of caster and ~5 yds "give" for non stricred (landing) check
+    float range_mod = strict ? 1.25f : 6.25;
 
     SpellRangeEntry const* srange = sSpellRangeStore.LookupEntry(m_spellInfo->rangeIndex);
-    Unit *target = m_targets.getUnitTarget();
     bool friendly = target ? target->IsFriendlyTo(m_caster) : false;
     float max_range = GetSpellMaxRange(srange, friendly) + range_mod;
     float min_range = GetSpellMinRange(srange, friendly);
@@ -6192,6 +6231,7 @@ SpellCastResult Spell::CheckRange(bool strict)
             return SPELL_FAILED_UNIT_NOT_INFRONT;
     }
 
+    // TODO verify that such spells really use bounding radius
     if(m_targets.m_targetMask == TARGET_FLAG_DEST_LOCATION && m_targets.m_destX != 0 && m_targets.m_destY != 0 && m_targets.m_destZ != 0)
     {
         if(!m_caster->IsWithinDist3d(m_targets.m_destX, m_targets.m_destY, m_targets.m_destZ, max_range))
@@ -7052,7 +7092,9 @@ bool Spell::IsNeedSendToClient() const
 
 bool Spell::IsTriggeredSpellWithRedundentData() const
 {
-    return m_IsTriggeredSpell && (m_spellInfo->manaCost || m_spellInfo->ManaCostPercentage);
+    return m_triggeredByAuraSpell || m_triggeredBySpellInfo ||
+        // possible not need after above check?
+        m_IsTriggeredSpell && (m_spellInfo->manaCost || m_spellInfo->ManaCostPercentage);
 }
 
 bool Spell::HaveTargetsForEffect(SpellEffectIndex effect) const
@@ -7380,7 +7422,7 @@ void Spell::ResetEffectDamageAndHeal()
     m_healing = 0;
 }
 
-void Spell::SelectMountByAreaAndSkill(Unit* target, uint32 spellId75, uint32 spellId150, uint32 spellId225, uint32 spellId300, uint32 spellIdSpecial)
+void Spell::SelectMountByAreaAndSkill(Unit* target, SpellEntry const* parentSpell, uint32 spellId75, uint32 spellId150, uint32 spellId225, uint32 spellId300, uint32 spellIdSpecial)
 {
     if (!target || target->GetTypeId() != TYPEID_PLAYER)
         return;
@@ -7395,13 +7437,19 @@ void Spell::SelectMountByAreaAndSkill(Unit* target, uint32 spellId75, uint32 spe
     {
         uint32 spellid = skillval >= 300 ? spellId300 : spellId225;
         SpellEntry const *pSpell = sSpellStore.LookupEntry(spellid);
+        if (!pSpell)
+        {
+            sLog.outError("SelectMountByAreaAndSkill: unknown spell id %i by caster: %s", spellid, target->GetGuidStr().c_str());
+            return;
+        }
+
         // zone check
         uint32 zone, area;
         target->GetZoneAndAreaId(zone, area);
 
         SpellCastResult locRes= sSpellMgr.GetSpellAllowedInLocationError(pSpell, target->GetMapId(), zone, area, target->GetCharmerOrOwnerPlayerOrPlayerItself());
         if (locRes != SPELL_CAST_OK || !((Player*)target)->CanStartFlyInArea(target->GetMapId(), zone, area))
-            target->CastSpell(target, spellId150, true);
+            target->CastSpell(target, spellId150, true, NULL, NULL, ObjectGuid(), parentSpell);
         else if (spellIdSpecial > 0)
         {
             for (PlayerSpellMap::const_iterator iter = ((Player*)target)->GetSpellMap().begin(); iter != ((Player*)target)->GetSpellMap().end(); ++iter)
@@ -7418,22 +7466,22 @@ void Spell::SelectMountByAreaAndSkill(Unit* target, uint32 spellId75, uint32 spe
                             // speed higher than 280 replace it
                             if (mountSpeed > 280)
                             {
-                                target->CastSpell(target, spellIdSpecial, true);
+                                target->CastSpell(target, spellIdSpecial, true, NULL, NULL, ObjectGuid(), parentSpell);
                                 return;
                             }
                         }
                     }
                 }
             }
-            target->CastSpell(target, pSpell, true);
+            target->CastSpell(target, pSpell, true, NULL, NULL, ObjectGuid(), parentSpell);
         }
         else
-            target->CastSpell(target, pSpell, true);
+            target->CastSpell(target, pSpell, true, NULL, NULL, ObjectGuid(), parentSpell);
     }
     else if (skillval >= 150 && spellId150 > 0)
-        target->CastSpell(target, spellId150, true);
+        target->CastSpell(target, spellId150, true, NULL, NULL, ObjectGuid(), parentSpell);
     else if (spellId75 > 0)
-        target->CastSpell(target, spellId75, true);
+        target->CastSpell(target, spellId75, true, NULL, NULL, ObjectGuid(), parentSpell);
 
     return;
 }

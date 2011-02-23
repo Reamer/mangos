@@ -2135,14 +2135,17 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                         // allow script to process further (text)
                         break;
                     case 47977:                             // Magic Broom
-                        Spell::SelectMountByAreaAndSkill(target, 42680, 42683, 42667, 42668, 0);
+                        Spell::SelectMountByAreaAndSkill(target, GetSpellProto(), 42680, 42683, 42667, 42668, 0);
                         return;
                     case 48025:                             // Headless Horseman's Mount
-                        Spell::SelectMountByAreaAndSkill(target, 51621, 48024, 51617, 48023, 0);
+                        Spell::SelectMountByAreaAndSkill(target, GetSpellProto(), 51621, 48024, 51617, 48023, 0);
                         return;
                     case 50141:                             // Blood Oath
                         // Blood Oath
                         target->CastSpell(target, 50001, true, NULL, this);
+                        return;
+                    case 54729:                             // Winged Steed of the Ebon Blade
+                        Spell::SelectMountByAreaAndSkill(target, GetSpellProto(), 0, 0, 54726, 54727, 0);
                         return;
                     case 55328:                                 // Stoneclaw Totem I
                         target->CastSpell(target, 5728, true);
@@ -2207,28 +2210,134 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                         }
                         return;
                     case 71342:                             // Big Love Rocket
-                        Spell::SelectMountByAreaAndSkill(target, 71344, 71345, 71346, 71347, 0);
+                        Spell::SelectMountByAreaAndSkill(target, GetSpellProto(), 71344, 71345, 71346, 71347, 0);
                         return;
                     case 71563:                             // Deadly Precision
                         target->CastSpell(target, 71564, true, NULL, this);
                         return;
                     case 72286:                             // Invincible
-                        Spell::SelectMountByAreaAndSkill(target, 72281, 72282, 72283, 72284, 0);
+                        Spell::SelectMountByAreaAndSkill(target, GetSpellProto(), 72281, 72282, 72283, 72284, 0);
                         return;
                     case 74856:                             // Blazing Hippogryph
-                        Spell::SelectMountByAreaAndSkill(target, 0, 0, 74854, 74855, 0);
+                        Spell::SelectMountByAreaAndSkill(target, GetSpellProto(), 0, 0, 74854, 74855, 0);
                         return;
                     case 75614:                             // Celestial Steed
-                        Spell::SelectMountByAreaAndSkill(target, 75619, 75620, 75617, 75618, 76153);
+                        Spell::SelectMountByAreaAndSkill(target, GetSpellProto(), 75619, 75620, 75617, 75618, 76153);
                         return;
                     case 75973:                             // X-53 Touring Rocket
-                        Spell::SelectMountByAreaAndSkill(target, 0, 0, 75957, 75972, 76154);
+                        Spell::SelectMountByAreaAndSkill(target, GetSpellProto(), 0, 0, 75957, 75972, 76154);
                         return;
                 }
                 break;
             }
             case SPELLFAMILY_WARRIOR:
             {
+                switch(GetId())
+                {
+                    case 41099:                             // Battle Stance
+                    {
+                        if (target->GetTypeId() != TYPEID_UNIT)
+                            return;
+
+                        // Stance Cooldown
+                        target->CastSpell(target, 41102, true, NULL, this);
+
+                        // Battle Aura
+                        target->CastSpell(target, 41106, true, NULL, this);
+
+                        // equipment
+                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 0, 32614);
+                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 1, 0);
+                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 2, 0);
+                        return;
+                    }
+                    case 41100:                             // Berserker Stance
+                    {
+                        if (target->GetTypeId() != TYPEID_UNIT)
+                            return;
+
+                        // Stance Cooldown
+                        target->CastSpell(target, 41102, true, NULL, this);
+
+                        // Berserker Aura
+                        target->CastSpell(target, 41107, true, NULL, this);
+
+                        // equipment
+                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 0, 32614);
+                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 1, 0);
+                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 2, 0);
+                        return;
+                    }
+                    case 41101:                             // Defensive Stance
+                    {
+                        if (target->GetTypeId() != TYPEID_UNIT)
+                            return;
+
+                        // Stance Cooldown
+                        target->CastSpell(target, 41102, true, NULL, this);
+
+                        // Defensive Aura
+                        target->CastSpell(target, 41105, true, NULL, this);
+
+                        // equipment
+                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 0, 32604);
+                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 1, 31467);
+                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 2, 0);
+                        return;
+                    }
+                    case 53790:                             // Defensive Stance
+                    {
+                        if (target->GetTypeId() != TYPEID_UNIT)
+                            return;
+
+                        // Stance Cooldown
+                        target->CastSpell(target, 59526, true, NULL, this);
+
+                        // Defensive Aura
+                        target->CastSpell(target, 41105, true, NULL, this);
+
+                        // equipment
+                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 0, 43625);
+                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 1, 39384);
+                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 2, 0);
+                        return;
+                    }
+                    case 53791:                             // Berserker Stance
+                    {
+                        if (target->GetTypeId() != TYPEID_UNIT)
+                            return;
+
+                        // Stance Cooldown
+                        target->CastSpell(target, 59526, true, NULL, this);
+
+                        // Berserker Aura
+                        target->CastSpell(target, 41107, true, NULL, this);
+
+                        // equipment
+                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 0, 43625);
+                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 1, 43625);
+                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 2, 0);
+                        return;
+                    }
+                    case 53792:                             // Battle Stance
+                    {
+                        if (target->GetTypeId() != TYPEID_UNIT)
+                            return;
+
+                        // Stance Cooldown
+                        target->CastSpell(target, 59526, true, NULL, this);
+
+                        // Battle Aura
+                        target->CastSpell(target, 41106, true, NULL, this);
+
+                        // equipment
+                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 0, 43623);
+                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 1, 0);
+                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 2, 0);
+                        return;
+                    }
+                }
+
                 // Overpower
                 if (GetSpellProto()->SpellFamilyFlags & UI64LIT(0x0000000000000004))
                 {
@@ -2460,6 +2569,24 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                 target->CastSpell(target, 36731, true, NULL, this);
                 return;
             }
+            case 41099:                                     // Battle Stance
+            {
+                // Battle Aura
+                target->RemoveAurasDueToSpell(41106);
+                return;
+            }
+            case 41100:                                     // Berserker Stance
+            {
+                // Berserker Aura
+                target->RemoveAurasDueToSpell(41107);
+                return;
+            }
+            case 41101:                                     // Defensive Stance
+            {
+                // Defensive Aura
+                target->RemoveAurasDueToSpell(41105);
+                return;
+            }
             case 42517:                                     // Beam to Zelfrax
             {
                 // expecting target to be a dummy creature
@@ -2538,6 +2665,24 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
 
                 return;
             }
+            case 53790:                                     // Defensive Stance
+            {
+                // Defensive Aura
+                target->RemoveAurasDueToSpell(41105);
+                return;
+            }
+            case 53791:                                     // Berserker Stance
+            {
+                // Berserker Aura
+                target->RemoveAurasDueToSpell(41107);
+                return;
+            }
+            case 53792:                                     // Battle Stance
+            {
+                // Battle Aura
+                target->RemoveAurasDueToSpell(41106);
+                return;
+            }
             case 56511:                                     // Towers of Certain Doom: Tower Bunny Smoke Flare Effect
             {
                 // Towers of Certain Doom: Skorn Cannonfire
@@ -2559,8 +2704,13 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                 return;
             }
             case 68839:                                     // Corrupt Soul
+            {
+                // Knockdown Stun
+                target->CastSpell(target, 68848, true, NULL, this);
+                // Draw Corrupted Soul
                 target->CastSpell(target, 68846, true, NULL, this);
                 return;
+            }
         }
 
         // Living Bomb
@@ -2699,6 +2849,10 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                     return;
                 case 47178:                                 // Plague Effect Self
                     target->SetFeared(apply, GetCasterGuid(), GetId());
+                    return;
+                case 56422:                                 // Nerubian Submerge
+                    // not known if there are other things todo, only flag are confirmed valid
+                    target->ApplyModFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE, apply);
                     return;
                 case 58204:                                 // LK Intro VO (1)
                     if (target->GetTypeId() == TYPEID_PLAYER)
@@ -3020,7 +3174,7 @@ void Aura::HandleAuraMounted(bool apply, bool Real)
     }
     else
     {
-        target->Unmount();
+        target->Unmount(true);
     }
 }
 
@@ -4295,7 +4449,7 @@ void Aura::HandleAuraModStun(bool apply, bool Real)
         if(GetId() == 39837)
         {
             GameObject* pObj = new GameObject;
-            if(pObj->Create(sObjectMgr.GenerateLowGuid(HIGHGUID_GAMEOBJECT), 185584, target->GetMap(), target->GetPhaseMask(),
+            if(pObj->Create(target->GetMap()->GenerateLocalLowGuid(HIGHGUID_GAMEOBJECT), 185584, target->GetMap(), target->GetPhaseMask(),
                 target->GetPositionX(), target->GetPositionY(), target->GetPositionZ(), target->GetOrientation(), 0.0f, 0.0f, 0.0f, 0.0f, GO_ANIMPROGRESS_DEFAULT, GO_STATE_READY))
             {
                 pObj->SetRespawnTime(GetAuraDuration()/IN_MILLISECONDS);
@@ -8685,6 +8839,12 @@ bool Aura::IsLastAuraOnHolder()
     return true;
 }
 
+bool Aura::HasMechanic(uint32 mechanic) const
+{
+    return GetSpellProto()->Mechanic == mechanic ||
+        GetSpellProto()->EffectMechanic[m_effIndex] == mechanic;
+}
+
 SpellAuraHolder::SpellAuraHolder(SpellEntry const* spellproto, Unit *target, WorldObject *caster, Item *castItem) :
 m_target(target), m_castItemGuid(castItem ? castItem->GetObjectGuid() : ObjectGuid()),
 m_auraSlot(MAX_AURAS), m_auraFlags(AFLAG_NONE), m_auraLevel(1), m_procCharges(0),
@@ -9116,13 +9276,10 @@ Unit* SpellAuraHolder::GetCaster() const
     if(GetCasterGuid() == m_target->GetObjectGuid())
         return m_target;
 
-    //return ObjectAccessor::GetUnit(*m_target,m_caster_guid);
-    //must return caster even if it's in another grid/map
-    Unit *unit = ObjectAccessor::GetUnitInWorld(*m_target, m_casterGuid);
-    return unit && unit->IsInWorld() ? unit : NULL;
+    return ObjectAccessor::GetUnit(*m_target, m_casterGuid);// player will search at any maps
 }
 
-bool SpellAuraHolder::IsWeaponBuffCoexistableWith(SpellAuraHolder* ref)
+bool SpellAuraHolder::IsWeaponBuffCoexistableWith(SpellAuraHolder const* ref) const
 {
     // only item casted spells
     if (GetCastItemGuid().IsEmpty())
@@ -9174,7 +9331,7 @@ bool SpellAuraHolder::IsNeedVisibleSlot(Unit const* caster) const
     return !m_isPassive || totemAura || HasAreaAuraEffect(m_spellProto);
 }
 
-void SpellAuraHolder::SendAuraUpdate(bool remove)
+void SpellAuraHolder::SendAuraUpdate(bool remove) const
 {
     WorldPacket data(SMSG_AURA_UPDATE);
     data << m_target->GetPackGUID();

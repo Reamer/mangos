@@ -287,16 +287,6 @@ BattleGround::~BattleGround()
     for(int i = 0; i < size; ++i)
         DelObject(i);
 
-    if (GetInstanceID())                                    // not spam by useless queries in case BG templates
-    {
-        // delete creature and go respawn times
-        CharacterDatabase.PExecute("DELETE FROM creature_respawn WHERE instance = '%u'", GetInstanceID());
-        CharacterDatabase.PExecute("DELETE FROM gameobject_respawn WHERE instance = '%u'", GetInstanceID());
-        // delete instance from db
-        CharacterDatabase.PExecute("DELETE FROM instance WHERE id = '%u'",GetInstanceID());
-        // remove from battlegrounds
-    }
-
     sBattleGroundMgr.RemoveBattleGround(GetInstanceID(), GetTypeID());
     sBattleGroundMgr.DeleteClientVisibleInstanceId(GetTypeID(), GetBracketId(), GetClientInstanceID());
 
@@ -739,6 +729,53 @@ void BattleGround::EndBattleGround(Team winner)
             DEBUG_LOG("--- Winner rating: %u, Loser rating: %u, Winner change: %i, Loser change: %i ---", winner_rating, loser_rating, winner_change, loser_change);
             SetArenaTeamRatingChangeForTeam(winner, winner_change);
             SetArenaTeamRatingChangeForTeam(GetOtherTeam(winner), loser_change);
+            /** World of Warcraft Armory **/
+            if (sWorld.getConfig(CONFIG_BOOL_ARMORY_SUPPORT))
+            {
+                uint32 maxChartID;
+                QueryResult *result = CharacterDatabase.PQuery("SELECT MAX(gameid) FROM armory_game_chart");
+                if(!result)
+                    maxChartID = 0;
+                else
+                {
+                    maxChartID = (*result)[0].GetUInt32();
+                    delete result;
+                }
+                uint32 gameID = maxChartID+1;
+                for(BattleGroundScoreMap::const_iterator itr = m_PlayerScores.begin(); itr != m_PlayerScores.end(); ++itr)
+                {
+                    Player *plr = sObjectMgr.GetPlayer(itr->first);
+
+                    if (!plr)
+                        continue;
+
+                    uint32 plTeamID = plr->GetArenaTeamId(winner_arena_team->GetSlot());
+
+                    int changeType;
+                    uint32 resultRating;
+                    uint32 resultTeamID;
+                    int32 ratingChange;
+                    if (plTeamID == winner_arena_team->GetId())
+                    {
+                        changeType = 1; //win
+                        resultRating = winner_rating;
+                        resultTeamID = plTeamID;
+                        ratingChange = winner_change;
+                    }
+                    else
+                    {
+                        changeType = 2; //lose
+                        resultRating = loser_rating;
+                        resultTeamID = loser_arena_team->GetId();
+                        ratingChange = loser_change;
+                    }
+                    std::ostringstream sql_query;
+                    //                                                        gameid,              teamid,                     guid,                    changeType,             ratingChange,               teamRating,                  damageDone,                          deaths,                          healingDone,                           damageTaken,                           healingTaken,                         killingBlows,                      mapId,                 start,                   end
+                    sql_query << "INSERT INTO armory_game_chart VALUES ('" << gameID << "', '" << resultTeamID << "', '" << plr->GetGUID() << "', '" << changeType << "', '" << ratingChange  << "', '" << resultRating << "', '" << itr->second->DamageDone << "', '" << itr->second->Deaths << "', '" << itr->second->HealingDone << "', '" << itr->second->DamageTaken << "', '" << itr->second->HealingTaken << "', '" << itr->second->KillingBlows << "', '" << m_MapId << "', '" << m_StartTime << "', '" << m_EndTime << "')";
+                    CharacterDatabase.Execute(sql_query.str().c_str());
+                }
+                /** World of Warcraft Armory **/
+            }
         }
         else
         {
@@ -1422,6 +1459,14 @@ void BattleGround::UpdatePlayerScore(Player *Source, uint32 type, uint32 value)
         case SCORE_HEALING_DONE:                            // Healing Done
             itr->second->HealingDone += value;
             break;
+        /** World of Warcraft Armory **/
+        case SCORE_DAMAGE_TAKEN:
+            itr->second->DamageTaken += value;              // Damage Taken
+            break;
+        case SCORE_HEALING_TAKEN:
+            itr->second->HealingTaken += value;             // Healing Taken
+            break;
+        /** World of Warcraft Armory **/
         default:
             sLog.outError("BattleGround: Unknown player score type %u", type);
             break;
@@ -1434,7 +1479,7 @@ bool BattleGround::AddObject(uint32 type, uint32 entry, float x, float y, float 
     // and when loading it (in go::LoadFromDB()), a new guid would be assigned to the object, and a new object would be created
     // so we must create it specific for this instance
     GameObject * go = new GameObject;
-    if(!go->Create(sObjectMgr.GenerateLowGuid(HIGHGUID_GAMEOBJECT),entry, GetBgMap(),
+    if(!go->Create(GetBgMap()->GenerateLocalLowGuid(HIGHGUID_GAMEOBJECT),entry, GetBgMap(),
         PHASEMASK_NORMAL, x,y,z,o,rotation0,rotation1,rotation2,rotation3,GO_ANIMPROGRESS_DEFAULT,GO_STATE_READY))
     {
         sLog.outErrorDb("Gameobject template %u not found in database! BattleGround not created!", entry);
@@ -1504,7 +1549,7 @@ void BattleGround::DoorOpen(ObjectGuid guid)
 
 void BattleGround::OnObjectDBLoad(Creature* creature)
 {
-    const BattleGroundEventIdx eventId = sBattleGroundMgr.GetCreatureEventIndex(creature->GetDBTableGUIDLow());
+    const BattleGroundEventIdx eventId = sBattleGroundMgr.GetCreatureEventIndex(creature->GetGUIDLow());
     if (eventId.event1 == BG_EVENT_NONE)
         return;
     m_EventObjects[MAKE_PAIR32(eventId.event1, eventId.event2)].creatures.push_back(creature->GetObjectGuid());
@@ -1522,7 +1567,7 @@ ObjectGuid BattleGround::GetSingleCreatureGuid(uint8 event1, uint8 event2)
 
 void BattleGround::OnObjectDBLoad(GameObject* obj)
 {
-    const BattleGroundEventIdx eventId = sBattleGroundMgr.GetGameObjectEventIndex(obj->GetDBTableGUIDLow());
+    const BattleGroundEventIdx eventId = sBattleGroundMgr.GetGameObjectEventIndex(obj->GetGUIDLow());
     if (eventId.event1 == BG_EVENT_NONE)
         return;
     m_EventObjects[MAKE_PAIR32(eventId.event1, eventId.event2)].gameobjects.push_back(obj->GetObjectGuid());

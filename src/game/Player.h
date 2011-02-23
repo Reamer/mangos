@@ -51,7 +51,8 @@ class PlayerMenu;
 class UpdateMask;
 class SpellCastTargets;
 class PlayerSocial;
-class InstanceSave;
+class Vehicle;
+class DungeonPersistentState;
 class Spell;
 class Item;
 
@@ -984,12 +985,12 @@ enum ReputationSource
 
 struct InstancePlayerBind
 {
-    InstanceSave *save;
+    DungeonPersistentState *state;
     bool perm;
     /* permanent PlayerInstanceBinds are created in Raid/Heroic instances for players
        that aren't already permanently bound when they are inside when a boss is killed
        or when they enter an instance that the group leader is permanently bound to. */
-    InstancePlayerBind() : save(NULL), perm(false) {}
+    InstancePlayerBind() : state(NULL), perm(false) {}
 };
 
 class MANGOS_DLL_SPEC PlayerTaxi
@@ -2053,10 +2054,13 @@ class MANGOS_DLL_SPEC Player : public Unit
         void UpdateArenaFields();
         void UpdateHonorFields();
         bool RewardHonor(Unit *pVictim, uint32 groupsize, float honor = -1);
-        uint32 GetHonorPoints() { return GetUInt32Value(PLAYER_FIELD_HONOR_CURRENCY); }
-        uint32 GetArenaPoints() { return GetUInt32Value(PLAYER_FIELD_ARENA_CURRENCY); }
-        void ModifyHonorPoints( int32 value );
-        void ModifyArenaPoints( int32 value );
+        uint32 GetHonorPoints() const { return GetUInt32Value(PLAYER_FIELD_HONOR_CURRENCY); }
+        uint32 GetArenaPoints() const { return GetUInt32Value(PLAYER_FIELD_ARENA_CURRENCY); }
+        void SetHonorPoints(uint32 value);
+        void SetArenaPoints(uint32 value);
+        void ModifyHonorPoints(int32 value);
+        void ModifyArenaPoints(int32 value);
+
         uint32 GetMaxPersonalArenaRatingRequirement(uint32 minarenaslot);
 
         //End of PvP System
@@ -2314,6 +2318,10 @@ class MANGOS_DLL_SPEC Player : public Unit
         uint32 GetSaveTimer() const { return m_nextSave; }
         void   SetSaveTimer(uint32 timer) { m_nextSave = timer; }
 
+        /** World of Warcraft Armory **/
+        void WriteWowArmoryDatabaseLog(uint32 type, uint32 data);
+        /** World of Warcraft Armory **/
+
         // Recall position
         uint32 m_recallMap;
         float  m_recallX;
@@ -2383,14 +2391,14 @@ class MANGOS_DLL_SPEC Player : public Unit
         BoundInstancesMap& GetBoundInstances(Difficulty difficulty) { return m_boundInstances[difficulty]; }
         void UnbindInstance(uint32 mapid, Difficulty difficulty, bool unload = false);
         void UnbindInstance(BoundInstancesMap::iterator &itr, Difficulty difficulty, bool unload = false);
-        InstancePlayerBind* BindToInstance(InstanceSave *save, bool permanent, bool load = false);
         void BindToInstance();
-        void SetPendingBind(InstanceSave* save, uint32 bindTimer) { _pendingBind = save; _pendingBindTimer = bindTimer; }
+        void SetPendingBind(DungeonPersistentState* save, uint32 bindTimer) { _pendingBind = save; _pendingBindTimer = bindTimer; }
         bool HasPendingBind() const { return _pendingBind != NULL; }
+        InstancePlayerBind* BindToInstance(DungeonPersistentState *save, bool permanent, bool load = false);
         void SendRaidInfo();
         void SendSavedInstances();
         static void ConvertInstancesToGroup(Player *player, Group *group = NULL, ObjectGuid player_guid = ObjectGuid());
-        InstanceSave* GetBoundInstanceSaveForSelfOrGroup(uint32 mapid);
+        DungeonPersistentState* GetBoundInstanceSaveForSelfOrGroup(uint32 mapid);
 
         /*********************************************************/
         /***                   GROUP SYSTEM                    ***/
@@ -2459,8 +2467,8 @@ class MANGOS_DLL_SPEC Player : public Unit
         void CompletedAchievement(uint32 uiAchievementID);
         void StartTimedAchievementCriteria(AchievementCriteriaTypes type, uint32 timedRequirementId, time_t startTime = 0);
 
-        bool HasTitle(uint32 bitIndex);
-        bool HasTitle(CharTitlesEntry const* title) { return HasTitle(title->bit_index); }
+        bool HasTitle(uint32 bitIndex) const;
+        bool HasTitle(CharTitlesEntry const* title) const { return HasTitle(title->bit_index); }
         void SetTitle(CharTitlesEntry const* title, bool lost = false);
 
         bool canSeeSpellClickOn(Creature const* creature) const;
@@ -2779,7 +2787,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         uint32 m_timeSyncClient;
         uint32 m_timeSyncServer;
 
-        InstanceSave* _pendingBind;
+        DungeonPersistentState* _pendingBind;
         uint32 _pendingBindTimer;
 };
 
