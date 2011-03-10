@@ -181,7 +181,7 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
         bool IsRegularDifficulty() const { return GetDifficulty() == REGULAR_DIFFICULTY; }
         uint32 GetMaxPlayers() const;                       // dependent from map difficulty
         uint32 GetMaxResetDelay() const;                    // dependent from map difficulty
-        MapDifficulty const* GetMapDifficulty() const;      // dependent from map difficulty
+        MapDifficultyEntry const* GetMapDifficulty() const; // dependent from map difficulty
 
         bool Instanceable() const { return i_mapEntry && i_mapEntry->Instanceable(); }
         // NOTE: this duplicate of Instanceable(), but Instanceable() can be changed when BG also will be instanceable
@@ -262,8 +262,6 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
         void SendInitTransports( Player * player );
         void SendRemoveTransports( Player * player );
 
-        void PlayerRelocationNotify(Player* player, Cell cell, CellPair cellpair);
-
         bool CreatureCellRelocation(Creature *creature, Cell new_cell);
 
         bool loaded(const GridPair &) const;
@@ -337,9 +335,6 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
         // Type specific code for add/remove to/from grid
         template<class T>
             void AddToGrid(T*, NGridType *, Cell const&);
-
-        template<class T>
-            void AddNotifier(T*, Cell const&, CellPair const&);
 
         template<class T>
             void RemoveFromGrid(T*, NGridType *, Cell const&);

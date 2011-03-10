@@ -794,11 +794,18 @@ void WorldSession::HandleAreaTriggerOpcode(WorldPacket & recv_data)
 
         if(missingItem || missingLevel || missingQuest)
         {
+
+            MapDifficultyEntry const* mapDiff = GetMapDifficultyData(mapEntry->MapID,GetPlayer()->GetDifficulty(mapEntry->IsRaid()));
+
             // hack for "Opening of the Dark Portal"
             if(missingQuest && at->target_mapId == 269)
                 SendAreaTriggerMessage("%s", at->requiredFailedText.c_str());
             else if(missingQuest && mapEntry->IsContinent())// do not report anything for quest areatriggers
                 return;
+            else if (mapDiff && mapDiff->mapDifficultyFlags & MAP_DIFFICULTY_FLAG_CONDITION)
+            {
+                SendAreaTriggerMessage(mapDiff->areaTriggerText[GetSessionDbcLocale()]);
+            }
             // hack for TBC heroics
             else if(missingLevel && !mapEntry->IsRaid() && GetPlayer()->GetDifficulty(false) == DUNGEON_DIFFICULTY_HEROIC && mapEntry->addon == 1)
                 SendAreaTriggerMessage(GetMangosString(LANG_LEVEL_MINREQUIRED), at->requiredLevel);
@@ -1484,7 +1491,7 @@ void WorldSession::HandleMoveSetCanFlyAckOpcode( WorldPacket & recv_data )
     DEBUG_LOG("WORLD: CMSG_MOVE_SET_CAN_FLY_ACK");
     //recv_data.hexlike();
 
-    ObjectGuid guid;                                        // guid - unused
+    ObjectGuid guid;
     MovementInfo movementInfo;
 
     recv_data >> guid.ReadAsPacked();
@@ -1492,7 +1499,21 @@ void WorldSession::HandleMoveSetCanFlyAckOpcode( WorldPacket & recv_data )
     recv_data >> movementInfo;
     recv_data >> Unused<float>();                           // unk2
 
-    _player->m_movementInfo.SetMovementFlags(movementInfo.GetMovementFlags());
+    Unit * target;
+
+    if (GetPlayer()->GetObjectGuid() == guid)
+        target = GetPlayer();
+    else if (!GetPlayer()->IsSelfMover() && GetPlayer()->GetMover()->GetObjectGuid() == guid)
+        target = GetPlayer()->GetMover();
+    else
+    {
+        DEBUG_LOG("WorldSession::HandleMoveSetCanFlyAckOpcode: player %s, "
+            "mover %s, received %s", _player->GetGuidStr().c_str(),
+            GetPlayer()->GetMover()->GetGuidStr().c_str(), guid.GetString().c_str());
+        return;
+    }
+
+    target->m_movementInfo.SetMovementFlags(movementInfo.GetMovementFlags());
 }
 
 void WorldSession::HandleRequestPetInfoOpcode( WorldPacket & /*recv_data */)
@@ -1631,4 +1652,28 @@ void WorldSession::HandleInstanceLockResponse(WorldPacket& recvPacket)
         GetPlayer()->RepopAtGraveyard();
 
     GetPlayer()->SetPendingBind(NULL, 0);
+}
+
+void WorldSession::HandleSetSavedInstanceExtend(WorldPacket& recv_data)
+{
+    DEBUG_LOG("WORLD: CMSG_SET_SAVED_INSTANCE_EXTEND");
+
+    uint32 map_id;
+    uint32 difficulty;
+    uint8  _extend;
+
+    recv_data >> map_id;
+    recv_data >> difficulty;
+    recv_data >> _extend;
+
+    DEBUG_LOG("SetSavedInstanceExtend: Player %s (guid %u) tried to extend (code %d) instance map %d difficulty %d ", GetPlayer()->GetName(), GetPlayer()->GetGUIDLow(), _extend, map_id, difficulty);
+
+    if (InstancePlayerBind* bind = GetPlayer()->GetBoundInstance(map_id, Difficulty(difficulty)))
+    {
+        GetPlayer()->BindToInstance(bind->state, bind->perm, false, bool(_extend));
+    }
+    else
+    {
+        sLog.outError("SetSavedInstanceExtend: Player tryed to extend instance, but not bound to.");
+    }
 }

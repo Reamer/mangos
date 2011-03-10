@@ -1758,6 +1758,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         // Visibility system
         UnitVisibility GetVisibility() const { return m_Visibility; }
         void SetVisibility(UnitVisibility x);
+        void UpdateVisibilityAndView();                     // overwrite WorldObject::UpdateVisibilityAndView()
 
         // common function for visibility checks for player/creatures with detection code
         bool isVisibleForOrDetect(Unit const* u, WorldObject const* viewPoint, bool detect, bool inVisibleList = false, bool is3dDistance = true) const;
@@ -2049,8 +2050,8 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         void RemoveVehicleKit();
 
         void ScheduleAINotify(uint32 delay);
-        bool IsAINotifySheduled() const { return m_AINotifySheduled;}
-        void _SetAINotifySheduled(bool on) { m_AINotifySheduled = on;}       // only for call from RelocationNotifyEvent class code
+        bool IsAINotifyScheduled() const { return m_AINotifyScheduled;}
+        void _SetAINotifyScheduled(bool on) { m_AINotifyScheduled = on;}       // only for call from RelocationNotifyEvent code
         void OnRelocated();
 
     protected:
@@ -2131,7 +2132,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
 
         UnitVisibility m_Visibility;
         Position m_last_notified_position;
-        bool m_AINotifySheduled;
+        bool m_AINotifyScheduled;
 
         Diminishing m_Diminishing;
         // Manage all Units threatening us

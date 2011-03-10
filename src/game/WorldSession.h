@@ -749,6 +749,7 @@ class MANGOS_DLL_SPEC WorldSession
         void HandleResetInstancesOpcode(WorldPacket& recv_data);
         void HandleHearthandResurrect(WorldPacket & recv_data);
         void HandleInstanceLockResponse(WorldPacket& recv_data);
+        void HandleSetSavedInstanceExtend(WorldPacket& recv_data);
 
         // Arena Team
         void HandleInspectArenaTeamsOpcode(WorldPacket& recv_data);
@@ -814,6 +815,7 @@ class MANGOS_DLL_SPEC WorldSession
 
         void HandleSpellClick(WorldPacket& recv_data);
         void HandleMirrorImageDataRequest( WorldPacket & recv_data );
+        void HandleUpdateProjectilePosition(WorldPacket & recv_data);
         void HandleAlterAppearanceOpcode(WorldPacket& recv_data);
         void HandleRemoveGlyphOpcode(WorldPacket& recv_data);
         void HandleCharCustomizeOpcode(WorldPacket& recv_data);

@@ -624,7 +624,7 @@ bool IsExplicitNegativeTarget(uint32 targetA)
     {
         case TARGET_CHAIN_DAMAGE:
         case TARGET_CURRENT_ENEMY_COORDINATES:
-        case TARGET_SINGLE_ENEMY:
+//        case TARGET_SINGLE_ENEMY: <- Penace is positive!
             return true;
         default:
             break;
@@ -662,6 +662,7 @@ bool IsPositiveEffect(uint32 spellId, SpellEffectIndex effIndex)
             return true;
 
         case SPELL_EFFECT_SCHOOL_DAMAGE:
+        case SPELL_EFFECT_THREAT:
             return false;
 
             // non-positive aura use
