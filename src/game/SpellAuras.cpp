@@ -293,7 +293,7 @@ pAuraHandler AuraHandler[TOTAL_AURAS]=
     &Aura::HandleAuraModExpertise,                          //240 SPELL_AURA_MOD_EXPERTISE
     &Aura::HandleForceMoveForward,                          //241 Forces the caster to move forward
     &Aura::HandleUnused,                                    //242 SPELL_AURA_MOD_SPELL_DAMAGE_FROM_HEALING (only 2 test spels in 3.2.2a)
-    &Aura::HandleNULL,                                      //243 faction reaction override spells
+    &Aura::HandleAuraFactionChange,                         //243 faction change
     &Aura::HandleComprehendLanguage,                        //244 SPELL_AURA_COMPREHEND_LANGUAGE
     &Aura::HandleNoImmediateEffect,                         //245 SPELL_AURA_MOD_DURATION_OF_MAGIC_EFFECTS     implemented in Unit::CalculateSpellDuration
     &Aura::HandleNoImmediateEffect,                         //246 SPELL_AURA_MOD_DURATION_OF_EFFECTS_BY_DISPEL implemented in Unit::CalculateSpellDuration
@@ -2135,6 +2135,17 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                         target->CastSpell(target, 47189, true, NULL, this);
                         // allow script to process further (text)
                         break;
+                    case 47795:                             // Cold Cleanse
+                    {
+                        if (Unit* Caster = GetCaster())
+                        {
+                            Caster->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+                            Caster->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_DISABLE_MOVE);
+                            Caster->DeleteThreatList();
+                            Caster->CombatStop(true);
+                        }
+                        return;
+                    } 
                     case 47977:                             // Magic Broom
                         Spell::SelectMountByAreaAndSkill(target, GetSpellProto(), 42680, 42683, 42667, 42668, 0);
                         return;
@@ -2247,9 +2258,9 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                         target->CastSpell(target, 41106, true, NULL, this);
 
                         // equipment
-                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 0, 32614);
-                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 1, 0);
-                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 2, 0);
+                        ((Creature*)target)->SetVirtualItem(VIRTUAL_ITEM_SLOT_0, 32614);
+                        ((Creature*)target)->SetVirtualItem(VIRTUAL_ITEM_SLOT_1, 0);
+                        ((Creature*)target)->SetVirtualItem(VIRTUAL_ITEM_SLOT_2, 0);
                         return;
                     }
                     case 41100:                             // Berserker Stance
@@ -2264,9 +2275,9 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                         target->CastSpell(target, 41107, true, NULL, this);
 
                         // equipment
-                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 0, 32614);
-                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 1, 0);
-                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 2, 0);
+                        ((Creature*)target)->SetVirtualItem(VIRTUAL_ITEM_SLOT_0, 32614);
+                        ((Creature*)target)->SetVirtualItem(VIRTUAL_ITEM_SLOT_1, 0);
+                        ((Creature*)target)->SetVirtualItem(VIRTUAL_ITEM_SLOT_2, 0);
                         return;
                     }
                     case 41101:                             // Defensive Stance
@@ -2281,9 +2292,9 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                         target->CastSpell(target, 41105, true, NULL, this);
 
                         // equipment
-                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 0, 32604);
-                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 1, 31467);
-                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 2, 0);
+                        ((Creature*)target)->SetVirtualItem(VIRTUAL_ITEM_SLOT_0, 32604);
+                        ((Creature*)target)->SetVirtualItem(VIRTUAL_ITEM_SLOT_1, 31467);
+                        ((Creature*)target)->SetVirtualItem(VIRTUAL_ITEM_SLOT_2, 0);
                         return;
                     }
                     case 53790:                             // Defensive Stance
@@ -2298,9 +2309,9 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                         target->CastSpell(target, 41105, true, NULL, this);
 
                         // equipment
-                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 0, 43625);
-                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 1, 39384);
-                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 2, 0);
+                        ((Creature*)target)->SetVirtualItem(VIRTUAL_ITEM_SLOT_0, 43625);
+                        ((Creature*)target)->SetVirtualItem(VIRTUAL_ITEM_SLOT_1, 39384);
+                        ((Creature*)target)->SetVirtualItem(VIRTUAL_ITEM_SLOT_2, 0);
                         return;
                     }
                     case 53791:                             // Berserker Stance
@@ -2315,9 +2326,9 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                         target->CastSpell(target, 41107, true, NULL, this);
 
                         // equipment
-                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 0, 43625);
-                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 1, 43625);
-                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 2, 0);
+                        ((Creature*)target)->SetVirtualItem(VIRTUAL_ITEM_SLOT_0, 43625);
+                        ((Creature*)target)->SetVirtualItem(VIRTUAL_ITEM_SLOT_1, 43625);
+                        ((Creature*)target)->SetVirtualItem(VIRTUAL_ITEM_SLOT_2, 0);
                         return;
                     }
                     case 53792:                             // Battle Stance
@@ -2332,9 +2343,9 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                         target->CastSpell(target, 41106, true, NULL, this);
 
                         // equipment
-                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 0, 43623);
-                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 1, 0);
-                        target->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 2, 0);
+                        ((Creature*)target)->SetVirtualItem(VIRTUAL_ITEM_SLOT_0, 43623);
+                        ((Creature*)target)->SetVirtualItem(VIRTUAL_ITEM_SLOT_1, 0);
+                        ((Creature*)target)->SetVirtualItem(VIRTUAL_ITEM_SLOT_2, 0);
                         return;
                     }
                 }
@@ -2600,6 +2611,14 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
 
                 return;
             }
+            case 43969:                                     // Feathered Charm
+            {
+                // Steelfeather Quest Credit, Are there any requirements for this, like area?
+                if (m_removeMode == AURA_REMOVE_BY_EXPIRE)
+                    target->CastSpell(target, 43984, true);
+
+                return;
+            }
             case 44191:                                     // Flame Strike
             {
                 if (target->GetMap()->IsDungeon())
@@ -2622,6 +2641,62 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                 // casted only at creatures at spawn
                 target->CastSpell(target, 47287, true, NULL, this);
                 return;
+            }
+            case 47744:                                     // Rage of Jin'arrak
+            {
+                if(m_removeMode == AURA_REMOVE_BY_EXPIRE)
+                {
+                    Unit* caster = GetCaster();
+
+                    caster->CastSpell(caster, 61611, true);
+                    ((Player*)caster)->KilledMonsterCredit(26902);
+                    return;
+                }
+            }
+            case 47795:                                     // Cold Cleanse
+            {
+                if(m_removeMode == AURA_REMOVE_BY_EXPIRE)
+                {
+                    Unit* Caster = GetCaster();
+
+                    if(Caster->isAlive())
+                    {
+                        Caster->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_DISABLE_MOVE);
+                        Caster->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+
+                        Creature* pCreature = NULL;
+
+                        MaNGOS::NearestCreatureEntryWithLiveStateInObjectRangeCheck creature_check(*Caster,  26591, true, 15.0f);
+                        MaNGOS::CreatureLastSearcher<MaNGOS::NearestCreatureEntryWithLiveStateInObjectRangeCheck> searcher(pCreature, creature_check);
+
+                        Cell::VisitGridObjects(Caster, searcher, 15.0f);
+
+                        if(pCreature)
+                        {
+                            float fX, fY, fZ;
+
+                            fX = pCreature->GetPositionX();
+                            fY = pCreature->GetPositionY();
+                            fZ = pCreature->GetPositionZ();
+
+                            Caster->SetSpeedRate(MOVE_RUN, 0.7f);
+                            Caster->GetMotionMaster()->MovePoint(1, fX, fY, fZ);
+
+                            switch(urand(0,1))
+                            {
+                                case 0: Caster->MonsterSay("I could sleep forever, mon...", LANG_UNIVERSAL, 0); break;
+                                case 1: Caster->MonsterSay("Finally, I can be restin\'...", LANG_UNIVERSAL, 0); break;
+                            }
+
+                            //This should happen when Caster arive to dest place
+                            pCreature->CastSpell(pCreature, 47798, true);
+                            pCreature->CastSpell(pCreature, 48150, true);
+                            pCreature->ForcedDespawn(15000);
+                            ((Creature*)Caster)->ForcedDespawn(3000);
+                            return;
+                        }
+                    }
+                }
             }
             case 51405:                                     // Digging for Treasure
             {
@@ -10424,4 +10499,21 @@ void Aura::HandleAuraSetVehicle(bool apply, bool real)
         data.Initialize(SMSG_ON_CANCEL_EXPECTED_RIDE_VEHICLE_AURA, 0);
         ((Player*)target)->GetSession()->SendPacket(&data);
     }
+}
+
+void Aura::HandleAuraFactionChange(bool apply, bool real)
+{
+    if (!real)
+        return;
+
+    Unit* target = GetTarget();
+
+    if (!target || !target->IsInWorld())
+        return;
+
+    uint32 newFaction = apply ? GetMiscValue() : target->GetOriginalFaction();
+
+    if (newFaction && newFaction != target->getFaction())
+        target->setFaction(newFaction);
+
 }
