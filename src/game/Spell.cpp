@@ -1633,7 +1633,12 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 case 50988:                                 // Glare of the Tribunal (Halls of Stone)
                 case 55479:                                 // Force Obedience
                 case 59870:                                 // Glare of the Tribunal (h) (Halls of Stone)
+                case 62166:                                 // StoneGrip nh
                 case 62374:                                 // Pursued Ulduar Leviathan
+                case 63018:                                 // Searing Light nonhero
+                case 63024:                                 // Gravity Bomb nonhero
+                case 64234:                                 // Gravity Bomb hero
+                case 65121:                                 // Searing Light hero
                 case 65950:                                 // Touch of Light
                 case 67296:
                 case 67297:
@@ -1655,12 +1660,14 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 case 31298:                                 // Sleep
                 case 51904:                                 // Limiting the count of Summoned Ghouls
                 case 54522:
+                case 63981:                                 // StoneGrip H
                     unMaxTargets = 3;
                     break;
                 case 30843:                                 // Enfeeble TODO: exclude top threat target from target selection
                 case 42005:                                 // Bloodboil TODO: need to be 5 targets(players) furthest away from caster
                 case 55665:                                 // Life Drain (h)
                 case 58917:                                 // Consume Minions
+                case 64604:                                 // Nature Bomb Freya
                 case 67700:                                 // Penetrating Cold (25 man)
                 case 68510:                                 // Penetrating Cold (25 man, heroic)
                     unMaxTargets = 5;
@@ -1994,6 +2001,13 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
         }
         case TARGET_ALL_ENEMY_IN_AREA:
             FillAreaTargets(targetUnitMap, m_targets.m_destX, m_targets.m_destY, radius, PUSH_DEST_CENTER, SPELL_TARGETS_AOE_DAMAGE);
+            if (m_spellInfo->Id == 62240 || m_spellInfo->Id == 62920)
+            {
+                if (SpellAuraHolder *holder = m_caster->GetSpellAuraHolder(62239))
+                    unMaxTargets = holder->GetStackAmount();
+                else
+                    unMaxTargets = 1;
+            }
             break;
         case TARGET_AREAEFFECT_INSTANT:
         {
@@ -2326,6 +2340,19 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
             }
             break;
         case TARGET_ALL_FRIENDLY_UNITS_IN_AREA:
+            // Searing Light
+            if (m_spellInfo->Id == 63023 || m_spellInfo->Id == 65120)
+            {
+                FillAreaTargets(targetUnitMap, m_caster->GetPositionX(), m_caster->GetPositionY(), radius, PUSH_SELF_CENTER, SPELL_TARGETS_HOSTILE);
+                break;
+            }
+            // Gravity Bomb
+            else if (m_spellInfo->Id == 63025 || m_spellInfo->Id == 64233)
+            {
+                FillAreaTargets(targetUnitMap, m_caster->GetPositionX(), m_caster->GetPositionY(), radius, PUSH_SELF_CENTER, SPELL_TARGETS_HOSTILE);
+                targetUnitMap.remove(m_caster);
+                break;
+            }
             // Death Pact (in fact selection by player selection)
             if (m_spellInfo->Id == 48743)
             {

@@ -1477,10 +1477,18 @@ void Creature::SetDeathState(DeathState s)
         // FIXME: may not be blizzlike
         if (Pet* pet = GetPet())
             pet->Unsummon(PET_SAVE_AS_DELETED, this);
-
-        // return, since we promote to CORPSE_FALLING. CORPSE_FALLING is promoted to CORPSE at next update.
-        if (CanFly() && FallGround())
-            return;
+        
+        // exclusion for falling down
+        switch (GetCreatureInfo()->Entry)
+        {
+            case 32930:         // Kologarn 10
+            case 33909:         // Kologarn 25
+                break;
+            default:
+            // return, since we promote to CORPSE_FALLING. CORPSE_FALLING is promoted to CORPSE at next update.
+            if (CanFly() && FallGround())
+                return;
+        }
 
         Unit::SetDeathState(CORPSE);
     }
