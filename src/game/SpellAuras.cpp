@@ -5463,17 +5463,29 @@ void Aura::HandleAuraPeriodicDummy(bool apply, bool Real)
             Unit* caster = GetCaster();
             if(!apply)
             {
+                if (!caster || !target)
+                    return;
                 switch(spell->Id)
                 {
                     case 49555:                                 // Corpse Explode
+                    {
                         caster->CastSpell(target,49618,true);
                         break;
+                    }
                     case 59807:                                 // Corpse Explode hero
+                    {
                         caster->CastSpell(target,59809,true);
                         break;
+                    }        
+                    case 62717:                                   // Slag Pot (Ulduar: Ignis)
+                    case 63477:
+                    {
+                        // Haste buff (Slag Imbued)
+                        target->CastSpell(caster, (spell->Id == 62717) ? 62836 : 63536, true);
+                        break;
+                    }
                 }
             }
-            break;
         }
         case SPELLFAMILY_ROGUE:
         {

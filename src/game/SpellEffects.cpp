@@ -7547,6 +7547,15 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                         m_caster->CastSpell(m_caster, 62239, true);
                     return;
                 }
+                case 62707:                                 // Grab (Ulduar: Ignis)
+                case 63535:                                 // Grab heroic
+                {
+                    if (!unitTarget || !m_caster)
+                        return;
+                    unitTarget->CastSpell(m_caster, 62708, true); // Control Vehicle aura
+                    m_caster->CastSpell(unitTarget, (m_spellInfo->Id == 62707) ? 62717 : 63477, true); // DoT/Immunity
+                    break;
+                }
                 case 62705:                                 // Auto-repair
                 {
                     if (!unitTarget)
@@ -7555,6 +7564,16 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     if (VehicleKit* vehicle = unitTarget->GetVehicleKit())
                         if (Unit* seat = vehicle->GetPassenger(1))
                             seat->ModifyPower(POWER_ENERGY,50);
+                    break;
+                }
+                case 64475:                                 // Ignis Strength of the Creator stack decreasing
+                {
+                    if (!unitTarget || !m_caster)
+                        return;
+                    if (SpellAuraHolder *holder = unitTarget->GetSpellAuraHolder(64473))
+                        if (holder->ModStackAmount(-1))
+                            unitTarget->RemoveSpellAuraHolder(holder);
+                    break;
                 }
                 case 69200:                                 // Raging Spirit
                 {

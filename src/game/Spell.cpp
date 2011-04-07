@@ -1635,6 +1635,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 case 59870:                                 // Glare of the Tribunal (h) (Halls of Stone)
                 case 62166:                                 // StoneGrip nh
                 case 62374:                                 // Pursued Ulduar Leviathan
+                case 62488:                                 // Activate Construct
                 case 63018:                                 // Searing Light nonhero
                 case 63024:                                 // Gravity Bomb nonhero
                 case 64234:                                 // Gravity Bomb hero
