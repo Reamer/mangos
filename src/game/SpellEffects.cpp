@@ -2560,8 +2560,12 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                         }
                     }
                 }
-
-                m_caster->SetPower(POWER_RAGE,m_caster->GetPower(POWER_RAGE)-rage);
+                
+                int32 setrage = m_caster->GetPower(POWER_RAGE) - rage;
+                if (setrage < 0)
+                    setrage = 0;
+                
+                m_caster->SetPower(POWER_RAGE, setrage);
                 return;
             }
             // Slam
