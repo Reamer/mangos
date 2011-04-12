@@ -5460,26 +5460,32 @@ void Aura::HandleAuraPeriodicDummy(bool apply, bool Real)
     {
         case SPELLFAMILY_GENERIC:
         {
-            Unit* caster = GetCaster();
             if(!apply)
             {
-                if (!caster || !target)
-                    return;
                 switch(spell->Id)
                 {
                     case 49555:                                 // Corpse Explode
                     {
+                        Unit* caster = GetCaster();
+                        if (!caster || !target)
+                            return;
                         caster->CastSpell(target,49618,true);
                         break;
                     }
                     case 59807:                                 // Corpse Explode hero
                     {
+                        Unit* caster = GetCaster();
+                        if (!caster || !target)
+                            return;
                         caster->CastSpell(target,59809,true);
                         break;
                     }        
                     case 62717:                                   // Slag Pot (Ulduar: Ignis)
                     case 63477:
                     {
+                        Unit* caster = GetCaster();
+                        if (!caster || !target)
+                            return;
                         // Haste buff (Slag Imbued)
                         target->CastSpell(caster, (spell->Id == 62717) ? 62836 : 63536, true);
                         break;
@@ -7413,7 +7419,7 @@ void Aura::PeriodicTick()
                     {
                         target->CastSpell(target, 74795, true, NULL, NULL, GetCasterGUID());
                         break;
-                    };
+                    }
                     case 67297:
                     case 65950:
                         pCaster->CastSpell(target, 65951, true);

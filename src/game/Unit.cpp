@@ -3488,7 +3488,7 @@ SpellMissInfo Unit::SpellHitResult(Unit *pVictim, SpellEntry const *spell, bool 
                     pVictim->RemoveAurasDueToSpell(5599); // Hand of Protection rank 2
                     pVictim->RemoveAurasDueToSpell(10278); // Hand of Protection rank 3
                     pVictim->RemoveAurasDueToSpell(45438); // Ice Block
-                    return SPELL_MISS_NONE;
+                    return SPELL_MISS_IMMUNE;
                 } else
                     return SPELL_MISS_MISS;
             } else
