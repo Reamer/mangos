@@ -2324,6 +2324,15 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                         unitTarget->CastSpell(unitTarget, 62947, true);
                     return;
                 }
+                case 63545:                                 // Icicle Hodir Spell
+                {
+                    if (!unitTarget)
+                        return;
+                    Spell* temp =  m_caster->FindCurrentSpellBySpellId(61968);
+                    if (!temp)
+                        m_caster->CastSpell(unitTarget, 62234, true);
+                    return;
+                }
                 case 64385:                                 // Spinning (from Unusual Compass)
                 {
                     m_caster->SetFacingTo(frand(0, M_PI_F*2), true);

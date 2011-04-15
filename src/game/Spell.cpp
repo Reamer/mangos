@@ -1638,6 +1638,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 case 62488:                                 // Activate Construct
                 case 63018:                                 // Searing Light nonhero
                 case 63024:                                 // Gravity Bomb nonhero
+                case 63545:                                 // Icicle Hodir(trigger spell from 62227)
                 case 64234:                                 // Gravity Bomb hero
                 case 65121:                                 // Searing Light hero
                 case 65950:                                 // Touch of Light
