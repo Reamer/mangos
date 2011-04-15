@@ -1653,6 +1653,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                     unMaxTargets = 1;
                     break;
                 case 28542:                                 // Life Drain
+                case 62476:                                 // Icicle (Hodir 10man)
                 case 66013:                                 // Penetrating Cold (10 man)
                 case 68509:                                 // Penetrating Cold (10 man heroic)
                     unMaxTargets = 2;
@@ -1662,6 +1663,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 case 31298:                                 // Sleep
                 case 51904:                                 // Limiting the count of Summoned Ghouls
                 case 54522:
+                case 62477:                                 // Icicle (Hodir 25man)
                 case 63981:                                 // StoneGrip H
                     unMaxTargets = 3;
                     break;
@@ -3008,6 +3010,17 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                     break;
                 default:
                     break;
+            }
+            break;
+        }
+        case TARGET_UNK_92:
+        {
+            if (Unit *unitTarget = m_targets.getUnitTarget())
+                targetUnitMap.push_back(unitTarget);
+            else
+            {
+                if (Unit *creator = m_caster->GetMap()->GetUnit(m_caster->GetCreatorGuid()))
+                    targetUnitMap.push_back(creator);
             }
             break;
         }

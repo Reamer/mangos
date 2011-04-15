@@ -1162,6 +1162,7 @@ enum Targets
     TARGET_SELF2                       = 87,
     TARGET_DIRECTLY_FORWARD            = 89,
     TARGET_NONCOMBAT_PET               = 90,
+    TARGET_UNK_92                      = 92,                // from spell 61969. TARGET_CREATOR would fit...
     TARGET_OWNED_VEHICLE               = 94,
     TARGET_UNIT_DRIVER                 = 95,
     TARGET_UNIT_PASSENGER_0            = 96,
