@@ -23286,7 +23286,7 @@ bool Player::CheckRAFConditions()
             if (GetObjectGuid() == member->GetObjectGuid())
                 continue;
 
-            if (member->GetAccountLinkedState() == STATE_NOT_LINKED)
+            if (!IsReferAFriendLinked(member))
                 continue;
 
             if (GetDistance(member) < 100 && (getLevel() <= member->getLevel() + 4))
