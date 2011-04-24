@@ -2275,6 +2275,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         /*********************************************************/
         /*** REFER-A-FRIEND SYSTEM ***/
         /*********************************************************/
+        bool CheckforSameIP(Player* otherPlayer);
         void SendReferFriendError(ReferAFriendError err, Player * target = NULL);
         ReferAFriendError GetReferFriendError(Player * target, bool summon);
         void AccessGrantableLevel(ObjectGuid guid) { m_curGrantLevelGiverGuid = guid; }

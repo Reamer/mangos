@@ -23272,6 +23272,16 @@ void Player::ChangeGrantableLevels(uint8 increase)
 
 }
 
+bool Player::CheckforSameIP(Player *otherPlayer)
+{
+    if (!otherPlayer)
+        return true;
+    
+    if (GetSession()->GetRemoteAddress() == otherPlayer->GetSession()->GetRemoteAddress())
+        return true;
+    return false;
+}
+
 bool Player::CheckRAFConditions()
 {
     if (Group * grp = GetGroup())
@@ -23287,6 +23297,9 @@ bool Player::CheckRAFConditions()
                 continue;
 
             if (!IsReferAFriendLinked(member))
+                continue;
+
+            if (CheckforSameIP(member))
                 continue;
 
             if (GetDistance(member) < 100 && (getLevel() <= member->getLevel() + 4))
