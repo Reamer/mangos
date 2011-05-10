@@ -30,7 +30,6 @@
 #include "UpdateMask.h"
 #include "World.h"
 #include "Group.h"
-#include "Guild.h"
 #include "ArenaTeam.h"
 #include "Transports.h"
 #include "ProgressBar.h"
@@ -141,16 +140,15 @@ template uint32 IdGenerator<uint32>::Generate();
 template uint64 IdGenerator<uint64>::Generate();
 
 ObjectMgr::ObjectMgr() :
-    m_CreatureFirstGuid(1),
-    m_GameObjectFirstGuid(1),
+    m_FirstTemporaryCreatureGuid(1),
+    m_FirstTemporaryGameObjectGuid(1),
 
     m_ArenaTeamIds("Arena team ids"),
     m_AuctionIds("Auction ids"),
     m_EquipmentSetIds("Equipment set ids"),
     m_GuildIds("Guild ids"),
     m_MailIds("Mail ids"),
-    m_PetNumbers("Pet numbers"),
-    m_GroupIds("Group ids")
+    m_PetNumbers("Pet numbers")
 {
     // Only zero condition left, others will be added while loading DB tables
     mConditions.resize(1);
@@ -172,11 +170,8 @@ ObjectMgr::~ObjectMgr()
         for (int class_ = 0; class_ < MAX_CLASSES; ++class_)
             delete[] playerInfo[race][class_].levelInfo;
 
-    // free group and guild objects
+    // free objects
     for (GroupMap::iterator itr = mGroupMap.begin(); itr != mGroupMap.end(); ++itr)
-        delete itr->second;
-
-    for (GuildMap::iterator itr = mGuildMap.begin(); itr != mGuildMap.end(); ++itr)
         delete itr->second;
 
     for (ArenaTeamMap::iterator itr = mArenaTeamMap.begin(); itr != mArenaTeamMap.end(); ++itr)
@@ -194,45 +189,15 @@ ObjectMgr::~ObjectMgr()
 
 Group* ObjectMgr::GetGroupById(uint32 id) const
 {
-    GroupMap::const_iterator itr = mGroupMap.find(id);
+    ObjectGuid guid(HIGHGUID_GROUP,id);
+    return GetGroup(guid);
+}
+
+Group* ObjectMgr::GetGroup(ObjectGuid guid) const
+{
+    GroupMap::const_iterator itr = mGroupMap.find(guid);
     if (itr != mGroupMap.end())
         return itr->second;
-
-    return NULL;
-}
-
-Guild* ObjectMgr::GetGuildById(uint32 GuildId) const
-{
-    GuildMap::const_iterator itr = mGuildMap.find(GuildId);
-    if (itr != mGuildMap.end())
-        return itr->second;
-
-    return NULL;
-}
-
-Guild * ObjectMgr::GetGuildByName(const std::string& guildname) const
-{
-    for(GuildMap::const_iterator itr = mGuildMap.begin(); itr != mGuildMap.end(); ++itr)
-        if (itr->second->GetName() == guildname)
-            return itr->second;
-
-    return NULL;
-}
-
-std::string ObjectMgr::GetGuildNameById(uint32 GuildId) const
-{
-    GuildMap::const_iterator itr = mGuildMap.find(GuildId);
-    if (itr != mGuildMap.end())
-        return itr->second->GetName();
-
-    return "";
-}
-
-Guild* ObjectMgr::GetGuildByLeader(ObjectGuid guid) const
-{
-    for(GuildMap::const_iterator itr = mGuildMap.begin(); itr != mGuildMap.end(); ++itr)
-        if (itr->second->GetLeaderGuid() == guid)
-            return itr->second;
 
     return NULL;
 }
@@ -725,21 +690,16 @@ void ObjectMgr::LoadCreatureTemplates()
             }
         }
 
-        if (cInfo->VehicleId)
-        {
-            VehicleEntry const* pVehicleEntry = sVehicleStore.LookupEntry(cInfo->VehicleId);
-
-            if (!pVehicleEntry)
-            {
-                sLog.outErrorDb("Creature (Entry: %u) has non-existing VehicleId (%u)", cInfo->Entry, cInfo->VehicleId);
-                const_cast<CreatureInfo*>(cInfo)->VehicleId = 0;
-            }
-        }
-
         if(cInfo->MovementType >= MAX_DB_MOTION_TYPE)
         {
             sLog.outErrorDb("Creature (Entry: %u) has wrong movement generator type (%u), ignore and set to IDLE.",cInfo->Entry,cInfo->MovementType);
             const_cast<CreatureInfo*>(cInfo)->MovementType = IDLE_MOTION_TYPE;
+        }
+
+        if (cInfo->vehicleId && !sVehicleStore.LookupEntry(cInfo->vehicleId))
+        {
+            sLog.outErrorDb("Creature (Entry: %u) has non-existing vehicle_id (%u), set to 0.", cInfo->Entry, cInfo->vehicleId);
+            const_cast<CreatureInfo*>(cInfo)->vehicleId = 0;
         }
 
         if(cInfo->equipmentId > 0)                          // 0 no equipment
@@ -800,18 +760,24 @@ void ObjectMgr::ConvertCreatureAddonAuras(CreatureDataAddon* addon, char const* 
     }
 
     // replace by new structures array
-    const_cast<CreatureDataAddonAura*&>(addon->auras) = new CreatureDataAddonAura[val.size()+1];
+    const_cast<uint32*&>(addon->auras) = new uint32[val.size()+1];
 
     uint32 i = 0;
     for(uint32 j = 0; j < val.size(); ++j)
     {
-        CreatureDataAddonAura& cAura = const_cast<CreatureDataAddonAura&>(addon->auras[i]);
-        cAura.spell_id = uint32(val[j]);
+        uint32& cAura = const_cast<uint32&>(addon->auras[i]);
+        cAura = uint32(val[j]);
 
-        SpellEntry const *AdditionalSpellInfo = sSpellStore.LookupEntry(cAura.spell_id);
+        SpellEntry const *AdditionalSpellInfo = sSpellStore.LookupEntry(cAura);
         if (!AdditionalSpellInfo)
         {
-            sLog.outErrorDb("Creature (%s: %u) has wrong spell %u defined in `auras` field in `%s`.",guidEntryStr,addon->guidOrEntry,cAura.spell_id,table);
+            sLog.outErrorDb("Creature (%s: %u) has wrong spell %u defined in `auras` field in `%s`.", guidEntryStr, addon->guidOrEntry, cAura,table);
+            continue;
+        }
+
+        if (std::find(&addon->auras[0], &addon->auras[i], cAura) != &addon->auras[i])
+        {
+            sLog.outErrorDb("Creature (%s: %u) has duplicate spell %u defined in `auras` field in `%s`.", guidEntryStr, addon->guidOrEntry, cAura, table);
             continue;
         }
 
@@ -819,8 +785,7 @@ void ObjectMgr::ConvertCreatureAddonAuras(CreatureDataAddon* addon, char const* 
     }
 
     // fill terminator element (after last added)
-    CreatureDataAddonAura& endAura = const_cast<CreatureDataAddonAura&>(addon->auras[i]);
-    endAura.spell_id = 0;
+    const_cast<uint32&>(addon->auras[i]) = 0;
 }
 
 void ObjectMgr::LoadCreatureAddons(SQLStorage& creatureaddons, char const* entryName, char const* comment)
@@ -3613,96 +3578,13 @@ void ObjectMgr::BuildPlayerLevelInfo(uint8 race, uint8 _class, uint8 level, Play
     }
 }
 
-void ObjectMgr::LoadGuilds()
-{
-    Guild *newGuild;
-    uint32 count = 0;
-
-    //                                                    0             1          2          3           4           5           6
-    QueryResult *result = CharacterDatabase.Query("SELECT guild.guildid,guild.name,leaderguid,EmblemStyle,EmblemColor,BorderStyle,BorderColor,"
-    //   7               8    9    10         11        12
-        "BackgroundColor,info,motd,createdate,BankMoney,(SELECT COUNT(guild_bank_tab.guildid) FROM guild_bank_tab WHERE guild_bank_tab.guildid = guild.guildid) "
-        "FROM guild ORDER BY guildid ASC");
-
-    if( !result )
-    {
-
-        barGoLink bar( 1 );
-
-        bar.step();
-
-        sLog.outString();
-        sLog.outString( ">> Loaded %u guild definitions", count );
-        return;
-    }
-
-    // load guild ranks
-    //                                                                0       1   2     3      4
-    QueryResult *guildRanksResult   = CharacterDatabase.Query("SELECT guildid,rid,rname,rights,BankMoneyPerDay FROM guild_rank ORDER BY guildid ASC, rid ASC");
-
-    // load guild members
-    //                                                                0       1                 2    3     4       5                  6
-    QueryResult *guildMembersResult = CharacterDatabase.Query("SELECT guildid,guild_member.guid,rank,pnote,offnote,BankResetTimeMoney,BankRemMoney,"
-    //   7                 8                9                 10               11                12
-        "BankResetTimeTab0,BankRemSlotsTab0,BankResetTimeTab1,BankRemSlotsTab1,BankResetTimeTab2,BankRemSlotsTab2,"
-    //   13                14               15                16               17                18
-        "BankResetTimeTab3,BankRemSlotsTab3,BankResetTimeTab4,BankRemSlotsTab4,BankResetTimeTab5,BankRemSlotsTab5,"
-    //   19               20                21                22               23                      24
-        "characters.name, characters.level, characters.class, characters.zone, characters.logout_time, characters.account "
-        "FROM guild_member LEFT JOIN characters ON characters.guid = guild_member.guid ORDER BY guildid ASC");
-
-    // load guild bank tab rights
-    //                                                                      0       1     2   3       4
-    QueryResult *guildBankTabRightsResult = CharacterDatabase.Query("SELECT guildid,TabId,rid,gbright,SlotPerDay FROM guild_bank_right ORDER BY guildid ASC, TabId ASC");
-
-    barGoLink bar( (int)result->GetRowCount() );
-
-    do
-    {
-        //Field *fields = result->Fetch();
-
-        bar.step();
-        ++count;
-
-        newGuild = new Guild;
-        if (!newGuild->LoadGuildFromDB(result) ||
-            !newGuild->LoadRanksFromDB(guildRanksResult) ||
-            !newGuild->LoadMembersFromDB(guildMembersResult) ||
-            !newGuild->LoadBankRightsFromDB(guildBankTabRightsResult) ||
-            !newGuild->CheckGuildStructure()
-            )
-        {
-            newGuild->Disband();
-            delete newGuild;
-            continue;
-        }
-        newGuild->LoadGuildEventLogFromDB();
-        newGuild->LoadGuildBankEventLogFromDB();
-        newGuild->LoadGuildBankFromDB();
-        AddGuild(newGuild);
-    } while( result->NextRow() );
-
-    delete result;
-    delete guildRanksResult;
-    delete guildMembersResult;
-    delete guildBankTabRightsResult;
-
-    //delete unused LogGuid records in guild_eventlog and guild_bank_eventlog table
-    //you can comment these lines if you don't plan to change CONFIG_UINT32_GUILD_EVENT_LOG_COUNT and CONFIG_UINT32_GUILD_BANK_EVENT_LOG_COUNT
-    CharacterDatabase.PExecute("DELETE FROM guild_eventlog WHERE LogGuid > '%u'", sWorld.getConfig(CONFIG_UINT32_GUILD_EVENT_LOG_COUNT));
-    CharacterDatabase.PExecute("DELETE FROM guild_bank_eventlog WHERE LogGuid > '%u'", sWorld.getConfig(CONFIG_UINT32_GUILD_BANK_EVENT_LOG_COUNT));
-
-    sLog.outString();
-    sLog.outString( ">> Loaded %u guild definitions", count );
-}
-
 void ObjectMgr::LoadArenaTeams()
 {
     uint32 count = 0;
 
     //                                                     0                      1    2           3    4               5
     QueryResult *result = CharacterDatabase.Query( "SELECT arena_team.arenateamid,name,captainguid,type,BackgroundColor,EmblemStyle,"
-    //   6           7           8            9      10    	 11  	   12  		    13    	    14
+    //   6           7           8            9      10         11         12              13            14
         "EmblemColor,BorderStyle,BorderColor, rating,games_week,wins_week,games_season,wins_season,rank "
         "FROM arena_team LEFT JOIN arena_team_stats ON arena_team.arenateamid = arena_team_stats.arenateamid ORDER BY arena_team.arenateamid ASC" );
 
@@ -3754,8 +3636,8 @@ void ObjectMgr::LoadGroups()
 {
     // -- loading groups --
     uint32 count = 0;
-    //                                                    0         1              2           3           4              5      6      7      8      9      10     11     12     13         14          15              16          17
-    QueryResult *result = CharacterDatabase.Query("SELECT mainTank, mainAssistant, lootMethod, looterGuid, lootThreshold, icon1, icon2, icon3, icon4, icon5, icon6, icon7, icon8, groupType, difficulty, raiddifficulty, leaderGuid, groupId FROM groups");
+    //                                                    0           1           2              3      4      5      6      7      8      9      10     11         12          13              14          15
+    QueryResult *result = CharacterDatabase.Query("SELECT lootMethod, looterGuid, lootThreshold, icon1, icon2, icon3, icon4, icon5, icon6, icon7, icon8, groupType, difficulty, raiddifficulty, leaderGuid, groupId FROM groups");
 
     if (!result)
     {
@@ -3792,8 +3674,8 @@ void ObjectMgr::LoadGroups()
 
     // -- loading members --
     count = 0;
-    //                                       0           1          2         3
-    result = CharacterDatabase.Query("SELECT memberGuid, assistant, subgroup, groupId FROM group_member ORDER BY groupId");
+    //                                       0           1            2         3        4
+    result = CharacterDatabase.Query("SELECT memberGuid, memberFlags, subgroup, groupId, roles FROM group_member ORDER BY groupId");
     if (!result)
     {
         barGoLink bar2( 1 );
@@ -3812,9 +3694,10 @@ void ObjectMgr::LoadGroups()
 
             uint32 memberGuidlow = fields[0].GetUInt32();
             ObjectGuid memberGuid = ObjectGuid(HIGHGUID_PLAYER, memberGuidlow);
-            bool   assistent     = fields[1].GetBool();
+            uint8  flags         = fields[1].GetUInt8();
             uint8  subgroup      = fields[2].GetUInt8();
             uint32 groupId       = fields[3].GetUInt32();
+            uint8  roles         = fields[4].GetUInt8();
             if (!group || group->GetId() != groupId)
             {
                 group = GetGroupById(groupId);
@@ -3827,7 +3710,7 @@ void ObjectMgr::LoadGroups()
                 }
             }
 
-            if (!group->LoadMemberFromDB(memberGuidlow, subgroup, assistent))
+            if (!group->LoadMemberFromDB(memberGuidlow, subgroup, GroupFlagMask(flags), roles))
             {
                 sLog.outErrorDb("Incorrect entry in group_member table : member %s cannot be added to group (Id: %u)!",
                     memberGuid.GetString().c_str(), groupId);
@@ -3858,8 +3741,8 @@ void ObjectMgr::LoadGroups()
         "SELECT group_instance.leaderGuid, map, instance, permanent, instance.difficulty, resettime, "
         // 6
         "(SELECT COUNT(*) FROM character_instance WHERE guid = group_instance.leaderGuid AND instance = group_instance.instance AND permanent = 1 LIMIT 1), "
-        // 7
-        " groups.groupId "
+        // 7              8
+        " groups.groupId, instance.encountersMask "
         "FROM group_instance LEFT JOIN instance ON instance = id LEFT JOIN groups ON groups.leaderGUID = group_instance.leaderGUID ORDER BY leaderGuid"
     );
 
@@ -3884,6 +3767,7 @@ void ObjectMgr::LoadGroups()
             Difficulty diff = (Difficulty)fields[4].GetUInt8();
             uint32 groupId = fields[7].GetUInt32();
             uint64 resetTime = fields[5].GetUInt64();
+            uint32 encountersMask = fields[8].GetUInt32();
 
             if (!group || group->GetId() != groupId)
             {
@@ -3916,8 +3800,34 @@ void ObjectMgr::LoadGroups()
                 sLog.outErrorDb("ObjectMgr::Wrong reset time in group_instance corrected to: %d", resetTime);
             }
 
-            DungeonPersistentState *state = (DungeonPersistentState*)sMapPersistentStateMgr.AddPersistentState(mapEntry, fields[2].GetUInt32(), Difficulty(diff), (time_t)resetTime, (fields[6].GetUInt32() == 0), true);
-            group->BindToInstance(state, fields[3].GetBool(), true);
+            if (resetTime < (time(NULL)))
+            {
+                DEBUG_LOG("ObjectMgr::Loading extended instance for player: %d", leaderGuidLow);
+                bool isExtended = false;
+                QueryResult* result1 = CharacterDatabase.PQuery("SELECT COUNT(guid) FROM character_instance WHERE instance = '%u' AND extend = 1 ", fields[1].GetUInt32());
+                if (result1)
+                {
+                    Field *fields1=result->Fetch();
+                    isExtended = fields1[0].GetBool();
+                    delete result1;
+                }
+                if (isExtended)
+                {
+                    MapDifficultyEntry const* mapDiff = GetMapDifficultyData(mapId,diff);
+                    resetTime = DungeonResetScheduler::CalculateNextResetTime(mapDiff, time(NULL));
+                    DungeonPersistentState* state = (DungeonPersistentState*)sMapPersistentStateMgr.AddPersistentState(mapEntry, fields[2].GetUInt32(), Difficulty(diff), (time_t)resetTime, (fields[6].GetUInt32() == 0), true, true, encountersMask);
+                    state->SetExtended(isExtended);
+                    group->BindToInstance(state, true && isExtended, true);
+                }
+                else
+                    sLog.outErrorDb("ObjectMgr::Loaded instance %d with expired resetTime %u, but his not extended.", fields[2].GetUInt32(), resetTime);
+            }
+            else
+            {
+                DungeonPersistentState *state = (DungeonPersistentState*)sMapPersistentStateMgr.AddPersistentState(mapEntry, fields[2].GetUInt32(), Difficulty(diff), (time_t)resetTime, (fields[6].GetUInt32() == 0), true, true, encountersMask);
+                group->BindToInstance(state, fields[3].GetBool(), true);
+            }
+
         }while( result->NextRow() );
         delete result;
     }
@@ -5666,8 +5576,12 @@ void ObjectMgr::LoadAreaTriggerTeleports()
 
     uint32 count = 0;
 
-    //                                                0   1               2              3               4           5            6                    7                           8                     9           10                 11                 12                 13
-    QueryResult *result = WorldDatabase.Query("SELECT id, required_level, required_item, required_item2, heroic_key, heroic_key2, required_quest_done, required_quest_done_heroic, required_failed_text, target_map, target_position_x, target_position_y, target_position_z, target_orientation FROM areatrigger_teleport");
+    //                                                0   1               2              3               4           5
+    QueryResult *result = WorldDatabase.Query("SELECT id, required_level, required_item, required_item2, heroic_key, heroic_key2,"
+    // 6                     7                              8                      9                            10     11
+    "required_quest_done_A, required_quest_done_heroic_A, required_quest_done_H, required_quest_done_heroic_H, minGS, maxGS,"
+    // 12                    13          14                 15                 16                 17
+    "required_failed_text, target_map, target_position_x, target_position_y, target_position_z, target_orientation FROM areatrigger_teleport");
     if (!result)
     {
 
@@ -5699,14 +5613,18 @@ void ObjectMgr::LoadAreaTriggerTeleports()
         at.requiredItem2        = fields[3].GetUInt32();
         at.heroicKey            = fields[4].GetUInt32();
         at.heroicKey2           = fields[5].GetUInt32();
-        at.requiredQuest        = fields[6].GetUInt32();
-        at.requiredQuestHeroic  = fields[7].GetUInt32();
-        at.requiredFailedText   = fields[8].GetCppString();
-        at.target_mapId         = fields[9].GetUInt32();
-        at.target_X             = fields[10].GetFloat();
-        at.target_Y             = fields[11].GetFloat();
-        at.target_Z             = fields[12].GetFloat();
-        at.target_Orientation   = fields[13].GetFloat();
+        at.requiredQuestA       = fields[6].GetUInt32();
+        at.requiredQuestHeroicA = fields[7].GetUInt32();
+        at.requiredQuestH       = fields[8].GetUInt32();
+        at.requiredQuestHeroicH = fields[9].GetUInt32();
+        at.minGS                = fields[10].GetUInt32();
+        at.maxGS                = fields[11].GetUInt32();
+        at.requiredFailedText   = fields[12].GetCppString();
+        at.target_mapId         = fields[13].GetUInt32();
+        at.target_X             = fields[14].GetFloat();
+        at.target_Y             = fields[15].GetFloat();
+        at.target_Z             = fields[16].GetFloat();
+        at.target_Orientation   = fields[17].GetFloat();
 
         AreaTriggerEntry const* atEntry = sAreaTriggerStore.LookupEntry(Trigger_ID);
         if (!atEntry)
@@ -5755,23 +5673,43 @@ void ObjectMgr::LoadAreaTriggerTeleports()
             }
         }
 
-        if (at.requiredQuest)
+        if (at.requiredQuestA)
         {
-            QuestMap::iterator qReqItr = mQuestTemplates.find(at.requiredQuest);
+            QuestMap::iterator qReqItr = mQuestTemplates.find(at.requiredQuestA);
             if (qReqItr == mQuestTemplates.end())
             {
-                sLog.outErrorDb("Table `areatrigger_teleport` has nonexistent required quest %u for trigger %u, remove quest done requirement.",at.requiredQuest,Trigger_ID);
-                at.requiredQuest = 0;
+                sLog.outErrorDb("Table `areatrigger_teleport` has nonexistent required quest %u for trigger %u, remove quest done requirement.",at.requiredQuestA,Trigger_ID);
+                at.requiredQuestA = 0;
             }
         }
 
-        if (at.requiredQuestHeroic)
+        if (at.requiredQuestH)
         {
-            QuestMap::iterator qReqItr = mQuestTemplates.find(at.requiredQuestHeroic);
+            QuestMap::iterator qReqItr = mQuestTemplates.find(at.requiredQuestH);
             if (qReqItr == mQuestTemplates.end())
             {
-                sLog.outErrorDb("Table `areatrigger_teleport` has nonexistent required heroic quest %u for trigger %u, remove quest done requirement.",at.requiredQuestHeroic,Trigger_ID);
-                at.requiredQuestHeroic = 0;
+                sLog.outErrorDb("Table `areatrigger_teleport` has nonexistent required quest %u for trigger %u, remove quest done requirement.",at.requiredQuestH,Trigger_ID);
+                at.requiredQuestH = 0;
+            }
+        }
+
+        if (at.requiredQuestHeroicA)
+        {
+            QuestMap::iterator qReqItr = mQuestTemplates.find(at.requiredQuestHeroicA);
+            if (qReqItr == mQuestTemplates.end())
+            {
+                sLog.outErrorDb("Table `areatrigger_teleport` has nonexistent required heroic quest %u for trigger %u, remove quest done requirement.",at.requiredQuestHeroicA,Trigger_ID);
+                at.requiredQuestHeroicA = 0;
+            }
+        }
+
+        if (at.requiredQuestHeroicH)
+        {
+            QuestMap::iterator qReqItr = mQuestTemplates.find(at.requiredQuestHeroicH);
+            if (qReqItr == mQuestTemplates.end())
+            {
+                sLog.outErrorDb("Table `areatrigger_teleport` has nonexistent required heroic quest %u for trigger %u, remove quest done requirement.",at.requiredQuestHeroicH,Trigger_ID);
+                at.requiredQuestHeroicH = 0;
             }
         }
 
@@ -5836,66 +5774,6 @@ AreaTrigger const* ObjectMgr::GetMapEntranceTrigger(uint32 Map) const
     return NULL;
 }
 
-void ObjectMgr::PackGroupIds()
-{
-    // this routine renumbers groups in such a way so they start from 1 and go up
-
-    // obtain set of all groups
-    std::set<uint32> groupIds;
-
-    // all valid ids are in the instance table
-    // any associations to ids not in this table are assumed to be
-    // cleaned already in CleanupInstances
-    QueryResult *result = CharacterDatabase.Query("SELECT groupId FROM groups");
-    if( result )
-    {
-        do
-        {
-            Field *fields = result->Fetch();
-
-            uint32 id = fields[0].GetUInt32();
-
-            if (id == 0)
-            {
-                CharacterDatabase.BeginTransaction();
-                CharacterDatabase.PExecute("DELETE FROM groups WHERE groupId = '%u'", id);
-                CharacterDatabase.PExecute("DELETE FROM group_member WHERE groupId = '%u'", id);
-                CharacterDatabase.CommitTransaction();
-                continue;
-            }
-
-            groupIds.insert(id);
-        }
-        while (result->NextRow());
-        delete result;
-    }
-
-    barGoLink bar( groupIds.size() + 1);
-    bar.step();
-
-    uint32 groupId = 1;
-    // we do assume std::set is sorted properly on integer value
-    for (std::set<uint32>::iterator i = groupIds.begin(); i != groupIds.end(); ++i)
-    {
-        if (*i != groupId)
-        {
-            // remap group id
-            CharacterDatabase.BeginTransaction();
-            CharacterDatabase.PExecute("UPDATE groups SET groupId = '%u' WHERE groupId = '%u'", groupId, *i);
-            CharacterDatabase.PExecute("UPDATE group_member SET groupId = '%u' WHERE groupId = '%u'", groupId, *i);
-            CharacterDatabase.CommitTransaction();
-        }
-
-        ++groupId;
-        bar.step();
-    }
-
-    m_GroupIds.Set(groupId);
-
-    sLog.outString( ">> Group Ids remapped, next group id is %u", groupId );
-    sLog.outString();
-}
-
 void ObjectMgr::SetHighestGuids()
 {
     QueryResult *result = CharacterDatabase.Query( "SELECT MAX(guid) FROM characters" );
@@ -5908,7 +5786,7 @@ void ObjectMgr::SetHighestGuids()
     result = WorldDatabase.Query( "SELECT MAX(guid) FROM creature" );
     if( result )
     {
-        m_CreatureFirstGuid = (*result)[0].GetUInt32()+1;
+        m_FirstTemporaryCreatureGuid = (*result)[0].GetUInt32()+1;
         delete result;
     }
 
@@ -5937,7 +5815,7 @@ void ObjectMgr::SetHighestGuids()
     result = WorldDatabase.Query("SELECT MAX(guid) FROM gameobject" );
     if( result )
     {
-        m_GameObjectFirstGuid = (*result)[0].GetUInt32()+1;
+        m_FirstTemporaryGameObjectGuid = (*result)[0].GetUInt32()+1;
         delete result;
     }
 
@@ -5986,9 +5864,16 @@ void ObjectMgr::SetHighestGuids()
     result = CharacterDatabase.Query( "SELECT MAX(groupId) FROM groups" );
     if (result)
     {
-        m_GroupIds.Set((*result)[0].GetUInt32()+1);
+        m_GroupGuids.Set((*result)[0].GetUInt32()+1);
         delete result;
     }
+
+    // setup reserved ranges for static guids spawn
+    m_StaticCreatureGuids.Set(m_FirstTemporaryCreatureGuid);
+    m_FirstTemporaryCreatureGuid += sWorld.getConfig(CONFIG_UINT32_GUID_RESERVE_SIZE_CREATURE);
+
+    m_StaticGameObjectGuids.Set(m_FirstTemporaryGameObjectGuid);
+    m_FirstTemporaryGameObjectGuid += sWorld.getConfig(CONFIG_UINT32_GUID_RESERVE_SIZE_GAMEOBJECT);
 }
 
 void ObjectMgr::LoadGameObjectLocales()
@@ -7887,6 +7772,58 @@ bool PlayerCondition::Meets(Player const * player) const
             return sGameEventMgr.IsActiveHoliday(HolidayIds(value1));
         case CONDITION_NOT_ACTIVE_HOLIDAY:
             return !sGameEventMgr.IsActiveHoliday(HolidayIds(value1));
+        case CONDITION_LEARNABLE_ABILITY:
+        {
+            // Already know the spell
+            if (player->HasSpell(value1))
+                return false;
+
+            // If item defined, check if player has the item already.
+            if (value2)
+            {
+                // Hard coded item count. This should be ok, since the intention with this condition is to have
+                // a all-in-one check regarding items that learn some ability (primary/secondary tradeskills).
+                // Commonly, items like this is unique and/or are not expected to be obtained more than once.
+                if (player->HasItemCount(value2, 1, true))
+                    return false;
+            }
+
+            bool isSkillOk = false;
+
+            SkillLineAbilityMapBounds bounds = sSpellMgr.GetSkillLineAbilityMapBounds(value1);
+
+            for(SkillLineAbilityMap::const_iterator itr = bounds.first; itr != bounds.second; ++itr)
+            {
+                const SkillLineAbilityEntry* skillInfo = itr->second;
+
+                if (!skillInfo)
+                    continue;
+
+                // doesn't have skill
+                if (!player->HasSkill(skillInfo->skillId))
+                    return false;
+
+                // doesn't match class
+                if (skillInfo->classmask && (skillInfo->classmask & player->getClassMask()) == 0)
+                    return false;
+
+                // doesn't match race
+                if (skillInfo->racemask && (skillInfo->racemask & player->getRaceMask()) == 0)
+                    return false;
+
+                // skill level too low
+                if (skillInfo->min_value > player->GetSkillValue(skillInfo->skillId))
+                    return false;
+
+                isSkillOk = true;
+                break;
+            }
+
+            if (isSkillOk)
+                return true;
+
+            return false;
+        }
         default:
             return false;
     }
@@ -7895,13 +7832,7 @@ bool PlayerCondition::Meets(Player const * player) const
 // Verification of condition values validity
 bool PlayerCondition::IsValid(ConditionType condition, uint32 value1, uint32 value2)
 {
-    if (condition >= MAX_CONDITION)                         // Wrong condition type
-    {
-        sLog.outErrorDb("Condition has bad type of %u, skipped ", condition );
-        return false;
-    }
-
-    switch (condition)
+    switch(condition)
     {
         case CONDITION_AURA:
         {
@@ -8145,8 +8076,33 @@ bool PlayerCondition::IsValid(ConditionType condition, uint32 value1, uint32 val
             }
             break;
         }
+        case CONDITION_LEARNABLE_ABILITY:
+        {
+            SkillLineAbilityMapBounds bounds = sSpellMgr.GetSkillLineAbilityMapBounds(value1);
+
+            if (bounds.first == bounds.second)
+            {
+                sLog.outErrorDb("CONDITION_LEARNABLE_ABILITY (%u) has spell id %u defined, but this spell is not listed in SkillLineAbility and can not be used, skipping.", condition, value1);
+                return false;
+            }
+
+            if (value2)
+            {
+                ItemPrototype const *proto = ObjectMgr::GetItemPrototype(value2);
+                if (!proto)
+                {
+                    sLog.outErrorDb("CONDITION_LEARNABLE_ABILITY (%u) has item entry %u defined but item does not exist, skipping.", condition, value2);
+                    return false;
+                }
+            }
+
+            break;
+        }
         case CONDITION_NONE:
             break;
+        default:
+            sLog.outErrorDb("Condition has bad type of %u, skipped ", condition);
+            return false;
     }
     return true;
 }
@@ -8521,7 +8477,7 @@ void ObjectMgr::LoadTrainerTemplates()
         {
             if (cInfo->trainerId)
             {
-                if (trainer_ids.count(cInfo->trainerId) > 0)
+                if (m_mCacheTrainerTemplateSpellMap.find(cInfo->trainerId) != m_mCacheTrainerTemplateSpellMap.end())
                     trainer_ids.erase(cInfo->trainerId);
                 else
                     sLog.outErrorDb("Creature (Entry: %u) has trainer_id = %u for nonexistent trainer template", cInfo->Entry, cInfo->trainerId);
@@ -9100,24 +9056,14 @@ bool ObjectMgr::IsVendorItemValid(bool isTemplate, char const* tableName, uint32
     return true;
 }
 
-void ObjectMgr::AddGuild( Guild* guild )
-{
-    mGuildMap[guild->GetId()] = guild ;
-}
-
-void ObjectMgr::RemoveGuild( uint32 Id )
-{
-    mGuildMap.erase(Id);
-}
-
 void ObjectMgr::AddGroup( Group* group )
 {
-    mGroupMap[group->GetId()] = group ;
+    mGroupMap[group->GetObjectGuid()] = group ;
 }
 
 void ObjectMgr::RemoveGroup( Group* group )
 {
-    mGroupMap.erase(group->GetId());
+    mGroupMap.erase(group->GetObjectGuid());
 }
 
 void ObjectMgr::AddArenaTeam( ArenaTeam* arenaTeam )
@@ -9253,3 +9199,76 @@ GameObjectDataPair const* FindGOData::GetResult() const
 
     return i_anyData;
 }
+
+void ObjectMgr::LoadInstanceEncounters()
+{
+    QueryResult* result = WorldDatabase.Query("SELECT entry, creditType, creditEntry, lastEncounterDungeon FROM instance_encounters");
+
+    uint32 count = 0;
+    if (result)
+    {
+
+        std::map<uint32, DungeonEncounterEntry const*> dungeonLastBosses;
+        do
+        {
+            Field* fields = result->Fetch();
+            uint32 entry = fields[0].GetUInt32();
+            DungeonEncounterEntry const* dungeonEncounter = sDungeonEncounterStore.LookupEntry(entry);
+            if (!dungeonEncounter)
+            {
+                sLog.outErrorDb("Table `instance_encounters` has an invalid encounter id %u, skipped!", entry);
+                continue;
+            }
+
+            uint8 creditType = fields[1].GetUInt8();
+            uint32 creditEntry = fields[2].GetUInt32();
+
+            switch (creditType)
+            {
+                case ENCOUNTER_CREDIT_KILL_CREATURE:
+                    {
+                        CreatureInfo const* cInfo = sCreatureStorage.LookupEntry<CreatureInfo>(creditEntry);
+                        if (!cInfo)
+                        {
+                            sLog.outErrorDb("Table `instance_encounters` has an invalid creature (entry %u) linked to the encounter %u (%s), skipped!", creditEntry, entry, dungeonEncounter->encounterName[0]);
+                            continue;
+                        }
+                    }
+                    break;
+                case ENCOUNTER_CREDIT_CAST_SPELL:
+                    if (!sSpellStore.LookupEntry(creditEntry))
+                    {
+                        sLog.outErrorDb("Table `instance_encounters` has an invalid spell (entry %u) linked to the encounter %u (%s), skipped!", creditEntry, entry, dungeonEncounter->encounterName[0]);
+                        continue;
+                    }
+                    break;
+                default:
+                    sLog.outErrorDb("Table `instance_encounters` has an invalid credit type (%u) for encounter %u (%s), skipped!", creditType, entry, dungeonEncounter->encounterName[0]);
+                    continue;
+            }
+
+            uint32 lastEncounterDungeon = fields[3].GetUInt32();
+
+            std::map<uint32, DungeonEncounterEntry const*>::const_iterator itr = dungeonLastBosses.find(lastEncounterDungeon);
+
+            if (lastEncounterDungeon)
+            {
+                if (itr != dungeonLastBosses.end())
+                {
+                    sLog.outErrorDb("Table `instance_encounters` specified encounter %u (%s) as last encounter but %u (%s) is already marked as one, skipped!", entry, dungeonEncounter->encounterName[0], itr->second->Id, itr->second->encounterName[0]);
+                    continue;
+                }
+
+                dungeonLastBosses[lastEncounterDungeon] = dungeonEncounter;
+            }
+
+            DungeonEncounterList& encounters = mDungeonEncounters[MAKE_PAIR32(dungeonEncounter->mapId, dungeonEncounter->Difficulty)];
+            encounters.push_back(new DungeonEncounter(dungeonEncounter, EncounterCreditType(creditType), creditEntry, lastEncounterDungeon));
+            ++count;
+        } while (result->NextRow());
+    }
+
+    sLog.outString(">> Loaded %u instance encounters", count);
+    sLog.outString();
+}
+

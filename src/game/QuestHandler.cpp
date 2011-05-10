@@ -30,6 +30,9 @@
 #include "ScriptMgr.h"
 #include "Group.h"
 
+// Playerbot mod:
+#include "playerbot/PlayerbotAI.h"
+
 void WorldSession::HandleQuestgiverStatusQueryOpcode( WorldPacket & recv_data )
 {
     ObjectGuid guid;
@@ -118,7 +121,11 @@ void WorldSession::HandleQuestgiverAcceptQuestOpcode( WorldPacket & recv_data )
     recv_data >> guid >> quest >> unk1;
 
     if (!GetPlayer()->isAlive())
-        return;
+    {
+        if (Unit * pQuestNPC = GetPlayer()->GetMap()->GetUnit(guid))
+            if (!pQuestNPC->isInvisibleForAlive())
+                return;
+    }
 
     DEBUG_LOG("WORLD: Received CMSG_QUESTGIVER_ACCEPT_QUEST npc = %s, quest = %u, unk1 = %u", guid.GetString().c_str(), quest, unk1 );
 
@@ -277,8 +284,12 @@ void WorldSession::HandleQuestgiverChooseRewardOpcode( WorldPacket & recv_data )
         return;
     }
 
-    if(!GetPlayer()->isAlive())
-        return;
+    if (!GetPlayer()->isAlive())
+    {
+        if (Unit * pQuestNPC = GetPlayer()->GetMap()->GetUnit(guid))
+            if (!pQuestNPC->isInvisibleForAlive())
+                return;
+    }
 
     DEBUG_LOG("WORLD: Received CMSG_QUESTGIVER_CHOOSE_REWARD npc = %s, quest = %u, reward = %u", guid.GetString().c_str(), quest, reward);
 
@@ -312,7 +323,11 @@ void WorldSession::HandleQuestgiverRequestRewardOpcode( WorldPacket & recv_data 
     recv_data >> guid >> quest;
 
     if (!GetPlayer()->isAlive())
-        return;
+    {
+        if (Unit * pQuestNPC = GetPlayer()->GetMap()->GetUnit(guid))
+            if (!pQuestNPC->isInvisibleForAlive())
+                return;
+    }
 
     DEBUG_LOG("WORLD: Received CMSG_QUESTGIVER_REQUEST_REWARD npc = %s, quest = %u", guid.GetString().c_str(), quest);
 
@@ -421,7 +436,11 @@ void WorldSession::HandleQuestgiverCompleteQuest(WorldPacket& recv_data)
     recv_data >> guid >> quest;
 
     if (!GetPlayer()->isAlive())
-        return;
+    {
+        if (Unit * pQuestNPC = GetPlayer()->GetMap()->GetUnit(guid))
+            if (!pQuestNPC->isInvisibleForAlive())
+                return;
+    }
 
     DEBUG_LOG("WORLD: Received CMSG_QUESTGIVER_COMPLETE_QUEST npc = %s, quest = %u", guid.GetString().c_str(), quest);
 
@@ -499,8 +518,12 @@ void WorldSession::HandlePushQuestToParty(WorldPacket& recvPacket)
                     continue;
                 }
 
-                pPlayer->PlayerTalkClass->SendQuestGiverQuestDetails(pQuest, _player->GetObjectGuid(), true);
                 pPlayer->SetDivider(_player->GetGUID());
+
+                if (pPlayer->GetPlayerbotAI())
+                    pPlayer->GetPlayerbotAI()->AcceptQuest( pQuest, _player );
+                else
+                    pPlayer->PlayerTalkClass->SendQuestGiverQuestDetails( pQuest, _player->GetObjectGuid(), true );
             }
         }
     }

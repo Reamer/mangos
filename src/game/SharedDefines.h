@@ -359,7 +359,7 @@ const uint32 ItemQualityColors[MAX_ITEM_QUALITY] = {
 #define SPELL_ATTR_EX3_UNK15                      0x00008000            // 15 Auto Shoot, Shoot, Throw,  - this is autoshot flag
 #define SPELL_ATTR_EX3_UNK16                      0x00010000            // 16 no triggers effects that trigger on casting a spell??
 #define SPELL_ATTR_EX3_NO_INITIAL_AGGRO           0x00020000            // 17 Causes no aggro if not missed
-#define SPELL_ATTR_EX3_UNK18                      0x00040000            // 18
+#define SPELL_ATTR_EX3_CANT_MISS                  0x00040000            // 18 Spell should always hit its target
 #define SPELL_ATTR_EX3_UNK19                      0x00080000            // 19
 #define SPELL_ATTR_EX3_DEATH_PERSISTENT           0x00100000            // 20 Death persistent spells
 #define SPELL_ATTR_EX3_UNK21                      0x00200000            // 21
@@ -399,7 +399,7 @@ const uint32 ItemQualityColors[MAX_ITEM_QUALITY] = {
 #define SPELL_ATTR_EX4_UNK22                      0x00400000            // 22
 #define SPELL_ATTR_EX4_UNK23                      0x00800000            // 23
 #define SPELL_ATTR_EX4_UNK24                      0x01000000            // 24
-#define SPELL_ATTR_EX4_UNK25                      0x02000000            // 25 pet scaling auras
+#define SPELL_ATTR_EX4_PET_SCALING_AURA           0x02000000            // 25 pet scaling auras
 #define SPELL_ATTR_EX4_CAST_ONLY_IN_OUTLAND       0x04000000            // 26 Can only be used in Outland.
 #define SPELL_ATTR_EX4_UNK27                      0x08000000            // 27
 #define SPELL_ATTR_EX4_UNK28                      0x10000000            // 28
@@ -417,7 +417,7 @@ const uint32 ItemQualityColors[MAX_ITEM_QUALITY] = {
 #define SPELL_ATTR_EX5_UNK7                       0x00000080            // 7
 #define SPELL_ATTR_EX5_UNK8                       0x00000100            // 8
 #define SPELL_ATTR_EX5_START_PERIODIC_AT_APPLY    0x00000200            // 9  begin periodic tick at aura apply
-#define SPELL_ATTR_EX5_UNK10                      0x00000400            // 10
+#define SPELL_ATTR_EX5_NO_DURATION                0x00000400            // 10 not send duration to client
 #define SPELL_ATTR_EX5_UNK11                      0x00000800            // 11
 #define SPELL_ATTR_EX5_UNK12                      0x00001000            // 12
 #define SPELL_ATTR_EX5_AFFECTED_BY_HASTE          0x00002000            // 13 haste affects duration (e.g. 8050 since 3.3.3)
@@ -746,7 +746,7 @@ enum SpellEffects
     SPELL_EFFECT_TALENT_SPEC_COUNT         = 161,
     SPELL_EFFECT_TALENT_SPEC_SELECT        = 162,
     SPELL_EFFECT_163                       = 163,
-    SPELL_EFFECT_REMOVE_AURA               = 164,
+    SPELL_EFFECT_CANCEL_AURA               = 164,
     TOTAL_SPELL_EFFECTS                    = 165
 };
 
@@ -1011,6 +1011,9 @@ enum Mechanics
     MECHANIC_SAPPED           = 30,
     MECHANIC_ENRAGED          = 31
 };
+
+#define FIRST_MECHANIC          1
+#define MAX_MECHANIC            32
 
 // Used for spell 42292 Immune Movement Impairment and Loss of Control (0x49967da6)
 #define IMMUNE_TO_MOVEMENT_IMPAIRMENT_AND_LOSS_CONTROL_MASK ( \
@@ -2748,6 +2751,16 @@ enum BattleGroundTypeId
 };
 #define MAX_BATTLEGROUND_TYPE_ID 33
 
+enum ArenaType
+{
+    ARENA_TYPE_NONE         = 0,                            // used for mark non-arenas or problematic cases
+    ARENA_TYPE_2v2          = 2,
+    ARENA_TYPE_3v3          = 3,
+    ARENA_TYPE_5v5          = 5
+};
+
+inline bool IsArenaTypeValid(ArenaType type) { return type == ARENA_TYPE_2v2 || type == ARENA_TYPE_3v3 || type == ARENA_TYPE_5v5; }
+
 enum MailResponseType
 {
     MAIL_SEND               = 0,
@@ -2873,6 +2886,29 @@ enum TradeStatus
     TRADE_STATUS_ONLY_CONJURED  = 22,                       // You can only trade conjured items... (cross realm BG related).
     TRADE_STATUS_NOT_ELIGIBLE   = 23                        // Related to trading soulbound loot items
 };
+
+enum EncounterCreditType
+{
+    ENCOUNTER_CREDIT_KILL_CREATURE  = 0,
+    ENCOUNTER_CREDIT_CAST_SPELL     = 1,
+};
+
+enum AreaLockStatus
+{
+    AREA_LOCKSTATUS_OK                        = 0,
+    AREA_LOCKSTATUS_UNKNOWN_ERROR             = 1,
+    AREA_LOCKSTATUS_INSUFFICIENT_EXPANSION    = 2,
+    AREA_LOCKSTATUS_TOO_LOW_LEVEL             = 3,
+    AREA_LOCKSTATUS_TOO_HIGH_LEVEL            = 4,
+    AREA_LOCKSTATUS_RAID_LOCKED               = 5,
+    AREA_LOCKSTATUS_QUEST_NOT_COMPLETED       = 6,
+    AREA_LOCKSTATUS_MISSING_ITEM              = 7,
+    AREA_LOCKSTATUS_MISSING_DIFFICULTY        = 8,
+    AREA_LOCKSTATUS_ZONE_IN_COMBAT            = 9,
+    AREA_LOCKSTATUS_INSTANCE_IS_FULL          = 10,
+    AREA_LOCKSTATUS_NOT_ALLOWED               = 11,
+};
+
 
 // we need to stick to 1 version or half of the stuff will work for someone
 // others will not and opposite

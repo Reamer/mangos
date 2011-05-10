@@ -31,6 +31,7 @@
 #include "Chat.h"
 #include "Log.h"
 #include "Guild.h"
+#include "GuildMgr.h"
 #include "ObjectAccessor.h"
 #include "MapManager.h"
 #include "MassMailMgr.h"
@@ -2531,7 +2532,7 @@ bool ChatHandler::HandleAddItemSetCommand(char* args)
         {
             found = true;
             ItemPosCountVec dest;
-            uint8 msg = plTarget->CanStoreNewItem( NULL_BAG, NULL_SLOT, dest, pProto->ItemId, 1 );
+            InventoryResult msg = plTarget->CanStoreNewItem( NULL_BAG, NULL_SLOT, dest, pProto->ItemId, 1 );
             if (msg == EQUIP_ERR_OK)
             {
                 Item* item = plTarget->StoreNewItem( dest, pProto->ItemId, true);
@@ -3576,16 +3577,16 @@ bool ChatHandler::HandleGuildCreateCommand(char* args)
         return true;
     }
 
-    Guild *guild = new Guild;
-    if (!guild->Create (target,guildname))
+    Guild* guild = new Guild;
+    if (!guild->Create(target, guildname))
     {
         delete guild;
-        SendSysMessage (LANG_GUILD_NOT_CREATED);
-        SetSentErrorMessage (true);
+        SendSysMessage(LANG_GUILD_NOT_CREATED);
+        SetSentErrorMessage(true);
         return false;
     }
 
-    sObjectMgr.AddGuild (guild);
+    sGuildMgr.AddGuild(guild);
     return true;
 }
 
@@ -3604,7 +3605,7 @@ bool ChatHandler::HandleGuildInviteCommand(char *args)
         return false;
 
     std::string glName = guildStr;
-    Guild* targetGuild = sObjectMgr.GetGuildByName (glName);
+    Guild* targetGuild = sGuildMgr.GetGuildByName(glName);
     if (!targetGuild)
         return false;
 
@@ -3626,7 +3627,7 @@ bool ChatHandler::HandleGuildUninviteCommand(char *args)
     if (!glId)
         return false;
 
-    Guild* targetGuild = sObjectMgr.GetGuildById (glId);
+    Guild* targetGuild = sGuildMgr.GetGuildById(glId);
     if (!targetGuild)
         return false;
 
@@ -3648,7 +3649,7 @@ bool ChatHandler::HandleGuildRankCommand(char *args)
     if (!glId)
         return false;
 
-    Guild* targetGuild = sObjectMgr.GetGuildById (glId);
+    Guild* targetGuild = sGuildMgr.GetGuildById(glId);
     if (!targetGuild)
         return false;
 
@@ -3678,7 +3679,7 @@ bool ChatHandler::HandleGuildDeleteCommand(char* args)
 
     std::string gld = guildStr;
 
-    Guild* targetGuild = sObjectMgr.GetGuildByName (gld);
+    Guild* targetGuild = sGuildMgr.GetGuildByName(gld);
     if (!targetGuild)
         return false;
 
@@ -3716,7 +3717,14 @@ bool ChatHandler::HandleGetDistanceCommand(char* args)
         }
     }
 
-    PSendSysMessage(LANG_DISTANCE, m_session->GetPlayer()->GetDistance(obj), m_session->GetPlayer()->GetDistance2d(obj));
+    Player* player = m_session->GetPlayer();
+    // Calculate point-to-point distance
+    float dx, dy, dz;
+    dx = player->GetPositionX() - obj->GetPositionX();
+    dy = player->GetPositionY() - obj->GetPositionY();
+    dz = player->GetPositionZ() - obj->GetPositionZ();
+
+    PSendSysMessage(LANG_DISTANCE, player->GetDistance(obj), player->GetDistance2d(obj), sqrt(dx*dx + dy*dy + dz*dz));
 
     return true;
 }
@@ -4113,10 +4121,22 @@ bool ChatHandler::HandleNpcInfoCommand(char* /*args*/)
     std::string curRespawnDelayStr = secsToTimeString(curRespawnDelay,true);
     std::string defRespawnDelayStr = secsToTimeString(target->GetRespawnDelay(),true);
 
-    PSendSysMessage(LANG_NPCINFO_CHAR,  target->GetGUIDLow(), faction, npcflags, Entry, displayid, nativeid);
+    // Send information dependend on difficulty mode
+    CreatureInfo const* baseInfo = ObjectMgr::GetCreatureTemplate(Entry);
+    uint32 diff = 1;
+    for (; diff < MAX_DIFFICULTY; ++diff)
+        if (baseInfo->DifficultyEntry[diff-1] == target->GetCreatureInfo()->Entry)
+            break;
 
-    if (cInfo->VehicleId)
-        PSendSysMessage("VehicleId: %u", cInfo->VehicleId);
+    if (diff < MAX_DIFFICULTY)
+        PSendSysMessage(LANG_NPCINFO_CHAR_DIFFICULTY,  target->GetGUIDLow(), faction, npcflags,
+            Entry, target->GetCreatureInfo()->Entry, diff,
+            displayid, nativeid);
+    else
+        PSendSysMessage(LANG_NPCINFO_CHAR,  target->GetGUIDLow(), faction, npcflags, Entry, displayid, nativeid);
+
+    if (cInfo->vehicleId)
+        PSendSysMessage("VehicleId: %u", cInfo->vehicleId);
 
     PSendSysMessage(LANG_NPCINFO_LEVEL, target->getLevel());
     PSendSysMessage(LANG_NPCINFO_HEALTH,target->GetCreateHealth(), target->GetMaxHealth(), target->GetHealth());

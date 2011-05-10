@@ -95,7 +95,7 @@ void WorldSession::HandleUseItemOpcode(WorldPacket& recvPacket)
         return;
     }
 
-    uint8 msg = pUser->CanUseItem(pItem);
+    InventoryResult msg = pUser->CanUseItem(pItem);
     if (msg != EQUIP_ERR_OK)
     {
         recvPacket.rpos(recvPacket.wpos());                 // prevent spam at not read packet tail
@@ -266,7 +266,11 @@ void WorldSession::HandleOpenItemOpcode(WorldPacket& recvPacket)
             pUser->DestroyItem(pItem->GetBagSlot(), pItem->GetSlot(), true);
             return;
         }
-        CharacterDatabase.PExecute("DELETE FROM character_gifts WHERE item_guid = '%u'", pItem->GetGUIDLow());
+
+        static SqlStatementID delGifts ;
+
+        SqlStatement stmt = CharacterDatabase.CreateStatement(delGifts, "DELETE FROM character_gifts WHERE item_guid = ?");
+        stmt.PExecute(pItem->GetGUIDLow());
     }
     else
         pUser->SendLoot(pItem->GetObjectGuid(),LOOT_CORPSE);
@@ -329,8 +333,8 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
     recvPacket >> unk_flags;                                // flags (if 0x02 - some additional data are received)
 
     // ignore for remote control state (for player case)
-    Unit* mover = _player->GetMover();
-    if (mover != _player && mover->GetTypeId()==TYPEID_PLAYER)
+    Unit* _mover = GetPlayer()->GetMover();
+    if (_mover != GetPlayer() && _mover->GetTypeId()==TYPEID_PLAYER)
     {
         recvPacket.rpos(recvPacket.wpos());                 // prevent spam at ignore packet
         return;
@@ -351,6 +355,15 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
         recvPacket.rpos(recvPacket.wpos());                 // prevent spam at ignore packet
         return;
     }
+
+    //  Players on vehicles may cast many simple spells (like knock) from self
+
+    Unit* mover = NULL;
+
+    if (spellInfo->AttributesEx6 & SPELL_ATTR_EX6_UNK12 && _mover->IsCharmerOrOwnerPlayerOrPlayerItself())
+        mover = _mover->GetCharmerOrOwnerPlayerOrPlayerItself();
+    else
+        mover = _mover;
 
     if (mover->GetTypeId()==TYPEID_PLAYER)
     {
@@ -701,19 +714,19 @@ void WorldSession::HandleMirrorImageDataRequest( WorldPacket & recv_data )
 
 void WorldSession::HandleUpdateProjectilePosition(WorldPacket& recvPacket)
 {
-    uint64 casterGuid;  // actually target ?
-    uint32 spellId;     // Spell Id
-    uint8  cast_Id;     // Some counter ? the fuck
+    ObjectGuid casterGuid;  // actually target ?
+    uint32 spellId;         // Spell Id
+    uint8  castCount;       //
     float m_targetX, m_targetY, m_targetZ; // Position of missile hit
 
     recvPacket >> casterGuid;
     recvPacket >> spellId;
-    recvPacket >> cast_Id;
+    recvPacket >> castCount;
 
     recvPacket >> m_targetX >> m_targetY >> m_targetZ;
 
     // Do we need unit as we use 3d position anyway ?
-    Unit * pCaster = ObjectAccessor::GetUnit(*_player, casterGuid);
+    Unit* pCaster = GetPlayer()->GetMap()->GetUnit(casterGuid);
     if (!pCaster)
         return;
 
@@ -726,7 +739,19 @@ void WorldSession::HandleUpdateProjectilePosition(WorldPacket& recvPacket)
         return;
     }
 
+    WorldPacket data(SMSG_NOTIFY_MISSILE_TRAJECTORY_COLLISION, 8+1+4+4+4);
+    data << casterGuid;
+    data << castCount;
+    data << m_targetX;
+    data << m_targetY;
+    data << m_targetZ;
+    SendPacket(&data);
+
     for(int i = 0; i < 3; ++i)
+    {
         if(spellInfo->EffectTriggerSpell[i])
-            pCaster->CastSpell(m_targetX, m_targetY, m_targetZ, spellInfo->EffectTriggerSpell[i], true);
+            if (SpellEntry const* spellInfoT = sSpellStore.LookupEntry(spellInfo->EffectTriggerSpell[i]))
+                pCaster->CastSpell(m_targetX, m_targetY, m_targetZ, spellInfoT, true);
+    }
+
 }

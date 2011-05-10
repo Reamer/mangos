@@ -128,7 +128,7 @@ void WorldSession::HandleAutostoreLootItemOpcode( WorldPacket & recv_data )
         pItem->SetLootState(ITEM_LOOT_CHANGED);
 
     ItemPosCountVec dest;
-    uint8 msg = player->CanStoreNewItem( NULL_BAG, NULL_SLOT, dest, item->itemid, item->count );
+    InventoryResult msg = player->CanStoreNewItem( NULL_BAG, NULL_SLOT, dest, item->itemid, item->count );
     if ( msg == EQUIP_ERR_OK )
     {
         AllowedLooterSet* looters = item->GetAllowedLooters();
@@ -524,7 +524,7 @@ void WorldSession::HandleLootMasterGiveOpcode( WorldPacket & recv_data )
 
     Loot *pLoot = NULL;
 
-    if(lootguid.IsCreatureOrVehicle())
+    if (lootguid.IsCreatureOrVehicle())
     {
         Creature *pCreature = GetPlayer()->GetMap()->GetCreature(lootguid);
         if(!pCreature)
@@ -552,7 +552,7 @@ void WorldSession::HandleLootMasterGiveOpcode( WorldPacket & recv_data )
     LootItem& item = pLoot->items[slotid];
 
     ItemPosCountVec dest;
-    uint8 msg = target->CanStoreNewItem( NULL_BAG, NULL_SLOT, dest, item.itemid, item.count );
+    InventoryResult msg = target->CanStoreNewItem( NULL_BAG, NULL_SLOT, dest, item.itemid, item.count );
     if ( msg != EQUIP_ERR_OK )
     {
         target->SendEquipError( msg, NULL, NULL, item.itemid );
@@ -566,7 +566,7 @@ void WorldSession::HandleLootMasterGiveOpcode( WorldPacket & recv_data )
     AllowedLooterSet* looters = item.GetAllowedLooters();
 
     // now move item from loot to target inventory
-    Item * newitem = target->StoreNewItem( dest, item.itemid, true, item.randomPropertyId );
+    Item* newitem = target->StoreNewItem( dest, item.itemid, true, item.randomPropertyId, (looters->size() > 1) ? looters : NULL);
     target->SendNewItem(newitem, uint32(item.count), false, false, true );
     target->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_LOOT_ITEM, item.itemid, item.count);
     target->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_LOOT_TYPE, pLoot->loot_type, item.count);

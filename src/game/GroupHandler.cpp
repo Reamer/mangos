@@ -81,11 +81,13 @@ void WorldSession::HandleGroupInviteOpcode( WorldPacket & recv_data )
         SendPartyResult(PARTY_OP_INVITE, membername, ERR_PLAYER_WRONG_FACTION);
         return;
     }
+
     if(GetPlayer()->GetInstanceId() != 0 && player->GetInstanceId() != 0 && GetPlayer()->GetInstanceId() != player->GetInstanceId() && GetPlayer()->GetMapId() == player->GetMapId())
     {
         SendPartyResult(PARTY_OP_INVITE, membername, ERR_TARGET_NOT_IN_INSTANCE_S);
         return;
     }
+
     // just ignore us
     if(player->GetSocial()->HasIgnore(GetPlayer()->GetObjectGuid()))
     {
@@ -96,6 +98,12 @@ void WorldSession::HandleGroupInviteOpcode( WorldPacket & recv_data )
     Group *group = GetPlayer()->GetGroup();
     if( group && group->isBGGroup() )
         group = GetPlayer()->GetOriginalGroup();
+
+    if(group && group->isRaidGroup() && !player->GetAllowLowLevelRaid() && (player->getLevel() < sWorld.getConfig(CONFIG_UINT32_MIN_LEVEL_FOR_RAID)))
+    {
+        SendPartyResult(PARTY_OP_INVITE, "", ERR_RAID_DISALLOWED_BY_LEVEL);
+        return;
+    }
 
     Group *group2 = player->GetGroup();
     if( group2 && group2->isBGGroup() )
@@ -166,7 +174,8 @@ void WorldSession::HandleGroupInviteOpcode( WorldPacket & recv_data )
 
 void WorldSession::HandleGroupAcceptOpcode( WorldPacket & recv_data )
 {
-    recv_data.read_skip<uint32>();                          // roles mask?
+    if (!GetPlayer()->GetPlayerbotAI())
+        recv_data.read_skip<uint32>();                          // roles mask?
 
     Group *group = GetPlayer()->GetGroupInvite();
     if (!group)
@@ -238,8 +247,10 @@ void WorldSession::HandleGroupDeclineOpcode( WorldPacket & /*recv_data*/ )
 void WorldSession::HandleGroupUninviteGuidOpcode(WorldPacket & recv_data)
 {
     ObjectGuid guid;
+    std::string reason;
+
     recv_data >> guid;
-    recv_data.read_skip<std::string>();                     // reason
+    recv_data >> reason;                     // reason
 
     // can't uninvite yourself
     if (guid == GetPlayer()->GetObjectGuid())
@@ -261,7 +272,10 @@ void WorldSession::HandleGroupUninviteGuidOpcode(WorldPacket & recv_data)
 
     if (grp->IsMember(guid))
     {
-        Player::RemoveFromGroup(grp, guid);
+        if (grp->isLFDGroup())
+            sLFGMgr.InitBoot(GetPlayer(), guid, reason);
+        else
+            Player::RemoveFromGroup(grp, guid);
         return;
     }
 
@@ -304,7 +318,10 @@ void WorldSession::HandleGroupUninviteOpcode(WorldPacket & recv_data)
     ObjectGuid guid = grp->GetMemberGuid(membername);
     if (!guid.IsEmpty())
     {
-        Player::RemoveFromGroup(grp, guid);
+        if (grp->isLFDGroup())
+            sLFGMgr.InitBoot(GetPlayer(), guid, "");
+        else
+            Player::RemoveFromGroup(grp, guid);
         return;
     }
 
@@ -334,6 +351,7 @@ void WorldSession::HandleGroupSetLeaderOpcode( WorldPacket & recv_data )
     /********************/
 
     // everything is fine, do it
+    GetPlayer()->GetLFGState()->RemoveRole(ROLE_LEADER);
     group->ChangeLeader(guid);
 }
 
@@ -547,12 +565,15 @@ void WorldSession::HandleGroupChangeSubGroupOpcode( WorldPacket & recv_data )
 void WorldSession::HandleGroupAssistantLeaderOpcode( WorldPacket & recv_data )
 {
     ObjectGuid guid;
-    uint8 flag;
+    uint8 apply;
     recv_data >> guid;
-    recv_data >> flag;
+    recv_data >> apply;
+
+    DEBUG_LOG("CMSG_GROUP_ASSISTANT_LEADER: guid %u, apply %u",guid.GetCounter(),apply);
 
     Group *group = GetPlayer()->GetGroup();
-    if (!group)
+
+    if (!group || !group->isRaidGroup())                    // Only raid groups may have assistant
         return;
 
     /** error handling **/
@@ -561,7 +582,8 @@ void WorldSession::HandleGroupAssistantLeaderOpcode( WorldPacket & recv_data )
     /********************/
 
     // everything is fine, do it
-    group->SetAssistant(guid, (flag==0?false:true));
+    group->SetGroupUniqueFlag(guid, GROUP_ASSIGN_ASSISTANT, apply);
+
 }
 
 void WorldSession::HandlePartyAssignmentOpcode( WorldPacket & recv_data )
@@ -572,34 +594,19 @@ void WorldSession::HandlePartyAssignmentOpcode( WorldPacket & recv_data )
     recv_data >> role >> apply;                             // role 0 = Main Tank, 1 = Main Assistant
     recv_data >> guid;
 
-    DEBUG_LOG("MSG_PARTY_ASSIGNMENT");
+    DEBUG_LOG("MSG_PARTY_ASSIGNMENT: guid %u, role %u, apply %u",guid.GetCounter(),role,apply);
 
     Group *group = GetPlayer()->GetGroup();
-    if (!group)
+
+    if (!group || !group->isRaidGroup())                    // Only raid groups may have mainassistant/maintank
         return;
 
     /** error handling **/
-    if (!group->IsLeader(GetPlayer()->GetObjectGuid()))
+    if (!group->IsLeader(GetPlayer()->GetObjectGuid()) && !group->IsAssistant(GetPlayer()->GetObjectGuid()))
         return;
     /********************/
 
-    // everything is fine, do it
-    if (apply)
-    {
-        switch(role)
-        {
-            case 0: group->SetMainTank(guid); break;
-            case 1: group->SetMainAssistant(guid); break;
-            default: break;
-        }
-    }
-    else
-    {
-        if (group->GetMainTankGuid() == guid)
-            group->SetMainTank(ObjectGuid());
-        if (group->GetMainAssistantGuid() == guid)
-            group->SetMainAssistant(ObjectGuid());
-    }
+    group->SetGroupUniqueFlag(guid, GroupFlagsAssignment(role), apply);
 }
 
 void WorldSession::HandleRaidReadyCheckOpcode( WorldPacket & recv_data )
@@ -946,4 +953,14 @@ void WorldSession::HandleOptOutOfLootOpcode( WorldPacket & recv_data )
 
     if(unkn != 0)
         sLog.outError("CMSG_GROUP_PASS_ON_LOOT: activation not implemented!");
+}
+
+void WorldSession::HandleSetAllowLowLevelRaidOpcode( WorldPacket & recv_data )
+{
+    DEBUG_LOG("WORLD: Received CMSG_SET_ALLOW_LOW_LEVEL_RAID: %4X", recv_data.GetOpcode());
+
+    uint8 allow;
+    recv_data >> allow;
+
+    GetPlayer()->SetAllowLowLevelRaid(allow);
 }

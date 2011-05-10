@@ -44,7 +44,6 @@
 #include <limits>
 
 class Group;
-class Guild;
 class ArenaTeam;
 class Item;
 
@@ -83,8 +82,12 @@ struct AreaTrigger
     uint32 requiredItem2;
     uint32 heroicKey;
     uint32 heroicKey2;
-    uint32 requiredQuest;
-    uint32 requiredQuestHeroic;
+    uint32 requiredQuestA;
+    uint32 requiredQuestHeroicA;
+    uint32 requiredQuestH;
+    uint32 requiredQuestHeroicH;
+    uint32 minGS;
+    uint32 maxGS;
     std::string requiredFailedText;
     uint32 target_mapId;
     float  target_X;
@@ -264,6 +267,20 @@ struct AntiCheatConfig
 
 };
 
+struct DungeonEncounter
+{
+    DungeonEncounter(DungeonEncounterEntry const* _dbcEntry, EncounterCreditType _creditType, uint32 _creditEntry, uint32 _lastEncounterDungeon)
+        : dbcEntry(_dbcEntry), creditType(_creditType), creditEntry(_creditEntry), lastEncounterDungeon(_lastEncounterDungeon) { }
+
+    DungeonEncounterEntry const* dbcEntry;
+    EncounterCreditType creditType;
+    uint32 creditEntry;
+    uint32 lastEncounterDungeon;
+};
+
+typedef std::list<DungeonEncounter const*> DungeonEncounterList;
+typedef UNORDERED_MAP<uint32,DungeonEncounterList> DungeonEncounterMap;
+
 struct MailLevelReward
 {
     MailLevelReward() : raceMask(0), mailTemplateId(0), senderEntry(0) {}
@@ -427,9 +444,11 @@ enum ConditionType
     CONDITION_NOT_ACTIVE_GAME_EVENT = 25,                   // event_id     0
     CONDITION_ACTIVE_HOLIDAY        = 26,                   // holiday_id   0       preferred use instead CONDITION_ACTIVE_GAME_EVENT when possible
     CONDITION_NOT_ACTIVE_HOLIDAY    = 27,                   // holiday_id   0       preferred use instead CONDITION_NOT_ACTIVE_GAME_EVENT when possible
+    CONDITION_LEARNABLE_ABILITY     = 28,                   // spell_id     0 or item_id
+                                                            // True when player can learn ability (using min skill value from SkillLineAbility).
+                                                            // Item_id can be defined in addition, to check if player has one (1) item in inventory or bank.
+                                                            // When player has spell or has item (when defined), condition return false.
 };
-
-#define MAX_CONDITION                 28                    // maximum value in ConditionType enum
 
 struct PlayerCondition
 {
@@ -513,9 +532,7 @@ class ObjectMgr
 
         typedef UNORDERED_MAP<uint32, Item*> ItemMap;
 
-        typedef UNORDERED_MAP<uint32, Group*> GroupMap;
-
-        typedef UNORDERED_MAP<uint32, Guild*> GuildMap;
+        typedef UNORDERED_MAP<ObjectGuid, Group*> GroupMap;
 
         typedef UNORDERED_MAP<uint32, ArenaTeam*> ArenaTeamMap;
 
@@ -539,17 +556,10 @@ class ObjectMgr
         void LoadGameobjectInfo();
         void AddGameobjectInfo(GameObjectInfo *goinfo);
 
-        void PackGroupIds();
         Group* GetGroupById(uint32 id) const;
+        Group* GetGroup(ObjectGuid guid) const;
         void AddGroup(Group* group);
         void RemoveGroup(Group* group);
-
-        Guild* GetGuildByLeader(ObjectGuid guid) const;
-        Guild* GetGuildById(uint32 GuildId) const;
-        Guild* GetGuildByName(const std::string& guildname) const;
-        std::string GetGuildNameById(uint32 GuildId) const;
-        void AddGuild(Guild* guild);
-        void RemoveGuild(uint32 Id);
 
         ArenaTeam* GetArenaTeamById(uint32 arenateamid) const;
         ArenaTeam* GetArenaTeamByName(const std::string& arenateamname) const;
@@ -712,7 +722,15 @@ class ObjectMgr
             return NULL;
         }
 
-        void LoadGuilds();
+        DungeonEncounterList const* GetDungeonEncounterList(uint32 mapId, Difficulty difficulty)
+        {
+            UNORDERED_MAP<uint32, DungeonEncounterList>::const_iterator itr = mDungeonEncounters.find(MAKE_PAIR32(mapId, difficulty));
+            if (itr != mDungeonEncounters.end())
+                return &itr->second;
+            return NULL;
+        }
+
+
         void LoadArenaTeams();
         void LoadGroups();
         void LoadQuests();
@@ -748,6 +766,7 @@ class ObjectMgr
         void LoadPageTextLocales();
         void LoadGossipMenuItemsLocales();
         void LoadPointOfInterestLocales();
+        void LoadInstanceEncounters();
         void LoadInstanceTemplate();
         void LoadWorldTemplate();
         void LoadMailLevelRewards();
@@ -812,19 +831,23 @@ class ObjectMgr
         void SetHighestGuids();
 
         // used for set initial guid counter for map local guids
-        uint32 GetFirstCreatureLowGuid() const { return m_CreatureFirstGuid; }
-        uint32 GetFirstGameObjectLowGuid() const { return m_GameObjectFirstGuid; }
+        uint32 GetFirstTemporaryCreatureLowGuid() const { return m_FirstTemporaryCreatureGuid; }
+        uint32 GetFirstTemporaryGameObjectLowGuid() const { return m_FirstTemporaryGameObjectGuid; }
+
+        // used in .npc add/.gobject add commands for adding static spawns
+        uint32 GenerateStaticCreatureLowGuid() { if (m_StaticCreatureGuids.GetNextAfterMaxUsed() >= m_FirstTemporaryCreatureGuid) return 0; return m_StaticCreatureGuids.Generate(); }
+        uint32 GenerateStaticGameObjectLowGuid() { if (m_StaticGameObjectGuids.GetNextAfterMaxUsed() >= m_FirstTemporaryGameObjectGuid) return 0; return m_StaticGameObjectGuids.Generate(); }
 
         uint32 GeneratePlayerLowGuid() { return m_CharGuids.Generate(); }
         uint32 GenerateItemLowGuid() { return m_ItemGuids.Generate(); }
         uint32 GenerateCorpseLowGuid() { return m_CorpseGuids.Generate(); }
         uint32 GenerateInstanceLowGuid() { return m_InstanceGuids.Generate(); }
+        uint32 GenerateGroupLowGuid() { return m_GroupGuids.Generate(); }
 
         uint32 GenerateArenaTeamId() { return m_ArenaTeamIds.Generate(); }
         uint32 GenerateAuctionID() { return m_AuctionIds.Generate(); }
         uint64 GenerateEquipmentSetGuid() { return m_EquipmentSetIds.Generate(); }
         uint32 GenerateGuildId() { return m_GuildIds.Generate(); }
-        uint32 GenerateGroupId() { return m_GroupIds.Generate(); }
         //uint32 GenerateItemTextID() { return m_ItemGuids.Generate(); }
         uint32 GenerateMailID() { return m_MailIds.Generate(); }
         uint32 GeneratePetNumber() { return m_PetNumbers.Generate(); }
@@ -1149,17 +1172,21 @@ class ObjectMgr
         IdGenerator<uint32> m_GuildIds;
         IdGenerator<uint32> m_MailIds;
         IdGenerator<uint32> m_PetNumbers;
-        IdGenerator<uint32> m_GroupIds;
 
         // initial free low guid for selected guid type for map local guids
-        uint32 m_CreatureFirstGuid;
-        uint32 m_GameObjectFirstGuid;
+        uint32 m_FirstTemporaryCreatureGuid;
+        uint32 m_FirstTemporaryGameObjectGuid;
+
+        // guids from reserved range for use in .npc add/.gobject add commands for adding new static spawns (saved in DB) from client.
+        ObjectGuidGenerator<HIGHGUID_UNIT>        m_StaticCreatureGuids;
+        ObjectGuidGenerator<HIGHGUID_GAMEOBJECT>  m_StaticGameObjectGuids;
 
         // first free low guid for selected guid type
         ObjectGuidGenerator<HIGHGUID_PLAYER>     m_CharGuids;
         ObjectGuidGenerator<HIGHGUID_ITEM>       m_ItemGuids;
         ObjectGuidGenerator<HIGHGUID_CORPSE>     m_CorpseGuids;
         ObjectGuidGenerator<HIGHGUID_INSTANCE>   m_InstanceGuids;
+        ObjectGuidGenerator<HIGHGUID_GROUP>      m_GroupGuids;
 
         QuestMap            mQuestTemplates;
 
@@ -1172,7 +1199,6 @@ class ObjectMgr
         typedef std::pair<CreatureModelRaceMap::const_iterator, CreatureModelRaceMap::const_iterator> CreatureModelRaceMapBounds;
 
         GroupMap            mGroupMap;
-        GuildMap            mGuildMap;
         ArenaTeamMap        mArenaTeamMap;
 
         QuestAreaTriggerMap mQuestAreaTriggerMap;
@@ -1272,6 +1298,7 @@ class ObjectMgr
         MangosStringLocaleMap mMangosStringLocaleMap;
         GossipMenuItemsLocaleMap mGossipMenuItemsLocaleMap;
         PointOfInterestLocaleMap mPointOfInterestLocaleMap;
+        DungeonEncounterMap mDungeonEncounters;
 
         // Storage for Conditions. First element (index 0) is reserved for zero-condition (nothing required)
         typedef std::vector<PlayerCondition> ConditionStore;

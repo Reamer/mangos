@@ -165,7 +165,6 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
 
         bool CreatureRespawnRelocation(Creature *c);        // used only in CreatureRelocation and ObjectGridUnloader
 
-        // ASSERT print helper
         bool CheckGridIntegrity(Creature* c, bool moved) const;
 
         uint32 GetInstanceId() const { return i_InstanceId; }
@@ -365,7 +364,7 @@ class MANGOS_DLL_SPEC DungeonMap : public Map
         void Remove(Player *, bool);
         void Update(const uint32&);
         bool Reset(InstanceResetMethod method);
-        void PermBindAllPlayers(Player *player);
+        void PermBindAllPlayers(Player *player, bool permanent = true);
         void UnloadAll(bool pForce);
         bool CanEnter(Player* player);
         void SendResetWarnings(uint32 timeLeft) const;

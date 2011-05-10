@@ -795,6 +795,11 @@ LexicsCutterNoActionOnGM = 1
 #                 0 - unsummon only for flying mounts
 #        Default: 1 - unsummon for any mount
 #
+#    RaidFlags.Unique
+#        Set raid flags (assistant, main assistant, main tank) unique in raid
+#        Default: 0 - flags not unique
+#                 1 - flags unique, not more then 1 player may have this flag
+#
 #    WOWArmorySupport
 #        Support collect statistics for Shadez WOW Armory frontend
 #        Default: 0 - don't support
@@ -826,6 +831,11 @@ LexicsCutterNoActionOnGM = 1
 #
 #    Motd
 #        Message of the Day. Displayed at worldlogin for every user ('@' for a newline).
+#
+#    Raid.MinLevel
+#        Minimal player level to join raid groups (only affects existing raid groups, party->raid convert ignored)
+#        You can bypass this setting by typing "/script SetAllowLowLevelRaid(true/false)" command in chat
+#        Default: 10
 #
 ###################################################################################################################
 
@@ -890,6 +900,7 @@ SkillChance.Prospecting = 0
 SkillChance.Milling = 0
 OffhandCheckAtTalentsReset = 0
 PetUnsummonAtMount = 1
+RaidFlags.Unique = 0
 AllowFlightOnOldMaps = 0
 WOWArmorySupport = 0
 ClientCacheVersion = 0
@@ -898,6 +909,7 @@ BeepAtStart = 1
 ShowProgressBars = 1
 WaitAtStartupError = 0
 Motd = "Welcome to the Massive Network Game Object Server."
+Raid.MinLevel = 10
 
 ###################################################################################################################
 # PLAYER INTERACTION
@@ -971,7 +983,7 @@ AutoBroadcast.Center = 0
 AutoBroadcast.Timer = 30000
 
 ###################################################################################################################
-# CREATURE SETTINGS
+# CREATURE AND GAMEOBJECT SETTINGS
 #
 #    ThreatRadius
 #        Radius for creature to evade after being pulled away from combat start point
@@ -1059,6 +1071,14 @@ AutoBroadcast.Timer = 30000
 #        Distance from player to listen text that creature (or other world object) yell
 #        Default: 300
 #
+#    GuidReserveSize.Creature
+#    GuidReserveSize.GameObject
+#        Amount guids reserved for .npc add/.gobject add directly after last used in DB static spawned creature/gameobject guid
+#        Commands .npc add/.gobject add can be used only for guids from this reserve and required server restart if all guids
+#        from reserve used before above commands can be used in like case. Less size increase amount guids for dynamic spawns
+#        in game from other side
+#        Default: 100
+#
 ###################################################################################################################
 
 ThreatRadius = 100
@@ -1093,6 +1113,9 @@ Rate.Creature.Elite.RARE.HP = 1
 ListenRange.Say = 40
 ListenRange.TextEmote = 40
 ListenRange.Yell = 300
+GuidReserveSize.Creature = 100
+GuidReserveSize.GameObject = 100
+
 
 ###################################################################################################################
 # CHAT SETTINGS
@@ -1857,3 +1880,66 @@ RAF.MaxReferals         = 5
 RAF.MaxReferers         = 5
 Rate.RAF.XP             = 3
 Rate.RAF.LevelPerLevel  = 0.5
+
+
+###################################################################################################################
+#    LFG Dungeon finder system
+#
+#    LFR.Enable              = 0
+#        enabling Raid finder
+#    LFG.Enable              = 0
+#        enabling Dungeon finder
+#    LFG.MaxKicks            = 3
+#    LFG.KickVotes           = 3
+###################################################################################################################
+LFR.Enable              = 1
+LFG.Enable              = 0
+LFG.MaxKicks            = 3
+LFG.KickVotes           = 3
+
+###################################################################################################################
+# PLAYERBOTAI CONFIGURATION
+#
+#    PlayerbotAI.DisableBots
+#        Disable the bot command and bot menu
+#        Default: 0 - off
+#                 1 - on
+#
+#    PlayerbotAI.DebugWhisper
+#        Enable debug output by whispering master
+#        Default: 0 - off
+#                 1 - on
+#
+#    PlayerbotAI.FollowDistanceMin
+#    PlayerbotAI.FollowDistanceMax
+#        Min. and Max. follow distance for bots
+#        Default: 0.5 / 1.0
+#
+#    PlayerbotAI.MaxNumBots
+#        Limits the number of bots per account (Max 9)
+#        Default: 9
+#
+#    PlayerbotAI.RestrictBotLevel
+#        Restrict the allowed bot level (Current Max 80)
+#        Default: 80
+#
+#    PlayerbotAI.BotguyQuests
+#        List of Quest ids, any of which, once completed will enable botguy menu on NPCs
+#        List must be enclosed in double quotes ("") and multiple Quest Ids separated by a delimiter(,)
+#        Example: "805,383,2160,54,8350,9313,1656,2159"
+#        Default: "" no quest restriction, memu always displayed by NPCs
+#
+#    PlayerbotAI.BotguyCost
+#        Cost (Copper coins) levied on summoning a bot
+#        If player has the cost, botguy menu will be displayed by NPCs
+#        Default: 0 - no cost, menu always displayed by NPCs
+#
+###################################################################################################################
+PlayerbotAI.DisableBots = 1
+PlayerbotAI.DebugWhisper = 0
+PlayerbotAI.FollowDistanceMin = 0.5
+PlayerbotAI.FollowDistanceMax = 1.0
+PlayerbotAI.MaxNumBots = 9
+PlayerbotAI.RestrictBotLevel = 80
+PlayerbotAI.BotguyQuests = ""
+PlayerbotAI.BotguyCost = 0

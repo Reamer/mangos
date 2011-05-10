@@ -29,12 +29,16 @@
 #include "ChannelMgr.h"
 #include "Group.h"
 #include "Guild.h"
+#include "GuildMgr.h"
 #include "Player.h"
 #include "SpellAuras.h"
 #include "Language.h"
 #include "Util.h"
 #include "GridNotifiersImpl.h"
 #include "CellImpl.h"
+
+// Playerbot mod
+#include "playerbot/PlayerbotAI.h"
 
 bool WorldSession::processChatmessageFurtherAfterSecurityChecks(std::string& msg, uint32 lang)
 {
@@ -234,7 +238,15 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
                 }
             }
 
-            GetPlayer()->Whisper(msg, lang, player->GetGUID());
+            // Playerbot mod: handle whispered command to bot
+            if (player->GetPlayerbotAI())
+            {
+                player->GetPlayerbotAI()->HandleCommand(msg, *GetPlayer());
+                GetPlayer()->m_speakTime = 0;
+                GetPlayer()->m_speakCount = 0;
+            }
+            else
+                GetPlayer()->Whisper(msg, lang, player->GetGUID());
         } break;
 
         case CHAT_MSG_PARTY:
@@ -269,6 +281,19 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
             if ((type == CHAT_MSG_PARTY_LEADER) && !group->IsLeader(_player->GetObjectGuid()))
                 return;
 
+            // Playerbot mod: broadcast message to bot members
+            for(GroupReference* itr = group->GetFirstMember(); itr != NULL; itr=itr->next())
+            {
+                Player* player = itr->getSource();
+                if (player && player->GetPlayerbotAI())
+                {
+                    player->GetPlayerbotAI()->HandleCommand(msg, *GetPlayer());
+                    GetPlayer()->m_speakTime = 0;
+                    GetPlayer()->m_speakCount = 0;
+                }
+            }
+            // END Playerbot mod
+
             WorldPacket data;
             ChatHandler::FillMessageData(&data, this, type, lang, NULL, 0, msg.c_str(), NULL);
             group->BroadcastPacket(&data, false, group->GetMemberGroup(GetPlayer()->GetObjectGuid()));
@@ -294,7 +319,7 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
             sChatLog.GuildMsg(GetPlayer(), msg, false);
 
             if (GetPlayer()->GetGuildId())
-                if (Guild *guild = sObjectMgr.GetGuildById(GetPlayer()->GetGuildId()))
+                if (Guild* guild = sGuildMgr.GetGuildById(GetPlayer()->GetGuildId()))
                     guild->BroadcastToGuild(this, msg, lang == LANG_ADDON ? LANG_ADDON : LANG_UNIVERSAL);
         } break;
 
@@ -318,7 +343,7 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
             sChatLog.GuildMsg(GetPlayer(), msg, true);
 
             if (GetPlayer()->GetGuildId())
-                if (Guild *guild = sObjectMgr.GetGuildById(GetPlayer()->GetGuildId()))
+                if (Guild* guild = sGuildMgr.GetGuildById(GetPlayer()->GetGuildId()))
                     guild->BroadcastToOfficers(this, msg, lang == LANG_ADDON ? LANG_ADDON : LANG_UNIVERSAL);
         } break;
 

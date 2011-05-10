@@ -73,6 +73,7 @@ enum HighGuid
     HIGHGUID_CORPSE         = 0xF500,                       // blizz F100/F500 used second variant to resolve conflict with HIGHGUID_DYNAMICOBJECT
     HIGHGUID_MO_TRANSPORT   = 0x1FC0,                       // blizz 1FC0 (for GAMEOBJECT_TYPE_MO_TRANSPORT)
     HIGHGUID_INSTANCE       = 0x1F42,                       // blizz 1F42/1F44/1F44/1F47
+    HIGHGUID_GROUP          = 0x1F50,                       // Firstly implemented for Dungeon Finder
 };
 
 class ObjectGuid;
@@ -101,9 +102,6 @@ class MANGOS_DLL_SPEC ObjectGuid
 
         void Set(uint64 const& guid) { m_guid = guid; }
         void Clear() { m_guid = 0; }
-
-        // Possible removed in future for more strict control type conversions
-        void operator= (uint64 const& guid) { m_guid = guid; }
 
         PackedGuid WriteAsPacked() const;
     public:                                                 // accessors
@@ -142,6 +140,7 @@ class MANGOS_DLL_SPEC ObjectGuid
         bool IsTransport()     const { return GetHigh() == HIGHGUID_TRANSPORT; }
         bool IsMOTransport()   const { return GetHigh() == HIGHGUID_MO_TRANSPORT; }
         bool IsInstance()      const { return GetHigh() == HIGHGUID_INSTANCE; }
+        bool IsGroup()         const { return GetHigh() == HIGHGUID_GROUP; }
 
         static TypeID GetTypeId(HighGuid high)
         {
@@ -191,6 +190,7 @@ class MANGOS_DLL_SPEC ObjectGuid
                 case HIGHGUID_UNIT:
                 case HIGHGUID_PET:
                 case HIGHGUID_VEHICLE:
+                case HIGHGUID_GROUP:
                 default:
                     return true;
             }
@@ -204,14 +204,17 @@ class MANGOS_DLL_SPEC ObjectGuid
 
 typedef std::set<ObjectGuid> ObjectGuidSet;
 
+//minimum buffer size for packed guid is 9 bytes
+#define PACKED_GUID_MIN_BUFFER_SIZE 9
+
 class PackedGuid
 {
     friend ByteBuffer& operator<< (ByteBuffer& buf, PackedGuid const& guid);
 
     public:                                                 // constructors
-        explicit PackedGuid() { m_packedGuid.appendPackGUID(0); }
-        explicit PackedGuid(uint64 const& guid) { m_packedGuid.appendPackGUID(guid); }
-        explicit PackedGuid(ObjectGuid const& guid) { m_packedGuid.appendPackGUID(guid.GetRawValue()); }
+        explicit PackedGuid() : m_packedGuid(PACKED_GUID_MIN_BUFFER_SIZE) { m_packedGuid.appendPackGUID(0); }
+        explicit PackedGuid(uint64 const& guid) : m_packedGuid(PACKED_GUID_MIN_BUFFER_SIZE) { m_packedGuid.appendPackGUID(guid); }
+        explicit PackedGuid(ObjectGuid const& guid) : m_packedGuid(PACKED_GUID_MIN_BUFFER_SIZE) { m_packedGuid.appendPackGUID(guid.GetRawValue()); }
 
     public:                                                 // modifiers
         void Set(uint64 const& guid) { m_packedGuid.wpos(0); m_packedGuid.appendPackGUID(guid); }

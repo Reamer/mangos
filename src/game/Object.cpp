@@ -92,6 +92,15 @@ void Object::_InitValues()
     m_objectUpdated = false;
 }
 
+void Object::_Create(uint32 guidlow, uint32 entry, HighGuid guidhigh)
+{
+    if(!m_uint32Values)
+        _InitValues();
+
+    ObjectGuid guid = ObjectGuid(guidhigh, entry, guidlow);
+    _Create(guid);
+}
+
 void Object::_Create(ObjectGuid guid)
 {
     if(!m_uint32Values)
@@ -229,9 +238,11 @@ void Object::BuildMovementUpdate(ByteBuffer * data, uint16 updateFlags) const
 {
     uint16 moveFlags2 = (isType(TYPEMASK_UNIT) ? ((Unit*)this)->m_movementInfo.GetMovementFlags2() : MOVEFLAG2_NONE);
 
+/* removed by zergtmn. strange...
     if(GetTypeId() == TYPEID_UNIT)
         if(((Creature*)this)->GetVehicleKit())
             moveFlags2 |= MOVEFLAG2_ALLOW_PITCHING;         // always allow pitch
+*/
 
     *data << uint16(updateFlags);                           // update flags
 
@@ -255,12 +266,12 @@ void Object::BuildMovementUpdate(ByteBuffer * data, uint16 updateFlags) const
                     // (ok) most seem to have this
                     unit->m_movementInfo.AddMovementFlag(MOVEFLAG_LEVITATING);
 
-                    if (!((Creature*)unit)->hasUnitState(UNIT_STAT_MOVING))
+                    /*if (!((Creature*)unit)->hasUnitState(UNIT_STAT_MOVING))
                     {
                         // (ok) possibly some "hover" mode
                         unit->m_movementInfo.AddMovementFlag(MOVEFLAG_ROOT);
                     }
-                    else
+                    else*/
                     {
                         if (((Creature*)unit)->IsMounted())
                         {
@@ -513,9 +524,9 @@ void Object::BuildMovementUpdate(ByteBuffer * data, uint16 updateFlags) const
     }
 
     // 0x80
-    if(updateFlags & UPDATEFLAG_VEHICLE)
+    if (updateFlags & UPDATEFLAG_VEHICLE)
     {
-        *data << uint32(((Unit*)this)->GetVehicleKit()->GetVehicleId());  // vehicle id
+        *data << uint32(((Unit*)this)->GetVehicleInfo()->GetEntry()->m_ID); // vehicle id
         *data << float(((WorldObject*)this)->GetOrientation());
     }
 
@@ -1092,8 +1103,7 @@ void Object::MarkForClientUpdate()
 
 WorldObject::WorldObject()
     : m_isActiveObject(false), m_currMap(NULL), m_mapId(0), m_InstanceId(0), m_phaseMask(PHASEMASK_NORMAL),
-    m_groupLootTimer(0), m_groupLootId(0), m_lootGroupRecipientId(0), m_name(""),
-    m_positionX(0.0f), m_positionY(0.0f), m_positionZ(0.0f), m_orientation(0.0f)
+    m_groupLootTimer(0), m_groupLootId(0), m_lootGroupRecipientId(0), m_name("")
 {
 }
 
@@ -1110,10 +1120,10 @@ void WorldObject::_Create(ObjectGuid guid, uint32 phaseMask)
 
 void WorldObject::Relocate(float x, float y, float z, float orientation)
 {
-    m_positionX = x;
-    m_positionY = y;
-    m_positionZ = z;
-    m_orientation = orientation;
+    m_position.x = x;
+    m_position.y = y;
+    m_position.z = z;
+    m_position.o = orientation;
 
     if(isType(TYPEMASK_UNIT))
         ((Unit*)this)->m_movementInfo.ChangePosition(x, y, z, orientation);
@@ -1121,9 +1131,9 @@ void WorldObject::Relocate(float x, float y, float z, float orientation)
 
 void WorldObject::Relocate(float x, float y, float z)
 {
-    m_positionX = x;
-    m_positionY = y;
-    m_positionZ = z;
+    m_position.x = x;
+    m_position.y = y;
+    m_position.z = z;
 
     if(isType(TYPEMASK_UNIT))
         ((Unit*)this)->m_movementInfo.ChangePosition(x, y, z, GetOrientation());
@@ -1131,7 +1141,7 @@ void WorldObject::Relocate(float x, float y, float z)
 
 void WorldObject::SetOrientation(float orientation)
 {
-    m_orientation = orientation;
+    m_position.o = orientation;
 
     if(isType(TYPEMASK_UNIT))
         ((Unit*)this)->m_movementInfo.ChangeOrientation(orientation);
@@ -1139,17 +1149,17 @@ void WorldObject::SetOrientation(float orientation)
 
 uint32 WorldObject::GetZoneId() const
 {
-    return GetTerrain()->GetZoneId(m_positionX, m_positionY, m_positionZ);
+    return GetTerrain()->GetZoneId(m_position.x, m_position.y, m_position.z);
 }
 
 uint32 WorldObject::GetAreaId() const
 {
-    return GetTerrain()->GetAreaId(m_positionX, m_positionY, m_positionZ);
+    return GetTerrain()->GetAreaId(m_position.x, m_position.y, m_position.z);
 }
 
 void WorldObject::GetZoneAndAreaId(uint32& zoneid, uint32& areaid) const
 {
-    GetTerrain()->GetZoneAndAreaId(zoneid, areaid, m_positionX, m_positionY, m_positionZ);
+    GetTerrain()->GetZoneAndAreaId(zoneid, areaid, m_position.x, m_position.y, m_position.z);
 }
 
 InstanceData* WorldObject::GetInstanceData() const
@@ -1380,7 +1390,7 @@ float WorldObject::GetAngle( const float x, const float y ) const
 bool WorldObject::HasInArc(const float arcangle, const float x, const float y) const
 {
     // always have self in arc
-    if(x == m_positionX && y == m_positionY)
+    if(x == GetPositionX() && y == GetPositionY())
         return true;
 
     float arc = arcangle;
@@ -1392,7 +1402,7 @@ bool WorldObject::HasInArc(const float arcangle, const float x, const float y) c
         arc +=  2.0f * M_PI_F;
 
     float angle = GetAngle( x, y );
-    angle -= m_orientation;
+    angle -= GetOrientation();
 
     // move angle to range -pi ... +pi
     while( angle > M_PI_F)
@@ -1417,7 +1427,7 @@ bool WorldObject::HasInArc(const float arcangle, const WorldObject* obj) const
     arc = MapManager::NormalizeOrientation(arc);
 
     float angle = GetAngle( obj );
-    angle -= m_orientation;
+    angle -= m_position.o;
 
     // move angle to range -pi ... +pi
     angle = MapManager::NormalizeOrientation(angle);
@@ -1472,23 +1482,11 @@ void WorldObject::GetRandomPoint( float x, float y, float z, float distance, flo
     UpdateGroundPositionZ(rand_x,rand_y,rand_z);            // update to LOS height if available
 }
 
-void WorldObject::UpdateGroundPositionZ(float x, float y, float &z, float maxDiff) const
+void WorldObject::UpdateGroundPositionZ(float x, float y, float &z) const
 {
-    maxDiff = maxDiff >= 100.0f ? 10.0f : sqrtf(maxDiff);
-    bool useVmaps = false;
-    if( GetTerrain()->GetHeight(x, y, z, false) <  GetTerrain()->GetHeight(x, y, z, true) ) // check use of vmaps
-        useVmaps = true;
-
-    float normalizedZ = GetTerrain()->GetHeight(x, y, z, useVmaps);
-    // check if its reacheable
-    if(normalizedZ <= INVALID_HEIGHT || fabs(normalizedZ-z) > maxDiff)
-    {
-        useVmaps = !useVmaps;                                // try change vmap use
-        normalizedZ = GetTerrain()->GetHeight(x, y, z, useVmaps);
-        if(normalizedZ <= INVALID_HEIGHT || fabs(normalizedZ-z) > maxDiff)
-            return;                                        // Do nothing in case of another bad result 
-    }
-    z = normalizedZ + 0.1f;                                // just to be sure that we are not a few pixel under the surface
+    float new_z = GetTerrain()->GetHeight(x,y,z,true);
+    if(new_z > INVALID_HEIGHT)
+        z = new_z+ 0.05f;                                   // just to be sure that we are not a few pixel under the surface
 }
 
 void WorldObject::UpdateAllowedPositionZ(float x, float y, float &z) const
@@ -1557,7 +1555,7 @@ void WorldObject::UpdateAllowedPositionZ(float x, float y, float &z) const
 
 bool WorldObject::IsPositionValid() const
 {
-    return MaNGOS::IsValidMapCoord(m_positionX,m_positionY,m_positionZ,m_orientation);
+    return MaNGOS::IsValidMapCoord(m_position.x,m_position.y,m_position.z,m_position.o);
 }
 
 void WorldObject::MonsterSay(const char* text, uint32 language, Unit* target)
@@ -1752,6 +1750,13 @@ void WorldObject::AddObjectToRemoveList()
 
 Creature* WorldObject::SummonCreature(uint32 id, float x, float y, float z, float ang,TempSummonType spwtype,uint32 despwtime, bool asActiveObject)
 {
+    CreatureInfo const *cinfo = ObjectMgr::GetCreatureTemplate(id);
+    if(!cinfo)
+    {
+        sLog.outErrorDb("WorldObject::SummonCreature: Creature (Entry: %u) not existed for summoner: %s. ", id, GetGuidStr().c_str());
+        return NULL;
+    }
+
     TemporarySummon* pCreature = new TemporarySummon(GetObjectGuid());
 
     Team team = TEAM_NONE;
@@ -1763,7 +1768,7 @@ Creature* WorldObject::SummonCreature(uint32 id, float x, float y, float z, floa
     if (x == 0.0f && y == 0.0f && z == 0.0f)
         pos = CreatureCreatePos(this, GetOrientation(), CONTACT_DISTANCE, ang);
 
-    if (!pCreature->Create(GetMap()->GenerateLocalLowGuid(HIGHGUID_UNIT), pos, id, team))
+    if (!pCreature->Create(GetMap()->GenerateLocalLowGuid(cinfo->GetHighGuid()), pos, cinfo, team))
     {
         delete pCreature;
         return NULL;
@@ -1830,9 +1835,9 @@ namespace MaNGOS
                 {
                     x = c->GetPositionX();
                     y = c->GetPositionY();
-                }
 
-                add(c,x,y);
+                    add(c,x,y);
+                }
             }
 
             template<class T>
@@ -2245,3 +2250,9 @@ void Object::ForceValuesUpdateAtIndex(uint32 i)
     }
 }
 // Frozen Mod
+
+bool WorldObject::PrintCoordinatesError(float x, float y, float z, char const* descr) const
+{
+    sLog.outError("%s with invalid %s coordinates: mapid = %uu, x = %f, y = %f, z = %f", GetGuidStr().c_str(), descr, GetMapId(), x, y, z);
+    return false;                                           // always false for continue assert fail
+}

@@ -152,7 +152,10 @@ class MapPersistentState
 inline bool MapPersistentState::CanBeUnload() const
 {
     // prevent unload if used for loaded map
-    return !m_usedByMap;
+    if (Map* map = GetMap())
+        return false;
+    else
+        return true;
 }
 
 class WorldPersistentState : public MapPersistentState
@@ -190,7 +193,7 @@ class DungeonPersistentState : public MapPersistentState
            - any new instance is being generated
            - the first time a player bound to InstanceId logs in
            - when a group bound to the instance is loaded */
-        DungeonPersistentState(uint16 MapId, uint32 InstanceId, Difficulty difficulty, time_t resetTime, bool canReset);
+        DungeonPersistentState(uint16 MapId, uint32 InstanceId, Difficulty difficulty, time_t resetTime, bool canReset, uint32 completedEncounters);
 
         ~DungeonPersistentState();
 
@@ -213,13 +216,22 @@ class DungeonPersistentState : public MapPersistentState
            for raid/heroic instances this caches the global respawn time for the map */
         time_t GetResetTime() const { return m_resetTime; }
         void SetResetTime(time_t resetTime) { m_resetTime = resetTime; }
-        time_t GetResetTimeForDB() const;
 
         /* instances cannot be reset (except at the global reset time)
            if there are players permanently bound to it
            this is cached for the case when those players are offline */
         bool CanReset() const { return m_canReset; }
         void SetCanReset(bool canReset) { m_canReset = canReset; }
+
+        // Work with extended instances
+        bool IsExtended() const { return m_isExtended; }
+        void SetExtended(bool isExtended) { m_isExtended = isExtended; }
+
+        // DBC encounter state at kill/spellcast update/set/get
+        void UpdateEncounterState(EncounterCreditType type, uint32 creditEntry, Player* player = NULL);
+        bool IsCompleted();
+        uint32 GetCompletedEncountersMask() { return m_completedEncountersMask; }
+
 
         /* Saved when the instance is generated for the first time */
         void SaveToDB();
@@ -238,6 +250,7 @@ class DungeonPersistentState : public MapPersistentState
 
         time_t m_resetTime;
         bool m_canReset;
+        bool m_isExtended;
 
         /* the only reason the instSave-object links are kept is because
            the object-instSave links need to be broken at reset time
@@ -246,6 +259,8 @@ class DungeonPersistentState : public MapPersistentState
         GroupListType m_groupList;                          // lock MapPersistentState from unload
 
         SpawnedPoolData m_spawnedPoolData;                  // Pools spawns state for map copy
+
+        uint32 m_completedEncountersMask;                   // completed encounter mask, bit indexes are DungeonEncounter.dbc boss numbers, used for packets
 };
 
 class BattleGroundPersistentState : public MapPersistentState
@@ -347,7 +362,7 @@ class MANGOS_DLL_DECL MapPersistentStateManager : public MaNGOS::Singleton<MapPe
 
         // auto select appropriate MapPersistentState (sub)class by MapEntry, and autoselect appropriate way store (by instance/map id)
         // always return != NULL
-        MapPersistentState* AddPersistentState(MapEntry const* mapEntry, uint32 instanceId, Difficulty difficulty, time_t resetTime, bool canReset, bool load = false, bool initPools = true);
+        MapPersistentState* AddPersistentState(MapEntry const* mapEntry, uint32 instanceId, Difficulty difficulty, time_t resetTime, bool canReset, bool load = false, bool initPools = true, uint32 completedEncountersMask = 0);
 
         // search stored state, can be NULL in result
         MapPersistentState *GetPersistentState(uint32 mapId, uint32 InstanceId);
@@ -363,7 +378,7 @@ class MANGOS_DLL_DECL MapPersistentStateManager : public MaNGOS::Singleton<MapPe
 
         DungeonResetScheduler& GetScheduler() { return m_Scheduler; }
 
-        static void DeleteInstanceFromDB(uint32 instanceid, bool isExtended);
+        static void DeleteInstanceFromDB(uint32 instanceid);
 
         void GetStatistics(uint32& numStates, uint32& numBoundPlayers, uint32& numBoundGroups);
 

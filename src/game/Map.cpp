@@ -19,7 +19,6 @@
 #include "Map.h"
 #include "MapManager.h"
 #include "Player.h"
-#include "Vehicle.h"
 #include "GridNotifiers.h"
 #include "Log.h"
 #include "GridStates.h"
@@ -81,8 +80,8 @@ Map::Map(uint32 id, time_t expiry, uint32 InstanceId, uint8 SpawnMode)
   i_gridExpiry(expiry), m_TerrainData(sTerrainMgr.LoadTerrain(id)),
   i_data(NULL), i_script_id(0)
 {
-    m_CreatureGuids.Set(sObjectMgr.GetFirstCreatureLowGuid());
-    m_GameObjectGuids.Set(sObjectMgr.GetFirstGameObjectLowGuid());
+    m_CreatureGuids.Set(sObjectMgr.GetFirstTemporaryCreatureLowGuid());
+    m_GameObjectGuids.Set(sObjectMgr.GetFirstTemporaryGameObjectLowGuid());
 
     for(unsigned int j=0; j < MAX_NUMBER_OF_GRIDS; ++j)
     {
@@ -142,7 +141,7 @@ template<>
 void Map::AddToGrid(Creature* obj, NGridType *grid, Cell const& cell)
 {
     // add to world object registry in grid
-    if(obj->IsPet())
+    if (obj->IsPet())
     {
         (*grid)(cell.CellX(), cell.CellY()).AddWorldObject<Creature>(obj);
         obj->SetCurrentCell(cell);
@@ -186,7 +185,7 @@ template<>
 void Map::RemoveFromGrid(Creature* obj, NGridType *grid, Cell const& cell)
 {
     // remove from world object registry in grid
-    if(obj->IsPet())
+    if (obj->IsPet())
     {
         (*grid)(cell.CellX(), cell.CellY()).RemoveWorldObject<Creature>(obj);
     }
@@ -448,7 +447,7 @@ void Map::Update(const uint32 &t_diff)
             WorldSession * pSession = plr->GetSession();
             MapSessionFilter updater(pSession);
 
-            pSession->Update(t_diff, updater);
+            pSession->Update(updater);
         }
     }
 
@@ -478,7 +477,7 @@ void Map::Update(const uint32 &t_diff)
     {
         Player* plr = m_mapRefIter->getSource();
 
-        if (!plr->IsInWorld() || !plr->IsPositionValid())
+        if (!plr || !plr->IsInWorld() || !plr->IsPositionValid())
             continue;
 
         //lets update mobs/objects in ALL visible cells around player!
@@ -615,7 +614,9 @@ void Map::Remove(Player *player, bool remove)
     SendRemoveTransports(player);
     UpdateObjectVisibility(player,cell,p);
 
-    player->ResetMap();
+    if (!player->GetPlayerbotAI())
+        player->ResetMap();
+
     if( remove )
         DeleteFromWorld(player);
 }
@@ -701,39 +702,26 @@ Map::PlayerRelocation(Player *player, float x, float y, float z, float orientati
     }
 }
 
-void
-Map::CreatureRelocation(Creature *creature, float x, float y, float z, float ang)
+void Map::CreatureRelocation(Creature *creature, float x, float y, float z, float ang)
 {
     MANGOS_ASSERT(CheckGridIntegrity(creature,false));
 
     Cell old_cell = creature->GetCurrentCell();
+    Cell new_cell(MaNGOS::ComputeCellPair(x, y));
 
-    CellPair new_val = MaNGOS::ComputeCellPair(x, y);
-    Cell new_cell(new_val);
-
-    if (old_cell.DiffCell(new_cell) || old_cell.DiffGrid(new_cell))
+    // do move or do move to respawn or remove creature if previous all fail
+    if (CreatureCellRelocation(creature,new_cell))
     {
-        DEBUG_FILTER_LOG(LOG_FILTER_CREATURE_MOVES, "Creature (GUID: %u Entry: %u) added to moving list from grid[%u,%u]cell[%u,%u] to grid[%u,%u]cell[%u,%u].", creature->GetGUIDLow(), creature->GetEntry(), old_cell.GridX(), old_cell.GridY(), old_cell.CellX(), old_cell.CellY(), new_cell.GridX(), new_cell.GridY(), new_cell.CellX(), new_cell.CellY());
-
-        // do move or do move to respawn or remove creature if previous all fail
-        if (CreatureCellRelocation(creature,new_cell))
-        {
-            // update pos
-            creature->Relocate(x, y, z, ang);
-            creature->OnRelocated();
-        }
-        // if creature can't be move in new cell/grid (not loaded) move it to repawn cell/grid
-        // creature coordinates will be updated and notifiers send
-        else if (!CreatureRespawnRelocation(creature))
-        {
-            // ... or unload (if respawn grid also not loaded)
-            DEBUG_FILTER_LOG(LOG_FILTER_CREATURE_MOVES, "Creature (GUID: %u Entry: %u ) can't be move to unloaded respawn grid.",creature->GetGUIDLow(),creature->GetEntry());
-        }
-    }
-    else
-    {
+        // update pos
         creature->Relocate(x, y, z, ang);
         creature->OnRelocated();
+    }
+    // if creature can't be move in new cell/grid (not loaded) move it to repawn cell/grid
+    // creature coordinates will be updated and notifiers send
+    else if (!CreatureRespawnRelocation(creature))
+    {
+        // ... or unload (if respawn grid also not loaded)
+        DEBUG_FILTER_LOG(LOG_FILTER_CREATURE_MOVES, "Creature (GUID: %u Entry: %u ) can't be move to unloaded respawn grid.",creature->GetGUIDLow(),creature->GetEntry());
     }
 
     MANGOS_ASSERT(CheckGridIntegrity(creature,true));
@@ -742,63 +730,26 @@ Map::CreatureRelocation(Creature *creature, float x, float y, float z, float ang
 bool Map::CreatureCellRelocation(Creature *c, Cell new_cell)
 {
     Cell const& old_cell = c->GetCurrentCell();
-    if(!old_cell.DiffGrid(new_cell) )                       // in same grid
+    if (old_cell.DiffGrid(new_cell))
     {
-        // if in same cell then none do
-        if(old_cell.DiffCell(new_cell))
+        if (!c->isActiveObject() && !loaded(new_cell.gridPair()))
         {
-            DEBUG_FILTER_LOG(LOG_FILTER_CREATURE_MOVES, "Creature (GUID: %u Entry: %u) moved in grid[%u,%u] from cell[%u,%u] to cell[%u,%u].", c->GetGUIDLow(), c->GetEntry(), old_cell.GridX(), old_cell.GridY(), old_cell.CellX(), old_cell.CellY(), new_cell.CellX(), new_cell.CellY());
-
-            RemoveFromGrid(c,getNGrid(old_cell.GridX(), old_cell.GridY()),old_cell);
-
-            NGridType* new_grid = getNGrid(new_cell.GridX(), new_cell.GridY());
-            AddToGrid(c,new_grid,new_cell);
-
-            c->GetViewPoint().Event_GridChanged( &(*new_grid)(new_cell.CellX(),new_cell.CellY()) );
+            DEBUG_FILTER_LOG(LOG_FILTER_CREATURE_MOVES, "Creature (GUID: %u Entry: %u) attempt move from grid[%u,%u]cell[%u,%u] to unloaded grid[%u,%u]cell[%u,%u].", c->GetGUIDLow(), c->GetEntry(), old_cell.GridX(), old_cell.GridY(), old_cell.CellX(), old_cell.CellY(), new_cell.GridX(), new_cell.GridY(), new_cell.CellX(), new_cell.CellY());
+            return false;
         }
-        else
-        {
-            DEBUG_FILTER_LOG(LOG_FILTER_CREATURE_MOVES, "Creature (GUID: %u Entry: %u) move in same grid[%u,%u]cell[%u,%u].", c->GetGUIDLow(), c->GetEntry(), old_cell.GridX(), old_cell.GridY(), old_cell.CellX(), old_cell.CellY());
-        }
-
-        return true;
-    }
-
-    // in diff. grids but active creature
-    if(c->isActiveObject())
-    {
         EnsureGridLoadedAtEnter(new_cell);
-
-        DEBUG_FILTER_LOG(LOG_FILTER_CREATURE_MOVES, "Active creature (GUID: %u Entry: %u) moved from grid[%u,%u]cell[%u,%u] to grid[%u,%u]cell[%u,%u].", c->GetGUIDLow(), c->GetEntry(), old_cell.GridX(), old_cell.GridY(), old_cell.CellX(), old_cell.CellY(), new_cell.GridX(), new_cell.GridY(), new_cell.CellX(), new_cell.CellY());
-
-        RemoveFromGrid(c,getNGrid(old_cell.GridX(), old_cell.GridY()),old_cell);
-
-        NGridType* new_grid = getNGrid(new_cell.GridX(), new_cell.GridY());
-        AddToGrid(c,new_grid,new_cell);
-        c->GetViewPoint().Event_GridChanged( &(*new_grid)(new_cell.CellX(),new_cell.CellY()) );
-
-        return true;
     }
 
-    // in diff. loaded grid normal creature
-    if(loaded(GridPair(new_cell.GridX(), new_cell.GridY())))
+    if (old_cell != new_cell)
     {
-        DEBUG_FILTER_LOG(LOG_FILTER_CREATURE_MOVES, "Creature (GUID: %u Entry: %u) moved from grid[%u,%u]cell[%u,%u] to grid[%u,%u]cell[%u,%u].", c->GetGUIDLow(), c->GetEntry(), old_cell.GridX(), old_cell.GridY(), old_cell.CellX(), old_cell.CellY(), new_cell.GridX(), new_cell.GridY(), new_cell.CellX(), new_cell.CellY());
-
-        RemoveFromGrid(c,getNGrid(old_cell.GridX(), old_cell.GridY()),old_cell);
-        {
-            EnsureGridCreated(GridPair(new_cell.GridX(), new_cell.GridY()));
-            NGridType* new_grid = getNGrid(new_cell.GridX(), new_cell.GridY());
-            AddToGrid(c,new_grid,new_cell);
-            c->GetViewPoint().Event_GridChanged( &(*new_grid)(new_cell.CellX(),new_cell.CellY()) );
-        }
-
-        return true;
+        DEBUG_FILTER_LOG(LOG_FILTER_CREATURE_MOVES, "Creature (GUID: %u Entry: %u) moved in grid[%u,%u] from cell[%u,%u] to cell[%u,%u].", c->GetGUIDLow(), c->GetEntry(), old_cell.GridX(), old_cell.GridY(), old_cell.CellX(), old_cell.CellY(), new_cell.CellX(), new_cell.CellY());
+        NGridType* oldGrid = getNGrid(old_cell.GridX(), old_cell.GridY());
+        NGridType* newGrid = getNGrid(new_cell.GridX(), new_cell.GridY());
+        RemoveFromGrid(c, oldGrid, old_cell);
+        AddToGrid(c, newGrid, new_cell);
+        c->GetViewPoint().Event_GridChanged(&(*newGrid)(new_cell.CellX(),new_cell.CellY()));
     }
-
-    // fail to move: normal creature attempt move to unloaded grid
-    DEBUG_FILTER_LOG(LOG_FILTER_CREATURE_MOVES, "Creature (GUID: %u Entry: %u) attempt move from grid[%u,%u]cell[%u,%u] to unloaded grid[%u,%u]cell[%u,%u].", c->GetGUIDLow(), c->GetEntry(), old_cell.GridX(), old_cell.GridY(), old_cell.CellX(), old_cell.CellY(), new_cell.GridX(), new_cell.GridY(), new_cell.CellX(), new_cell.CellY());
-    return false;
+    return true;
 }
 
 bool Map::CreatureRespawnRelocation(Creature *c)
@@ -1410,12 +1361,9 @@ bool DungeonMap::Add(Player *player)
                 // players also become permanently bound when they enter
                 if (groupBind->perm && IsDungeon())
                 {
-                    uint32 m_completed = 0;
-                    if (GetInstanceData())
-                        m_completed = GetInstanceData()->GetCompletedEncounters(true);
-                    WorldPacket data(SMSG_INSTANCE_LOCK_WARNING_QUERY, 9);
+                    WorldPacket data(SMSG_PENDING_RAID_LOCK, 9);
                     data << uint32(60000);
-                    data << m_completed;
+                    data << groupBind->state->GetCompletedEncountersMask();
                     data << uint8(0);
                     player->GetSession()->SendPacket(&data);
                     player->SetPendingBind(GetPersistanceState(), 60000);
@@ -1509,7 +1457,7 @@ bool DungeonMap::Reset(InstanceResetMethod method)
     return m_mapRefManager.isEmpty();
 }
 
-void DungeonMap::PermBindAllPlayers(Player *player)
+void DungeonMap::PermBindAllPlayers(Player *player, bool permanent)
 {
     Group *group = player->GetGroup();
     // group members outside the instance group don't get bound
@@ -1521,7 +1469,7 @@ void DungeonMap::PermBindAllPlayers(Player *player)
         InstancePlayerBind *bind = plr->GetBoundInstance(GetId(), GetDifficulty());
         if (!bind || !bind->perm)
         {
-            plr->BindToInstance(GetPersistanceState(), true);
+            plr->BindToInstance(GetPersistanceState(), permanent);
             WorldPacket data(SMSG_INSTANCE_SAVE_CREATED, 4);
             data << uint32(0);
             plr->GetSession()->SendPacket(&data);
@@ -1529,7 +1477,7 @@ void DungeonMap::PermBindAllPlayers(Player *player)
 
         // if the leader is not in the instance the group will not get a perm bind
         if (group && group->GetLeaderGuid() == plr->GetObjectGuid())
-            group->BindToInstance(GetPersistanceState(), true);
+            group->BindToInstance(GetPersistanceState(), permanent);
     }
 }
 
@@ -1746,13 +1694,11 @@ void Map::ScriptsProcess()
                     break;
                 }
                 case HIGHGUID_UNIT:
+                case HIGHGUID_VEHICLE:
                     source = GetCreature(step.sourceGuid);
                     break;
                 case HIGHGUID_PET:
                     source = GetPet(step.sourceGuid);
-                    break;
-                case HIGHGUID_VEHICLE:
-                    source = GetCreature(step.sourceGuid);
                     break;
                 case HIGHGUID_PLAYER:
                     source = HashMapHolder<Player>::Find(step.sourceGuid);
@@ -1779,13 +1725,11 @@ void Map::ScriptsProcess()
             switch(step.targetGuid.GetHigh())
             {
                 case HIGHGUID_UNIT:
+                case HIGHGUID_VEHICLE:
                     target = GetCreature(step.targetGuid);
                     break;
                 case HIGHGUID_PET:
                     target = GetPet(step.targetGuid);
-                    break;
-                case HIGHGUID_VEHICLE:
-                    target = GetCreature(step.targetGuid);
                     break;
                 case HIGHGUID_PLAYER:
                     target = HashMapHolder<Player>::Find(step.targetGuid);
@@ -1921,20 +1865,56 @@ void Map::ScriptsProcess()
                 break;
             }
             case SCRIPT_COMMAND_EMOTE:
+            {
                 if (!source)
                 {
-                    sLog.outError("SCRIPT_COMMAND_EMOTE (script id %u) call for NULL creature.", step.script->id);
+                    sLog.outError("SCRIPT_COMMAND_EMOTE (script id %u) call for NULL source.", step.script->id);
                     break;
                 }
 
-                if (source->GetTypeId()!=TYPEID_UNIT)
+                if (!source->isType(TYPEMASK_WORLDOBJECT))
                 {
-                    sLog.outError("SCRIPT_COMMAND_EMOTE (script id %u) call for non-creature (TypeId: %u), skipping.", step.script->id, source->GetTypeId());
+                    sLog.outError("SCRIPT_COMMAND_EMOTE (script id %u) call for non-worldobject (TypeId: %u), skipping.", step.script->id, source->GetTypeId());
                     break;
                 }
+                // When creatureEntry is not defined, GameObject can not be source
+                else if (!step.script->emote.creatureEntry)
+                {
+                    if (!source->isType(TYPEMASK_UNIT))
+                    {
+                        sLog.outError("SCRIPT_COMMAND_EMOTE (script id %u) are missing datalong2 (creature entry). Unsupported call for non-unit (TypeId: %u), skipping.", step.script->id, source->GetTypeId());
+                        break;
+                    }
+                }
 
-                ((Creature*)source)->HandleEmote(step.script->emote.emoteId);
+                WorldObject* pSource = (WorldObject*)source;
+                Creature* pBuddy = NULL;
+
+                // flag_target_as_source            0x01
+
+                // If target is Unit* and should do the emote (or should be source of searcher below)
+                if (target && target->isType(TYPEMASK_UNIT) && step.script->emote.flags & 0x01)
+                    pSource = (WorldObject*)target;
+
+                // If step has a buddy entry defined, search for it.
+                if (step.script->emote.creatureEntry)
+                {
+                    MaNGOS::NearestCreatureEntryWithLiveStateInObjectRangeCheck u_check(*pSource, step.script->emote.creatureEntry, true, step.script->emote.searchRadius);
+                    MaNGOS::CreatureLastSearcher<MaNGOS::NearestCreatureEntryWithLiveStateInObjectRangeCheck> searcher(pBuddy, u_check);
+
+                    Cell::VisitGridObjects(pSource, searcher, step.script->emote.searchRadius);
+
+                    // If buddy found, then use it or break (break since we must assume pBuddy was defined for a reason)
+                    if (pBuddy)
+                        pSource = (WorldObject*)pBuddy;
+                    else
+                        break;
+                }
+
+                // Must be safe cast to Unit*
+                ((Unit*)pSource)->HandleEmote(step.script->emote.emoteId);
                 break;
+            }
             case SCRIPT_COMMAND_FIELD_SET:
                 if (!source)
                 {
@@ -2656,9 +2636,9 @@ void Map::ScriptsProcess()
                 }
 
                 if (step.script->faction.factionId)
-                    pOwner->setFaction(step.script->faction.factionId);
+                    pOwner->SetFactionTemporary(step.script->faction.factionId, step.script->faction.flags);
                 else
-                    pOwner->setFaction(pOwner->GetCreatureInfo()->faction_A);
+                    pOwner->ClearTemporaryFaction();
 
                 break;
             }
@@ -2826,6 +2806,77 @@ void Map::ScriptsProcess()
 
                 break;
             }
+            case SCRIPT_COMMAND_ATTACK_START:
+            {
+                if (!source)
+                {
+                    sLog.outError("SCRIPT_COMMAND_ATTACK_START (script id %u) call for NULL source.", step.script->id);
+                    break;
+                }
+
+                if (!source->isType(TYPEMASK_WORLDOBJECT))
+                {
+                    sLog.outError("SCRIPT_COMMAND_ATTACK_START (script id %u) call for unsupported non-worldobject (TypeId: %u), skipping.", step.script->id, source->GetTypeId());
+                    break;
+                }
+
+                WorldObject* pSource = (WorldObject*)source;
+                Creature* pBuddy = NULL;
+
+                // flag_original_source_as_target   0x02
+                // flag_buddy_as_target             0x04
+
+                // If step has a buddy entry defined, search for it.
+                if (step.script->attack.creatureEntry)
+                {
+                    MaNGOS::NearestCreatureEntryWithLiveStateInObjectRangeCheck u_check(*pSource, step.script->attack.creatureEntry, true, step.script->attack.searchRadius);
+                    MaNGOS::CreatureLastSearcher<MaNGOS::NearestCreatureEntryWithLiveStateInObjectRangeCheck> searcher(pBuddy, u_check);
+
+                    Cell::VisitGridObjects(pSource, searcher, step.script->attack.searchRadius);
+
+                    // If buddy found, then use it
+                    if (pBuddy)
+                    {
+                        if (step.script->attack.flags & 0x04)
+                        {
+                            // pBuddy is target of attack
+                            target = (Object*)pBuddy;
+                        }
+                        else
+                        {
+                            // If not target of attack, then set pBuddy as source, the attacker
+                            pSource = (WorldObject*)pBuddy;
+                        }
+                    }
+                    else
+                    {
+                        // No buddy found, so don't do anything
+                        break;
+                    }
+                }
+
+                // If we should attack the original source instead of target
+                if (step.script->attack.flags & 0x02)
+                    target = source;
+
+                Unit* unitTarget = target && target->isType(TYPEMASK_UNIT) ? static_cast<Unit*>(target) : NULL;
+                Creature* pAttacker = pSource && pSource->GetTypeId() == TYPEID_UNIT ? static_cast<Creature*>(pSource) : NULL;
+
+                if (pAttacker && unitTarget)
+                {
+                    if (pAttacker->IsFriendlyTo(unitTarget))
+                    {
+                        sLog.outError("SCRIPT_COMMAND_ATTACK_START (script id %u) attacker is friendly to target, can not attack.", step.script->id);
+                        break;
+                    }
+
+                    pAttacker->AI()->AttackStart(unitTarget);
+                    break;
+                }
+
+                sLog.outError("SCRIPT_COMMAND_ATTACK_START (script id %u) unexpected error, attacker or victim could not be found, no action.", step.script->id);
+                break;
+            }
             default:
                 sLog.outError("Unknown SCRIPT_COMMAND_ %u called for script id %u.",step.script->command, step.script->id);
                 break;
@@ -2853,9 +2904,9 @@ Player* Map::GetPlayer(ObjectGuid guid)
 }
 
 /**
- * Function return creature (non-pet and then most summoned by spell creatures) that in world at CURRENT map 
+ * Function return creature (non-pet and then most summoned by spell creatures) that in world at CURRENT map
  *
- * @param guid must be creature guid (HIGHGUID_UNIT)
+ * @param guid must be creature or vehicle guid (HIGHGUID_UNIT HIGHGUID_VEHICLE)
  */
 Creature* Map::GetCreature(ObjectGuid guid)
 {
@@ -2863,18 +2914,20 @@ Creature* Map::GetCreature(ObjectGuid guid)
 }
 
 /**
+ * Function return pet that in world at CURRENT map
  *
  * @param guid must be pet guid (HIGHGUID_PET)
  */
 Pet* Map::GetPet(ObjectGuid guid)
 {
-    return m_objectsStore.find<Pet>(guid.GetRawValue(), (Pet*)NULL);
+    Pet* pet = ObjectAccessor::FindPet(guid);         // return only in world pets
+    return pet && pet->GetMap() == this ? pet : NULL;
 }
 
 /**
  * Function return corpse that at CURRENT map
  *
- * Note: corpse can be NOT IN WORLD, so can't be used corspe->GetMap() without pre-check corpse->isInWorld()
+ * Note: corpse can be NOT IN WORLD, so can't be used corpse->GetMap() without pre-check corpse->isInWorld()
  *
  * @param guid must be corpse guid (HIGHGUID_CORPSE)
  */
