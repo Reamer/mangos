@@ -458,9 +458,9 @@ m_isPersistent(false), m_in_use(0), m_spellAuraHolder(holder)
             uint32 _periodicTime = m_modifier.periodictime;
 
             // Calculate new periodic timer
-            int32 ticks = oldDuration / _periodicTime + 1;
+            int32 ticks = oldDuration / _periodicTime;
 
-            _periodicTime = new_duration / ticks;
+            _periodicTime =  ticks == 0 ? new_duration : new_duration / ticks;
 
             m_modifier.periodictime = _periodicTime;
         }
@@ -795,7 +795,7 @@ void AreaAura::Update(uint32 diff)
                     if(actualSpellInfo != GetSpellProto())
                         actualBasePoints = actualSpellInfo->CalculateSimpleValue(m_effIndex);
 
-                    SpellAuraHolder *holder = (*tIter)->GetSpellAuraHolder(actualSpellInfo->Id, GetCasterGUID());
+                    SpellAuraHolder *holder = (*tIter)->GetSpellAuraHolder(actualSpellInfo->Id, GetCasterGuid());
 
                     bool addedToExisting = true;
                     if (!holder)
@@ -840,7 +840,7 @@ void AreaAura::Update(uint32 diff)
             caster->IsFriendlyTo(target) != needFriendly
            )
         {
-            target->RemoveSingleAuraFromSpellAuraHolder(GetId(), GetEffIndex(),GetCasterGUID());
+            target->RemoveSingleAuraFromSpellAuraHolder(GetId(), GetEffIndex(), GetCasterGuid());
         }
         else if( m_areaAuraType == AREA_AURA_PARTY)         // check if in same sub group
         {
@@ -854,10 +854,10 @@ void AreaAura::Update(uint32 diff)
                 {
                     Player* checkTarget = target->GetCharmerOrOwnerPlayerOrPlayerItself();
                     if(!checkTarget || !pGroup->SameSubGroup(check, checkTarget))
-                        target->RemoveSingleAuraFromSpellAuraHolder(GetId(), GetEffIndex(),GetCasterGUID());
+                        target->RemoveSingleAuraFromSpellAuraHolder(GetId(), GetEffIndex(), GetCasterGuid());
                 }
                 else
-                    target->RemoveSingleAuraFromSpellAuraHolder(GetId(), GetEffIndex(),GetCasterGUID());
+                    target->RemoveSingleAuraFromSpellAuraHolder(GetId(), GetEffIndex(), GetCasterGuid());
             }
         }
         else if( m_areaAuraType == AREA_AURA_RAID)          // TODO: fix me!
@@ -872,16 +872,16 @@ void AreaAura::Update(uint32 diff)
                 {
                     Player* checkTarget = target->GetCharmerOrOwnerPlayerOrPlayerItself();
                     if(!checkTarget)
-                        target->RemoveSingleAuraFromSpellAuraHolder(GetId(), GetEffIndex(), GetCasterGUID());
+                        target->RemoveSingleAuraFromSpellAuraHolder(GetId(), GetEffIndex(), GetCasterGuid());
                 }
                 else
-                    target->RemoveSingleAuraFromSpellAuraHolder(GetId(), GetEffIndex(), GetCasterGUID());
+                    target->RemoveSingleAuraFromSpellAuraHolder(GetId(), GetEffIndex(), GetCasterGuid());
             }
         }
         else if (m_areaAuraType == AREA_AURA_PET || m_areaAuraType == AREA_AURA_OWNER)
         {
             if (target->GetObjectGuid() != caster->GetCharmerOrOwnerGuid())
-                target->RemoveSingleAuraFromSpellAuraHolder(GetId(), GetEffIndex(), GetCasterGUID());
+                target->RemoveSingleAuraFromSpellAuraHolder(GetId(), GetEffIndex(), GetCasterGuid());
         }
     }
 }
@@ -1960,7 +1960,7 @@ void Aura::TriggerSpell()
                 return;
             case 53563:                                     // Beacon of Light
                 // original caster must be target (beacon)
-                target->CastSpell(target, trigger_spell_id, true, NULL, this, target->GetGUID());
+                target->CastSpell(target, trigger_spell_id, true, NULL, this, target->GetObjectGuid());
                 return;
             case 56654:                                     // Rapid Recuperation (triggered energize have baspioints == 0)
             case 58882:
@@ -1968,6 +1968,11 @@ void Aura::TriggerSpell()
                 int32 mana = target->GetMaxPower(POWER_MANA) * m_modifier.m_amount / 100;
                 triggerTarget->CastCustomSpell(triggerTarget, trigger_spell_id, &mana, NULL, NULL, true, NULL, this);
                 return;
+            }
+            case 71340:
+            {
+                triggerTarget->CastSpell(triggerTarget, 71341, true);
+                break;
             }
         }
     }
@@ -5808,9 +5813,9 @@ void Aura::HandlePeriodicDamage(bool apply, bool Real)
         if(spellProto->Id == 41917)
             target->CastSpell(target, 41915, true);
         else if (spellProto->Id == 74562) // SPELL_FIERY_COMBUSTION - Ruby sanctum boss Halion
-            target->CastSpell(target, 74607, true, NULL, NULL, GetCasterGUID());
+            target->CastSpell(target, 74607, true, NULL, NULL, GetCasterGuid());
         else if (spellProto->Id == 74792) // SPELL_SOUL_CONSUMPTION - Ruby sanctum boss Halion
-            target->CastSpell(target, 74799, true, NULL, NULL, GetCasterGUID());
+            target->CastSpell(target, 74799, true, NULL, NULL, GetCasterGuid());
     }
 }
 
@@ -7539,12 +7544,12 @@ void Aura::PeriodicTick()
                     }
                     case 74562: // SPELL_FIERY_COMBUSTION - Ruby sanctum boss Halion, added mark (74567, dummy) every tick
                     {
-                        target->CastSpell(target, 74567, true, NULL, NULL, GetCasterGUID());
+                        target->CastSpell(target, 74567, true, NULL, NULL, GetCasterGuid());
                         break;
                     }
                     case 74792: // SPELL_SOUL_CONSUMPTION - Ruby sanctum boss Halion, added mark (74795, dummy) every tick
                     {
-                        target->CastSpell(target, 74795, true, NULL, NULL, GetCasterGUID());
+                        target->CastSpell(target, 74795, true, NULL, NULL, GetCasterGuid());
                         break;
                     }
                     case 67297:
@@ -8460,7 +8465,7 @@ void Aura::PeriodicDummyTick()
                     Unit *caster = GetCaster();
 
                     if (caster && target)
-                        caster->CastSpell(target, (spell->Id == 62717) ? 65722 : 65723, true, 0, this, this->GetCasterGUID(), this->GetSpellProto());
+                        caster->CastSpell(target, (spell->Id == 62717) ? 65722 : 65723, true, 0, this, this->GetCasterGuid(), this->GetSpellProto());
                     return;
                 }
                 case 69008:                                 // Soulstorm (OOC aura)
@@ -8492,21 +8497,6 @@ void Aura::PeriodicDummyTick()
                     target->CastCustomSpell(target, 66240, &damage, NULL, NULL, true, NULL, this);
                     if (Unit* caster = GetCaster())
                         target->CastCustomSpell(caster, 66125, &heal, NULL, NULL, true, NULL, this);
-                    return;
-                }
-                case 71340:                                // Pact of darkfallen remove effect
-                {
-                    int32 radius = m_modifier.m_amount  / 1000;
-                    bool inRadius = true;
-                    Map::PlayerList const& pList = target->GetMap()->GetPlayers();
-                    for (Map::PlayerList::const_iterator itr = pList.begin(); itr != pList.end(); ++itr)
-                        if (itr->getSource() && itr->getSource()->HasAura(spell->Id) && !itr->getSource()->IsWithinDistInMap(target,radius))
-                        {
-                            inRadius = false;
-                            break;
-                        }
-                    if (inRadius)
-                        target->RemoveAurasDueToSpell(spell->Id);
                     return;
                 }
 // Exist more after, need add later
@@ -8878,7 +8868,7 @@ void Aura::HandleAuraLinked(bool apply, bool Real)
     if (apply)
         GetTarget()->CastSpell(GetTarget(), linkedSpell, true, NULL, this);
     else
-        GetTarget()->RemoveAurasByCasterSpell(linkedSpell, GetCasterGUID());
+        GetTarget()->RemoveAurasByCasterSpell(linkedSpell, GetCasterGuid());
 }
 
 void Aura::HandleAuraAddMechanicAbilities(bool apply, bool Real)
@@ -8925,6 +8915,52 @@ void Aura::HandleAuraOpenStable(bool apply, bool Real)
         player->GetSession()->SendStablePet(player->GetObjectGuid());
 
     // client auto close stable dialog at !apply aura
+}
+
+void Aura::HandleAuraMirrorImage(bool apply, bool Real)
+{
+    if (!Real)
+        return;
+
+    Unit* target = GetTarget();
+
+    if (!target)
+        return;
+
+    if (apply)
+    {
+        Unit* caster = GetCaster();
+        if (target->GetTypeId() == TYPEID_UNIT)
+        {
+            Creature* pCreature = (Creature*)target;
+            pCreature->SetByteValue(UNIT_FIELD_BYTES_0, 0, caster->getRace());
+            pCreature->SetByteValue(UNIT_FIELD_BYTES_0, 1, caster->getClass());
+            pCreature->SetByteValue(UNIT_FIELD_BYTES_0, 2, caster->getGender());
+            pCreature->SetByteValue(UNIT_FIELD_BYTES_0, 3, caster->getPowerType());
+        }
+        target->SetFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_CLONED);
+
+        target->SetDisplayId(caster->GetDisplayId());
+    }
+    else
+    {
+        if (target->GetTypeId() == TYPEID_UNIT)
+        {
+            Creature* pCreature = (Creature*)target;
+
+            const CreatureInfo* cinfo = pCreature->GetCreatureInfo();
+            const CreatureModelInfo* minfo = sObjectMgr.GetCreatureModelInfo(pCreature->GetNativeDisplayId());
+
+            pCreature->SetByteValue(UNIT_FIELD_BYTES_0, 0, 0);
+            pCreature->SetByteValue(UNIT_FIELD_BYTES_0, 1, cinfo->unit_class);
+            pCreature->SetByteValue(UNIT_FIELD_BYTES_0, 2, minfo->gender);
+            pCreature->SetByteValue(UNIT_FIELD_BYTES_0, 3, 0);
+        }
+
+        target->RemoveFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_CLONED);
+
+        target->SetDisplayId(target->GetNativeDisplayId());
+    }
 }
 
 void Aura::HandleAuraConvertRune(bool apply, bool Real)
@@ -9098,12 +9134,6 @@ bool Aura::IsLastAuraOnHolder()
         if (i != GetEffIndex() && GetHolder()->m_auras[i])
             return false;
     return true;
-}
-
-bool Aura::HasMechanic(uint32 mechanic) const
-{
-    return GetSpellProto()->Mechanic == mechanic ||
-        GetSpellProto()->EffectMechanic[m_effIndex] == mechanic;
 }
 
 SpellAuraHolder::SpellAuraHolder(SpellEntry const* spellproto, Unit *target, WorldObject *caster, Item *castItem) :
@@ -10406,13 +10436,13 @@ void SpellAuraHolder::HandleSpellSpecificBoosts(bool apply)
     else
     {
         if (spellId1)
-            m_target->RemoveAurasByCasterSpell(spellId1, GetCasterGUID());
+            m_target->RemoveAurasByCasterSpell(spellId1, GetCasterGuid());
         if (spellId2)
-            m_target->RemoveAurasByCasterSpell(spellId2, GetCasterGUID());
+            m_target->RemoveAurasByCasterSpell(spellId2, GetCasterGuid());
         if (spellId3)
-            m_target->RemoveAurasByCasterSpell(spellId3, GetCasterGUID());
+            m_target->RemoveAurasByCasterSpell(spellId3, GetCasterGuid());
         if (spellId4)
-            m_target->RemoveAurasByCasterSpell(spellId4, GetCasterGUID());
+            m_target->RemoveAurasByCasterSpell(spellId4, GetCasterGuid());
     }
 
     SetInUse(false);
@@ -10465,7 +10495,7 @@ void SpellAuraHolder::Update(uint32 diff)
         Unit* caster = GetCaster();
         if(!caster)
         {
-            m_target->RemoveAurasByCasterSpell(GetId(), GetCasterGUID());
+            m_target->RemoveAurasByCasterSpell(GetId(), GetCasterGuid());
             return;
         }
 
@@ -10641,7 +10671,7 @@ bool Aura::IsEffectStacking()
     return true;
 }
 
-void Aura::HandleAuraMirrorImage(bool Apply, bool Real)
+/*void Aura::HandleAuraMirrorImage(bool Apply, bool Real)
 {
     if (!Real)
         return;
@@ -10655,14 +10685,14 @@ void Aura::HandleAuraMirrorImage(bool Apply, bool Real)
             return;
         // Set display id
         target->SetDisplayId(caster->GetDisplayId());
-        target->SetFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_MIRROR_IMAGE);
+        target->SetFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_CLONED);
     }
     else
     {
         target->SetDisplayId(target->GetNativeDisplayId());
-        target->RemoveFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_MIRROR_IMAGE);
+        target->RemoveFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_CLONED);
     }
-}
+}*/ 
 
 void Aura::HandleAuraModReflectSpells(bool Apply, bool Real)
 {
