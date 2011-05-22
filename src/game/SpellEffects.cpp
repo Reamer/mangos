@@ -414,11 +414,10 @@ void Spell::EffectSchoolDMG(SpellEffectIndex effect_idx)
                         if (!unitTarget)
                             return;
 
-                        // no damage info in spell? simple power 400 * 2^stack (from Tooltip)
+                        // no damage info in spell? simple power 400 * 2^stack (from Tooltip) - for better performence 200 << (shift) Stack
                         if (SpellAuraHolder *holder = unitTarget->GetSpellAuraHolder(62039))
                         {
-                            double stackamount = double(holder->GetStackAmount());
-                            damage = 400 * pow(2,stackamount-1);
+                            damage = 200 << holder->GetStackAmount();
                         }
                         break;
                     }
