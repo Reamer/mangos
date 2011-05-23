@@ -9644,6 +9644,9 @@ void Spell::EffectKnockBack(SpellEffectIndex eff_idx)
     if(!unitTarget)
         return;
 
+    if (unitTarget->IsInWater())
+        return;
+
     // Can't knockback rooted target
     if (unitTarget->hasUnitState(UNIT_STAT_ROOT))
         return;
