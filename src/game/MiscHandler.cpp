@@ -264,8 +264,7 @@ void WorldSession::HandleLogoutRequestOpcode( WorldPacket & /*recv_data*/ )
 {
     DEBUG_LOG( "WORLD: Recvd CMSG_LOGOUT_REQUEST Message, security - %u", GetSecurity() );
 
-    ObjectGuid lootGuid = GetPlayer()->GetLootGuid();
-    if (!lootGuid.IsEmpty())
+    if (ObjectGuid lootGuid = GetPlayer()->GetLootGuid())
         DoLootRelease(lootGuid);
 
     //Can not logout if...
@@ -472,7 +471,7 @@ void WorldSession::HandleAddFriendOpcodeCallBack(QueryResult *result, uint32 acc
         return;
 
     FriendsResult friendResult = FRIEND_NOT_FOUND;
-    if (!friendGuid.IsEmpty())
+    if (friendGuid)
     {
         if (friendGuid == session->GetPlayer()->GetObjectGuid())
             friendResult = FRIEND_SELF;
@@ -505,7 +504,7 @@ void WorldSession::HandleAddFriendOpcodeCallBack(QueryResult *result, uint32 acc
 
 void WorldSession::HandleDelFriendOpcode( WorldPacket & recv_data )
 {
-    uint64 friendGuid;
+    ObjectGuid friendGuid;
 
     DEBUG_LOG( "WORLD: Received CMSG_DEL_FRIEND" );
 
@@ -552,7 +551,7 @@ void WorldSession::HandleAddIgnoreOpcodeCallBack(QueryResult *result, uint32 acc
         return;
 
     FriendsResult ignoreResult = FRIEND_IGNORE_NOT_FOUND;
-    if (!ignoreGuid.IsEmpty())
+    if (ignoreGuid)
     {
         if (ignoreGuid == session->GetPlayer()->GetObjectGuid())
             ignoreResult = FRIEND_IGNORE_SELF;
@@ -575,7 +574,7 @@ void WorldSession::HandleAddIgnoreOpcodeCallBack(QueryResult *result, uint32 acc
 
 void WorldSession::HandleDelIgnoreOpcode( WorldPacket & recv_data )
 {
-    uint64 ignoreGuid;
+    ObjectGuid ignoreGuid;
 
     DEBUG_LOG( "WORLD: Received CMSG_DEL_IGNORE" );
 
@@ -783,8 +782,13 @@ void WorldSession::HandleAreaTriggerOpcode(WorldPacket & recv_data)
 
             // need find areatrigger to inner dungeon for landing point
             if (at->target_mapId != corpseMapId)
+            {
                 if (AreaTrigger const* corpseAt = sObjectMgr.GetMapEntranceTrigger(corpseMapId))
+                {
                     at = corpseAt;
+                    targetMapEntry = sMapStore.LookupEntry(at->target_mapId);
+                }
+            }
 
             // now we can resurrect player, and then check teleport requirements
             pl->ResurrectPlayer(0.5f);
@@ -1034,7 +1038,7 @@ void WorldSession::HandleMoveUnRootAck(WorldPacket& recv_data)
     recv_data >> guid;
 
     // now can skip not our packet
-    if(_player->GetGUID() != guid)
+    if(_player->GetObjectGuid() != guid)
     {
         recv_data.rpos(recv_data.wpos());                   // prevent warnings spam
         return;

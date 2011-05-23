@@ -315,7 +315,7 @@ void WorldSession::HandleCharCreateOpcode( WorldPacket & recv_data )
         return;
     }
 
-    if (sObjectMgr.GetPlayerGUIDByName(name))
+    if (sObjectMgr.GetPlayerGuidByName(name))
     {
         data << (uint8)CHAR_CREATE_NAME_IN_USE;
         SendPacket( &data );
@@ -601,7 +601,7 @@ void WorldSession::HandlePlayerLoginOpcode( WorldPacket & recv_data )
 
 // Playerbot mod. Can't easily reuse HandlePlayerLoginOpcode for logging in bots because it assumes
 // a WorldSession exists for the bot. The WorldSession for a bot is created after the character is loaded.
-void PlayerbotMgr::AddPlayerBot(uint64 playerGuid)
+void PlayerbotMgr::AddPlayerBot(ObjectGuid playerGuid)
 {
     // has bot already been added?
     if (sObjectMgr.GetPlayer(playerGuid))
@@ -1244,8 +1244,8 @@ void WorldSession::HandleCharCustomizeOpcode(WorldPacket& recv_data)
     }
 
     // character with this name already exist
-    ObjectGuid newguid = sObjectMgr.GetPlayerGUIDByName(newname);
-    if (!newguid.IsEmpty() && newguid != guid)
+    ObjectGuid newguid = sObjectMgr.GetPlayerGuidByName(newname);
+    if (newguid && newguid != guid)
     {
         WorldPacket data(SMSG_CHAR_CUSTOMIZE, 1);
         data << uint8(CHAR_CREATE_NAME_IN_USE);
@@ -1306,7 +1306,7 @@ void WorldSession::HandleEquipmentSetSaveOpcode(WorldPacket &recv_data)
 
         Item *item = _player->GetItemByPos(INVENTORY_SLOT_BAG_0, i);
 
-        if(!item && !itemGuid.IsEmpty())                    // cheating check 1
+        if(!item && itemGuid)                               // cheating check 1
             return;
 
         if(item && item->GetObjectGuid() != itemGuid)       // cheating check 2

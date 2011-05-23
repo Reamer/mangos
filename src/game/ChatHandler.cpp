@@ -206,6 +206,9 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
             recv_data >> to;
             recv_data >> msg;
 
+            if (ChatHandler(this).ParseCommands(msg.c_str()))
+                break;
+
             if (!processChatmessageFurtherAfterSecurityChecks(msg, lang))
                 return;
 
@@ -441,6 +444,9 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
             std::string msg;
             recv_data >> msg;
 
+            if (ChatHandler(this).ParseCommands(msg.c_str()))
+                break;
+
             if (!processChatmessageFurtherAfterSecurityChecks(msg, lang))
                 return;
 
@@ -487,6 +493,9 @@ void WorldSession::HandleMessagechatOpcode( WorldPacket & recv_data )
             std::string channel, msg;
             recv_data >> channel;
             recv_data >> msg;
+
+            if (ChatHandler(this).ParseCommands(msg.c_str()))
+                break;
 
             if (!processChatmessageFurtherAfterSecurityChecks(msg, lang))
                 return;
@@ -651,7 +660,7 @@ void WorldSession::HandleTextEmoteOpcode( WorldPacket & recv_data )
 
 void WorldSession::HandleChatIgnoredOpcode(WorldPacket& recv_data )
 {
-    uint64 iguid;
+    ObjectGuid iguid;
     uint8 unk;
     //DEBUG_LOG("WORLD: Received CMSG_CHAT_IGNORED");
 

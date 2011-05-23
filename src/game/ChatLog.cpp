@@ -24,6 +24,7 @@
 #include "Guild.h"
 #include "GuildMgr.h"
 #include "ObjectMgr.h"
+#include "GuildMgr.h"
 #include "ObjectGuid.h"
 #include "SpellAuras.h"
 #include "Policies/SingletonImp.h"

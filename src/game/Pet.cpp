@@ -547,21 +547,21 @@ void Pet::Update(uint32 update_diff, uint32 diff)
             Unit* owner = GetOwner();
             if (!owner)
             {
-                sLog.outError("Pet %d lost owner, removed. ", GetGUID());
+                sLog.outError("Pet %d lost owner, removed. ", GetObjectGuid().GetCounter());
                 Unsummon(PET_SAVE_NOT_IN_SLOT);
                 return;
             }
 
             if (!owner->isAlive())
             {
-                DEBUG_LOG("Pet's %d owner died, removed. ", GetGUID());
+                DEBUG_LOG("Pet's %d owner died, removed. ", GetObjectGuid().GetCounter());
                 Unsummon(getPetType() == HUNTER_PET ? PET_SAVE_AS_CURRENT : PET_SAVE_NOT_IN_SLOT, owner);
                 return;
             }
 
             if ((!IsWithinDistInMap(owner, GetMap()->GetVisibilityDistance()) && !owner->GetCharmGuid().IsEmpty()) || (isControlled() && owner->GetPetGuid().IsEmpty()))
             {
-                DEBUG_LOG("Pet %d lost control, removed. Owner = %d, distance = %d, pet GUID = ", GetGUID(),owner->GetGUID(), GetDistance2d(owner), owner->GetPetGuid().GetCounter());
+                DEBUG_LOG("Pet %d lost control, removed. Owner = %d, distance = %d, pet GUID = ", GetObjectGuid().GetCounter(), owner->GetObjectGuid().GetCounter(), GetDistance2d(owner), owner->GetPetGuid().GetCounter());
                 Unsummon(PET_SAVE_REAGENTS);
                 return;
             }
@@ -571,7 +571,7 @@ void Pet::Update(uint32 update_diff, uint32 diff)
                 GroupPetList m_groupPets = owner->GetPets();
                 if (m_groupPets.find(GetObjectGuid().GetRawValue()) == m_groupPets.end())
                 {
-                    sLog.outError("Pet %d controlled, but not in list, removed.", GetGUID());
+                    sLog.outError("Pet %d controlled, but not in list, removed.", GetObjectGuid().GetCounter());
                     Unsummon(getPetType() == HUNTER_PET ? PET_SAVE_AS_DELETED : PET_SAVE_NOT_IN_SLOT, owner);
                     return;
                 }
@@ -579,7 +579,7 @@ void Pet::Update(uint32 update_diff, uint32 diff)
             else 
                 if (!IsWithinDistInMap(owner, GetMap()->GetVisibilityDistance()))
                 {
-                    sLog.outError("Not controlled pet %d lost view from owner, removed. Owner = %d, distance = %d, pet GUID = ", GetGUID(),owner->GetGUID(), GetDistance2d(owner), owner->GetPetGuid().GetCounter());
+                    sLog.outError("Not controlled pet %d lost view from owner, removed. Owner = %d, distance = %d, pet GUID = ", GetObjectGuid().GetCounter(), owner->GetObjectGuid().GetCounter(), GetDistance2d(owner), owner->GetPetGuid().GetCounter());
                     Unsummon(PET_SAVE_AS_DELETED);
                     return;
                 }
@@ -590,7 +590,7 @@ void Pet::Update(uint32 update_diff, uint32 diff)
                     m_duration -= (int32)update_diff;
                 else
                 {
-                    DEBUG_LOG("Pet %d removed with duration expired.", GetGUID());
+                    DEBUG_LOG("Pet %d removed with duration expired.", GetObjectGuid().GetCounter());
                     Unsummon(PET_SAVE_AS_DELETED, owner);
                     return;
                 }
@@ -1201,7 +1201,15 @@ void Pet::_SaveSpellCooldowns()
 
 void Pet::_LoadSpells()
 {
-    QueryResult *result = CharacterDatabase.PQuery("SELECT spell,active FROM pet_spell WHERE guid = '%u'",m_charmInfo->GetPetNumber());
+    uint8 spec = 0;
+    if (getPetType() == HUNTER_PET)
+    {
+        Unit* owner = GetOwner();
+        if(owner && owner->GetTypeId() == TYPEID_PLAYER)
+            spec = ((Player*)owner)->GetActiveSpec();
+    }
+
+    QueryResult *result = CharacterDatabase.PQuery("SELECT spell,active FROM pet_spell WHERE guid = '%u' AND `spec` = '%u'",m_charmInfo->GetPetNumber(), spec);
 
     if(result)
     {
@@ -1222,6 +1230,14 @@ void Pet::_SaveSpells()
     static SqlStatementID delSpell ;
     static SqlStatementID insSpell ;
 
+    uint8 spec = 0;
+    if (getPetType() == HUNTER_PET)
+    {
+        Unit* owner = GetOwner();
+        if(owner && owner->GetTypeId() == TYPEID_PLAYER)
+            spec = ((Player*)owner)->GetActiveSpec();
+    }
+
     for (PetSpellMap::iterator itr = m_spells.begin(), next = m_spells.begin(); itr != m_spells.end(); itr = next)
     {
         ++next;
@@ -1234,24 +1250,24 @@ void Pet::_SaveSpells()
         {
             case PETSPELL_REMOVED:
                 {
-                    SqlStatement stmt = CharacterDatabase.CreateStatement(delSpell, "DELETE FROM pet_spell WHERE guid = ? and spell = ?");
-                    stmt.PExecute(m_charmInfo->GetPetNumber(), itr->first);
+                    SqlStatement stmt = CharacterDatabase.CreateStatement(delSpell, "DELETE FROM pet_spell WHERE guid = ? AND spell = ? AND spec = ?");
+                    stmt.PExecute(m_charmInfo->GetPetNumber(), itr->first, spec);
                     m_spells.erase(itr);
                 }
                 continue;
             case PETSPELL_CHANGED:
                 {
-                    SqlStatement stmt = CharacterDatabase.CreateStatement(delSpell, "DELETE FROM pet_spell WHERE guid = ? and spell = ?");
-                    stmt.PExecute(m_charmInfo->GetPetNumber(), itr->first);
+                    SqlStatement stmt = CharacterDatabase.CreateStatement(delSpell, "DELETE FROM pet_spell WHERE guid = ? AND spell = ? AND spec = ?");
+                    stmt.PExecute(m_charmInfo->GetPetNumber(), itr->first, spec);
 
-                    stmt = CharacterDatabase.CreateStatement(insSpell, "INSERT INTO pet_spell (guid,spell,active) VALUES (?, ?, ?)");
-                    stmt.PExecute(m_charmInfo->GetPetNumber(), itr->first, uint32(itr->second.active));
+                    stmt = CharacterDatabase.CreateStatement(insSpell, "INSERT INTO pet_spell (guid,spell,active,spec) VALUES (?, ?, ?, ?)");
+                    stmt.PExecute(m_charmInfo->GetPetNumber(), itr->first, uint32(itr->second.active), spec);
                 }
                 break;
             case PETSPELL_NEW:
                 {
-                    SqlStatement stmt = CharacterDatabase.CreateStatement(insSpell, "INSERT INTO pet_spell (guid,spell,active) VALUES (?, ?, ?)");
-                    stmt.PExecute(m_charmInfo->GetPetNumber(), itr->first, uint32(itr->second.active));
+                    SqlStatement stmt = CharacterDatabase.CreateStatement(insSpell, "INSERT INTO pet_spell (guid,spell,active,spec) VALUES (?, ?, ?, ?)");
+                    stmt.PExecute(m_charmInfo->GetPetNumber(), itr->first, uint32(itr->second.active), spec);
                 }
                 break;
             case PETSPELL_UNCHANGED:
@@ -2942,9 +2958,6 @@ bool Pet::Summon()
             return false;
         }
     }
-
-    if (owner->GetTypeId() == TYPEID_PLAYER)
-        ((Player*)owner)->AddKnownPetName(GetCharmInfo()->GetPetNumber(),GetName());
 
     if(owner->IsPvP())
         SetPvP(true);

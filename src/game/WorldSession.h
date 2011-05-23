@@ -811,8 +811,8 @@ class MANGOS_DLL_SPEC WorldSession
         void HandleCalendarGetNumPending(WorldPacket& recv_data);
 
         void HandleSpellClick(WorldPacket& recv_data);
-        void HandleMirrorImageDataRequest( WorldPacket & recv_data );
         void HandleUpdateProjectilePosition(WorldPacket & recv_data);
+        void HandleGetMirrorimageData(WorldPacket& recv_data);
         void HandleAlterAppearanceOpcode(WorldPacket& recv_data);
         void HandleRemoveGlyphOpcode(WorldPacket& recv_data);
         void HandleCharCustomizeOpcode(WorldPacket& recv_data);
@@ -851,7 +851,7 @@ class MANGOS_DLL_SPEC WorldSession
         void SendLfgQueueStatus(LFGDungeonEntry const* dungeon, LFGQueueStatus* status);
         void SendLfgRoleChosen(ObjectGuid guid, uint8 roles);
         void SendLfgRoleCheckUpdate();
-        void SendLfgBootPlayer(LFGPlayerBoot* pBoot);
+        void SendLfgBootPlayer();
         void SendLfgUpdateProposal(LFGProposal* proposal);
         void SendLfgOfferContinue(LFGDungeonEntry const* dungeon);
         void SendLfgTeleportError(LFGTeleportError msg);

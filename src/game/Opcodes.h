@@ -444,7 +444,7 @@ enum Opcodes
     SMSG_QUESTUPDATE_FAILEDTIMER                    = 0x197,
     SMSG_QUESTUPDATE_COMPLETE                       = 0x198,
     SMSG_QUESTUPDATE_ADD_KILL                       = 0x199,
-    SMSG_QUESTUPDATE_ADD_ITEM_OBOSLETE              = 0x19A,
+    SMSG_QUESTUPDATE_ADD_ITEM_OBSOLETE              = 0x19A,
     CMSG_QUEST_CONFIRM_ACCEPT                       = 0x19B,
     SMSG_QUEST_CONFIRM_ACCEPT                       = 0x19C,
     CMSG_PUSHQUESTTOPARTY                           = 0x19D,
@@ -1352,8 +1352,8 @@ enum Opcodes
 enum SessionStatus
 {
     STATUS_AUTHED = 0,                                      ///< Player authenticated (_player==NULL, m_playerRecentlyLogout = false or will be reset before handler call, m_GUID have garbage)
-    STATUS_LOGGEDIN,                                        ///< Player in game (_player!=NULL, m_GUID == _player->GetGUID(), inWorld())
-    STATUS_TRANSFER,                                        ///< Player transferring to another map (_player!=NULL, m_GUID == _player->GetGUID(), !inWorld())
+    STATUS_LOGGEDIN,                                        ///< Player in game (_player!=NULL, m_GUID == _player->GetObjectGuid(), inWorld())
+    STATUS_TRANSFER,                                        ///< Player transferring to another map (_player!=NULL, m_GUID == _player->GetObjectGuid(), !inWorld())
     STATUS_LOGGEDIN_OR_RECENTLY_LOGGEDOUT,                  ///< _player!= NULL or _player==NULL && m_playerRecentlyLogout, m_GUID store last _player guid)
     STATUS_NEVER,                                           ///< Opcode not accepted from client (deprecated or server side only)
     STATUS_UNHANDLED                                        ///< We don' handle this opcode yet

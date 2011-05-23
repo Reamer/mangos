@@ -183,7 +183,7 @@ namespace MaNGOS
                 data << uint32(0);                          // 2.1.0
                 data << uint32(strlen(i_source->GetName())+1);
                 data << i_source->GetName();
-                data << uint64(0);                          // Unit Target - isn't important for bgs
+                data << ObjectGuid();                       // Unit Target - isn't important for bgs
                 data << uint32(strlen(str)+1);
                 data << str;
                 data << uint8(0);                           // ChatTag - for bgs allways 0?
@@ -462,6 +462,12 @@ void BattleGround::Update(uint32 diff)
 
                         plr->RemoveAurasDueToSpell(SPELL_ARENA_PREPARATION);
                     }
+
+                //Announce Arena starting
+                if (sWorld.getConfig(CONFIG_BOOL_ARENA_QUEUE_ANNOUNCER_START))
+                {
+                    sWorld.SendWorldText(LANG_ARENA_STARTED_ANNOUNCE_WORLD, GetArenaType(), GetArenaType(), GetName());
+                }
 
                 CheckArenaWinConditions();
             }
@@ -771,7 +777,7 @@ void BattleGround::EndBattleGround(Team winner)
                     }
                     std::ostringstream sql_query;
                     //                                                        gameid,              teamid,                     guid,                    changeType,             ratingChange,               teamRating,                  damageDone,                          deaths,                          healingDone,                           damageTaken,                           healingTaken,                         killingBlows,                      mapId,                 start,                   end
-                    sql_query << "INSERT INTO armory_game_chart VALUES ('" << gameID << "', '" << resultTeamID << "', '" << plr->GetGUID() << "', '" << changeType << "', '" << ratingChange  << "', '" << resultRating << "', '" << itr->second->DamageDone << "', '" << itr->second->Deaths << "', '" << itr->second->HealingDone << "', '" << itr->second->DamageTaken << "', '" << itr->second->HealingTaken << "', '" << itr->second->KillingBlows << "', '" << m_MapId << "', '" << m_StartTime << "', '" << m_EndTime << "')";
+                    sql_query << "INSERT INTO armory_game_chart VALUES ('" << gameID << "', '" << resultTeamID << "', '" << plr->GetObjectGuid().GetCounter()<< "', '" << changeType << "', '" << ratingChange  << "', '" << resultRating << "', '" << itr->second->DamageDone << "', '" << itr->second->Deaths << "', '" << itr->second->HealingDone << "', '" << itr->second->DamageTaken << "', '" << itr->second->HealingTaken << "', '" << itr->second->KillingBlows << "', '" << m_MapId << "', '" << m_StartTime << "', '" << m_EndTime << "')";
                     CharacterDatabase.Execute(sql_query.str().c_str());
                 }
                 /** World of Warcraft Armory **/
@@ -1689,7 +1695,7 @@ void BattleGround::SpawnBGCreature(ObjectGuid guid, uint32 respawntime)
 
 bool BattleGround::DelObject(uint32 type)
 {
-    if (m_BgObjects[type].IsEmpty())
+    if (!m_BgObjects[type])
         return true;
 
     GameObject *obj = GetBgMap()->GetGameObject(m_BgObjects[type]);

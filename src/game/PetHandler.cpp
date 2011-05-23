@@ -131,69 +131,49 @@ void WorldSession::HandlePetNameQueryOpcode(WorldPacket& recv_data)
     SendPetNameQuery(petguid, petnumber);
 }
 
-void WorldSession::SendPetNameQuery( ObjectGuid petguid, uint32 petnumber)
+void WorldSession::SendPetNameQuery(ObjectGuid petguid, uint32 petnumber)
 {
-    Creature* pet = GetPlayer()->GetMap()->GetAnyTypeCreature(petguid);
-
-    std::string name = GetPlayer()->GetKnownPetName(petnumber);
-
-    if (pet && pet->IsPet() && ((Pet*)pet)->IsInWorld() && pet->GetCharmInfo()->GetPetNumber() == petnumber)
+    Creature* pet = _player->GetMap()->GetAnyTypeCreature(petguid);
+    if (!pet || !pet->GetCharmInfo() || pet->GetCharmInfo()->GetPetNumber() != petnumber)
     {
-        name = pet->GetName();
-        WorldPacket data(SMSG_PET_NAME_QUERY_RESPONSE, (4+4+name.size()+1));
+        WorldPacket data(SMSG_PET_NAME_QUERY_RESPONSE, (4+1+4+1));
         data << uint32(petnumber);
-        data << name.c_str();
-        data << uint32(pet->GetUInt32Value(UNIT_FIELD_PET_NAME_TIMESTAMP));
-
-        if (((Pet*)pet)->GetDeclinedNames())
-        {
-            data << uint8(1);
-            for(int i = 0; i < MAX_DECLINED_NAME_CASES; ++i)
-                data << ((Pet*)pet)->GetDeclinedNames()->name[i];
-        }
-        else
-            data << uint8(0);
-
-        GetPlayer()->GetSession()->SendPacket(&data);
-    }
-    else if ( pet && name != "" )
-    {
-        WorldPacket data(SMSG_PET_NAME_QUERY_RESPONSE, (4+4+name.size()+1));
-        data << uint32(petnumber);
-        data << name.c_str();
-        data << uint32(time(NULL));
         data << uint8(0);
-        GetPlayer()->GetSession()->SendPacket(&data);
-    }
-    else if (pet && pet->IsInWorld() && pet->GetCharmInfo()->GetPetNumber() == petnumber)
-    {
-        name = pet->GetName();
-        WorldPacket data(SMSG_PET_NAME_QUERY_RESPONSE, (4+4+name.size()+1));
-        data << uint32(petnumber);
-        data << name.c_str();
-        data << uint32(time(NULL));
+        data << uint32(0);
         data << uint8(0);
-        GetPlayer()->GetSession()->SendPacket(&data);
+        _player->GetSession()->SendPacket(&data);
+        return;
+    }
+
+    std::string name = pet->GetName();
+
+    WorldPacket data(SMSG_PET_NAME_QUERY_RESPONSE, (4+4+name.size()+1));
+    data << uint32(petnumber);
+    data << name.c_str();
+    data << uint32(pet->GetUInt32Value(UNIT_FIELD_PET_NAME_TIMESTAMP));
+
+    if (pet->IsPet() && ((Pet*)pet)->GetDeclinedNames())
+    {
+        data << uint8(1);
+        for (int i = 0; i < MAX_DECLINED_NAME_CASES; ++i)
+            data << ((Pet*)pet)->GetDeclinedNames()->name[i];
     }
     else
-    {
-        WorldPacket data(SMSG_PET_NAME_QUERY_RESPONSE, (4+1));
-        data << uint32(petnumber);
         data << uint8(0);
-        GetPlayer()->GetSession()->SendPacket(&data);
-    }
+
+    _player->GetSession()->SendPacket(&data);
 }
 
 void WorldSession::HandlePetSetAction(WorldPacket& recv_data)
 {
     DETAIL_LOG("HandlePetSetAction. CMSG_PET_SET_ACTION");
 
-    uint64 petguid;
+    ObjectGuid petGuid;
     uint8  count;
 
-    recv_data >> petguid;
+    recv_data >> petGuid;
 
-    Creature* pet = _player->GetMap()->GetAnyTypeCreature(petguid);
+    Creature* pet = _player->GetMap()->GetAnyTypeCreature(petGuid);
 
     if (!pet || (pet != _player->GetPet() && pet != _player->GetCharm()))
     {
@@ -316,17 +296,17 @@ void WorldSession::HandlePetRename(WorldPacket& recv_data)
 {
     DETAIL_LOG("HandlePetRename. CMSG_PET_RENAME");
 
-    uint64 petguid;
+    ObjectGuid petGuid;
     uint8 isdeclined;
 
     std::string name;
     DeclinedName declinedname;
 
-    recv_data >> petguid;
+    recv_data >> petGuid;
     recv_data >> name;
     recv_data >> isdeclined;
 
-    Pet* pet = _player->GetMap()->GetPet(petguid);
+    Pet* pet = _player->GetMap()->GetPet(petGuid);
                                                             // check it!
     if (!pet || pet->getPetType() != HUNTER_PET ||
         !pet->HasByteFlag(UNIT_FIELD_BYTES_2, 2, UNIT_CAN_BE_RENAMED) ||

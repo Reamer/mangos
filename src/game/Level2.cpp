@@ -26,6 +26,7 @@
 #include "TemporarySummon.h"
 #include "Totem.h"
 #include "Pet.h"
+#include "CreatureAI.h"
 #include "GameObject.h"
 #include "Opcodes.h"
 #include "Chat.h"
@@ -34,6 +35,7 @@
 #include "Language.h"
 #include "World.h"
 #include "GameEventMgr.h"
+#include "ScriptMgr.h"
 #include "SpellMgr.h"
 #include "MapPersistentStateMgr.h"
 #include "AccountMgr.h"
@@ -913,8 +915,7 @@ bool ChatHandler::HandleGameObjectDeleteCommand(char* args)
         return false;
     }
 
-    ObjectGuid ownerGuid = obj->GetOwnerGuid();
-    if (!ownerGuid.IsEmpty())
+    if (ObjectGuid ownerGuid = obj->GetOwnerGuid())
     {
         Unit* owner = ObjectAccessor::GetUnit(*m_session->GetPlayer(), ownerGuid);
         if (!owner || !ownerGuid.IsPlayer())
@@ -1217,7 +1218,7 @@ bool ChatHandler::HandleGUIDCommand(char* /*args*/)
 {
     ObjectGuid guid = m_session->GetPlayer()->GetSelectionGuid();
 
-    if (guid.IsEmpty())
+    if (!guid)
     {
         SendSysMessage(LANG_NO_SELECTION);
         SetSentErrorMessage(true);
@@ -1706,6 +1707,35 @@ bool ChatHandler::HandleNpcDelVendorItemCommand(char* args)
     ItemPrototype const* pProto = ObjectMgr::GetItemPrototype(itemId);
 
     PSendSysMessage(LANG_ITEM_DELETED_FROM_LIST,itemId,pProto->Name1);
+    return true;
+}
+
+//show info about AI
+bool ChatHandler::HandleNpcAIInfoCommand(char* /*args*/)
+{
+    Creature* pTarget = getSelectedCreature();
+
+    if (!pTarget)
+    {
+        SendSysMessage(LANG_SELECT_CREATURE);
+        SetSentErrorMessage(true);
+        return false;
+    }
+
+    PSendSysMessage(LANG_NPC_AI_HEADER, pTarget->GetEntry());
+
+    std::string strScript = pTarget->GetScriptName();
+    std::string strAI = pTarget->GetAIName();
+    char const* cstrAIClass = pTarget->AI() ? typeid(*pTarget->AI()).name() : " - ";
+
+    PSendSysMessage(LANG_NPC_AI_NAMES,
+        strAI.empty() ? " - " : strAI.c_str(),
+        cstrAIClass ? cstrAIClass : " - ",
+        strScript.empty() ? " - " : strScript.c_str());
+
+    if (pTarget->AI())
+        pTarget->AI()->GetAIInformation(*this);
+
     return true;
 }
 
@@ -2239,7 +2269,7 @@ bool ChatHandler::HandleNpcTameCommand(char* /*args*/)
 
     Player *player = m_session->GetPlayer ();
 
-    if (!player->GetPetGuid().IsEmpty())
+    if (player->GetPetGuid())
     {
         SendSysMessage(LANG_YOU_ALREADY_HAVE_PET);
         SetSentErrorMessage(true);
@@ -2641,7 +2671,7 @@ bool ChatHandler::HandleTicketCommand(char* args)
         {
             bool accept = m_session->GetPlayer()->isAcceptTickets();
 
-            PSendSysMessage(LANG_COMMAND_TICKETCOUNT, count, accept ?  GetMangosString(LANG_ON) : GetMangosString(LANG_OFF));
+            PSendSysMessage(LANG_COMMAND_TICKETCOUNT, count, GetOnOffStr(accept));
         }
         else
             PSendSysMessage(LANG_COMMAND_TICKETCOUNT_CONSOLE, count);

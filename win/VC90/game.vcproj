@@ -815,6 +815,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\src\game\GuildMgr.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\GuildMgr.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\game\InstanceData.cpp"
 				>
 			</File>
@@ -856,6 +864,10 @@
 			</File>
 			<File
 				RelativePath="..\..\src\game\Mail.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\MailHandler.cpp"
 				>
 			</File>
 			<File
@@ -1359,14 +1371,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\src\game\GuildMgr.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\src\game\GuildMgr.h"
-				>
-			</File>
-			<File
 				RelativePath="..\..\src\game\Item.cpp"
 				>
 			</File>
@@ -1796,7 +1800,7 @@
 			</File>
 		</Filter>
 		<Filter
-			Name="Playerbot"
+			Name="PlayerBot"
 			>
 			<File
 				RelativePath="..\..\src\game\playerbot\PlayerbotAI.cpp"
