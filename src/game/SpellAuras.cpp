@@ -1072,17 +1072,6 @@ void Aura::HandleAddModifier(bool apply, bool Real)
             case 64823:                                     // Elune's Wrath (Balance druid t8 set
                 GetHolder()->SetAuraCharges(1);
                 break;
-            // Everlasting Affliction rank 1 - 5
-            case 47201:
-            case 47202:
-            case 47203:
-            case 47204:
-            case 47205:
-            {
-                modMask0 = UI64LIT(0x2);        //Corruption
-                modMask1 = UI64LIT(0x100);      //Unstable Affliction
-                break;
-            }
         }
 
         m_spellmod = new SpellModifier(
