@@ -2642,7 +2642,7 @@ void Player::GiveXP(uint32 xp, Unit* victim)
     if (CheckRAFConditions())
     {
         // RAF bonus exp don't decrease rest exp
-        bool ReferAFriend = true;
+        ReferAFriend = true;
         bonus_xp = xp * (sWorld.getConfig(CONFIG_FLOAT_RATE_RAF_XP) - 1);
     }
     else
