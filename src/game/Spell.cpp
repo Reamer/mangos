@@ -1756,6 +1756,19 @@ struct TargetDistanceOrder : public std::binary_function<const Unit, const Unit,
     }
 };
 
+// Helper for targets furthest away to the spell target
+// The spell target is always first unless there is a target at _completely_ the same position (unbelievable case)
+struct TargetDistanceOrderFarAway : public std::binary_function<const Unit, const Unit, bool>
+{
+    const Unit* MainTarget;
+    TargetDistanceOrderFarAway(const Unit* Target) : MainTarget(Target) {};
+    // functor for operator "<"
+    bool operator()(const Unit* _Left, const Unit* _Right) const
+    {
+        return !MainTarget->GetDistanceOrder(_Left, _Right);
+    }
+};
+
 void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList& targetUnitMap)
 {
     float radius;
@@ -1845,7 +1858,6 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                     unMaxTargets = 4;
                     break;
                 case 30843:                                 // Enfeeble TODO: exclude top threat target from target selection
-                case 42005:                                 // Bloodboil TODO: need to be 5 targets(players) furthest away from caster
                 case 55665:                                 // Life Drain (h)
                 case 58917:                                 // Consume Minions
                 case 64604:                                 // Nature Bomb Freya
@@ -2189,7 +2201,17 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
             else
             {
                 FillAreaTargets(targetUnitMap, radius, PUSH_DEST_CENTER, SPELL_TARGETS_AOE_DAMAGE);
-                if (m_spellInfo->Id == 62240 || m_spellInfo->Id == 62920)
+                if (m_spellInfo->Id == 42005)                                       // Bloodboil
+                {
+                    if(!targetUnitMap.empty())
+                    {
+                        // sort the targets, that the furthest away target is at first position 
+                        targetUnitMap.sort(TargetDistanceOrderFarAway(m_caster));
+                        // manually cuting, because the spell hits only the 5 furthest away targets
+                        targetUnitMap.resize(5);
+                    }
+                }
+                else if (m_spellInfo->Id == 62240 || m_spellInfo->Id == 62920)      // Solar Flare
                 {
                     if (SpellAuraHolder *holder = m_caster->GetSpellAuraHolder(62239))
                         unMaxTargets = holder->GetStackAmount();

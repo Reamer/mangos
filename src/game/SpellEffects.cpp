@@ -7193,6 +7193,18 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
 
                     // TODO likely that this spell should have m_caster as Original caster, but conflicts atm with TARGET_ALL_FRIENDLY_UNITS_AROUND_CASTER
                     unitTarget->CastSpell(unitTarget, 39968, true);
+                    break;
+                }
+                case 40486:                                 // Eject (Black Temple - Bloodboil)
+                {
+                    if (!unitTarget)
+                        return;
+
+                    if (m_caster->GetTypeId() != TYPEID_UNIT)
+                        return;
+
+                    m_caster->getThreatManager().modifyThreatPercent(unitTarget, -40);
+                    return;
                 }
                 case 41055:                                 // Copy Weapon
                 {
