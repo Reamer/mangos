@@ -10863,20 +10863,3 @@ void Aura::HandleAuraFactionChange(bool apply, bool real)
         target->setFaction(newFaction);
 
 }
-
-void Aura::HandleAuraStopNaturalManaRegen(bool apply, bool real)
-{
-    if (!real)
-        return;
-
-    Unit* target = GetTarget();
-
-    if (!target)
-        return;
-
-    if (apply)
-        target->RemoveFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_REGENERATE_POWER);
-    else
-        target->SetFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_REGENERATE_POWER);
-
-}
