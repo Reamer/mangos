@@ -2581,6 +2581,14 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                         m_caster->CastSpell(unitTarget, 62234, true);
                     return;
                 }
+                case 64172:                                 // Titanic Storm (Ulduar - Yogg Saron)
+                {
+                    if (!unitTarget)
+                        return;
+                    if (unitTarget->HasAura(m_spellInfo->EffectBasePoints[eff_idx]))
+                        unitTarget->DealDamage(unitTarget, unitTarget->GetMaxHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
+                    return;
+                }
                 case 64385:                                 // Spinning (from Unusual Compass)
                 {
                     m_caster->SetFacingTo(frand(0, M_PI_F*2), true);
@@ -8165,6 +8173,33 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                             ((TemporarySummon*)m_caster)->UnSummon();
                     }
                     return;
+                }
+                case 64123:                                 // Lunge (Ulduar - Yogg Saron)
+                {
+                    if (!unitTarget)
+                        return;
+
+                    uint32 spellid = 0;
+                    unitTarget->GetMap()->IsRegularDifficulty() ? spellid = 64125 : spellid = 64126;
+                    unitTarget->CastSpell(unitTarget, spellid, true);
+                    break;
+                }
+                case 64466:                                 // Empowering Shadows (Ulduar - Yogg Saron)
+                {
+                    if (!unitTarget)    // ScriptTarget - Target: Yogg Saron
+                        return;
+                    // effect back to caster (Immortal Guardian)
+                    unitTarget->CastSpell(m_caster, m_spellInfo->EffectBasePoints[eff_idx], true); // spell should be 64467
+                    break;
+                }
+                case 64467:                                 // Empowering Shadows (Ulduar - Yogg Saron)
+                {
+                    if (!unitTarget)
+                        return;
+                    uint32 spellid = 0;
+                    unitTarget->GetMap()->IsRegularDifficulty() ? spellid = 64468 : spellid = 64469;
+                    unitTarget->CastSpell(unitTarget, spellid, true);
+                    break;
                 }
                 case 65044:                                 // Flames Ulduar
                 {
