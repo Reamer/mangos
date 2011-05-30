@@ -1075,6 +1075,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\src\game\WardenHandler.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\game\WaypointManager.cpp"
 				>
 			</File>
@@ -1556,6 +1560,10 @@
 			</File>
 			<File
 				RelativePath="..\..\src\game\Vehicle.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\game\WardenHandler.h"
 				>
 			</File>
 		</Filter>
