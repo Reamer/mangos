@@ -1832,6 +1832,8 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 case 61916:                                 // Lightning Whirl (10 man)
                 case 63482:                                 // Lightning Whirl (25 man)
                 case 62016:                                 // Charge Orb (Thorim)
+                case 62978:                                 // Summon Guardian (Ulduar - Yogg Saron)
+                case 63713:                                 // Dominate Mind (Ulduar - Yogg Saron)
                 case 64218:                                 // Overcharge
                 case 64465:                                 // Shadow Beacon (Ulduar - Yogg Saron)
                 case 66336:                                 // Mistress' Kiss (Trial of the Crusader, ->

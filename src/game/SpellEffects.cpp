@@ -8232,6 +8232,13 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     unitTarget->CastSpell(unitTarget, spellId, true); 
                     return; 
                 }
+                case 65238:                                 // Shattered Illusion (Ulduar - Yogg Saron)
+                {
+                    if (!unitTarget)
+                        return;
+                    unitTarget->RemoveAurasDueToSpell(m_spellInfo->EffectBasePoints[eff_idx]);
+                    return;
+                }
                 case 64104:                                 // Quest Credit - Trigger - Dummy - 01
                 case 64107:                                 // Quest Credit - Trigger - Dummy - 02
                 {
