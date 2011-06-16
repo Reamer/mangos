@@ -146,6 +146,8 @@ enum UnitStandStateType
     UNIT_STAND_STATE_CUSTOM            = 9                  // Depends on model animation. Submerge, freeze, hide, hibernate, rest
 };
 
+#define MAX_UNIT_STAND_STATE             10
+
 // byte flags value (UNIT_FIELD_BYTES_1,2)
 enum UnitStandFlags
 {
@@ -1061,7 +1063,7 @@ struct CharmInfo
         bool HasReactState(ReactStates state) { return (m_reactState == state); }
 
         void InitPossessCreateSpells();
-        void InitVehicleCreateSpells();
+        void InitVehicleCreateSpells(uint8 seatId = 0);
         void InitCharmCreateSpells();
         void InitPetActionBar();
         void InitEmptyActionBar();
@@ -1173,7 +1175,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         void ApplyDiminishingAura(DiminishingGroup  group, bool apply);
         void ClearDiminishings() { m_Diminishing.clear(); }
 
-        virtual void Update( uint32 update_diff, uint32 time );
+        void Update(uint32 update_diff, uint32 time) override;
 
         void setAttackTimer(WeaponAttackType type, uint32 time) { m_attackTimer[type] = time; }
         void resetAttackTimer(WeaponAttackType type = BASE_ATTACK);
@@ -1766,6 +1768,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         bool isVisibleForOrDetect(Unit const* u, WorldObject const* viewPoint, bool detect, bool inVisibleList = false, bool is3dDistance = true) const;
         bool canDetectInvisibilityOf(Unit const* u) const;
         void SetPhaseMask(uint32 newPhaseMask, bool update);// overwrite WorldObject::SetPhaseMask
+        bool IsVisibleTargetForAoEDamage(WorldObject const* caster, SpellEntry const* spellInfo) const;
 
         // virtual functions for all world objects types
         bool isVisibleForInState(Player const* u, WorldObject const* viewPoint, bool inVisibleList) const;
@@ -1809,7 +1812,11 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         uint8 GetVisibleAurasCount() const { return m_visibleAuras.size(); }
 
         Aura* GetAura(uint32 spellId, SpellEffectIndex effindex);
-        Aura* GetAura(AuraType type, SpellFamily family, uint64 familyFlag, uint32 familyFlag2 = 0, ObjectGuid casterGuid = ObjectGuid());
+        Aura* GetAura(AuraType type, SpellFamily family, ClassFamilyMask const& classMask, ObjectGuid casterGuid = ObjectGuid());
+        Aura* GetAura(AuraType type, SpellFamily family, uint64 familyFlag, uint32 familyFlag2 = 0, ObjectGuid casterGuid = ObjectGuid())
+        {
+            return GetAura(type, family, ClassFamilyMask(familyFlag, familyFlag2), casterGuid);
+        }
         SpellAuraHolder* GetSpellAuraHolder (uint32 spellid) const;
         SpellAuraHolder* GetSpellAuraHolder (uint32 spellid, ObjectGuid casterGUID) const;
 
@@ -1890,6 +1897,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         uint32 SpellCriticalHealingBonus(SpellEntry const *spellProto, uint32 damage, Unit *pVictim);
 
         bool IsTriggeredAtSpellProcEvent(Unit *pVictim, SpellAuraHolder* holder, SpellEntry const* procSpell, uint32 procFlag, uint32 procExtra, WeaponAttackType attType, bool isVictim, SpellProcEventEntry const*& spellProcEvent );
+        bool IsTriggeredAtCustomProcEvent(Unit *pVictim, SpellAuraHolder* holder, SpellEntry const* procSpell, uint32 procFlag, uint32 procExtra, WeaponAttackType attType, bool isVictim, SpellProcEventEntry const*& spellProcEvent );
         // Aura proc handlers
         SpellAuraProcResult HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura* triggeredByAura, SpellEntry const *procSpell, uint32 procFlag, uint32 procEx, uint32 cooldown);
         SpellAuraProcResult HandleHasteAuraProc(Unit *pVictim, uint32 damage, Aura* triggeredByAura, SpellEntry const *procSpell, uint32 procFlag, uint32 procEx, uint32 cooldown);
@@ -1922,6 +1930,8 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
             // this aura type can't proc
             return SPELL_AURA_PROC_CANT_TRIGGER;
         }
+        SpellAuraProcResult HandleDamageShieldAuraProc(Unit *pVictim, uint32 damage, Aura* triggeredByAura, SpellEntry const *procSpell, uint32 procFlag, uint32 procEx, uint32 cooldown);
+        SpellAuraProcResult HandleDropChargeByDamageProc(Unit *pVictim, uint32 damage, Aura* triggeredByAura, SpellEntry const *procSpell, uint32 procFlag, uint32 procEx, uint32 cooldown);
 
         void SetLastManaUse()
         {
@@ -1969,7 +1979,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         uint32 CalcNotIgnoreAbsorbDamage( uint32 damage, SpellSchoolMask damageSchoolMask, SpellEntry const* spellInfo = NULL);
         uint32 CalcNotIgnoreDamageReduction(uint32 damage, SpellSchoolMask damageSchoolMask);
         int32 CalculateAuraDuration(SpellEntry const* spellProto, uint32 effectMask, int32 duration, Unit const* caster);
-        uint32 CalculateAuraPeriodicTimeWithHaste(SpellEntry const* spellProto, uint32 periodicTime, SpellEffectIndex eff_idx);
+        uint32 CalculateAuraPeriodicTimeWithHaste(SpellEntry const* spellProto, uint32 periodicTime);
         uint32 CalculateSpellDurationWithHaste(SpellEntry const* spellProto, uint32 duration);
 
         float CalculateLevelPenalty(SpellEntry const* spellProto) const;
@@ -2026,13 +2036,13 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         inline bool IsSpoofSamePlayerFaction(void)    { return m_spoofSamePlayerFaction; }
         // Frozen Mod
 
-        void SetThreatRedirectionTarget(uint64 guid, uint32 pct)
+        void SetThreatRedirectionTarget(ObjectGuid guid, uint32 pct)
         {
             m_misdirectionTargetGUID = guid;
             m_ThreatRedirectionPercent = pct;
         }
         uint32 GetThreatRedirectionPercent() { return m_ThreatRedirectionPercent; }
-        Unit *GetMisdirectionTarget() { return m_misdirectionTargetGUID ? GetMap()->GetUnit(m_misdirectionTargetGUID) : NULL; }
+        Unit* GetMisdirectionTarget() { return m_misdirectionTargetGUID.IsEmpty() ?  NULL : GetMap()->GetUnit(m_misdirectionTargetGUID); }
 
         // Movement info
         MovementInfo m_movementInfo;
@@ -2162,7 +2172,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
 
         GuardianPetList m_guardianPets;
         uint32 m_ThreatRedirectionPercent;
-        uint64 m_misdirectionTargetGUID;
+        ObjectGuid m_misdirectionTargetGUID;
 
         ObjectGuid m_TotemSlot[MAX_TOTEM_SLOT];
 

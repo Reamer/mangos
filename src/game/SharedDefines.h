@@ -483,7 +483,7 @@ const uint32 ItemQualityColors[MAX_ITEM_QUALITY] = {
 #define SPELL_ATTR_EX7_UNK7                       0x00000080            // 7
 #define SPELL_ATTR_EX7_UNK8                       0x00000100            // 8
 #define SPELL_ATTR_EX7_UNK9                       0x00000200            // 9
-#define SPELL_ATTR_EX7_UNK10                      0x00000400            // 10
+#define SPELL_ATTR_EX7_DISPEL_CHARGES             0x00000400            // 10 Dispel and Spellsteal individual charges instead of whole aura.
 #define SPELL_ATTR_EX7_UNK11                      0x00000800            // 11
 #define SPELL_ATTR_EX7_UNK12                      0x00001000            // 12
 #define SPELL_ATTR_EX7_UNK13                      0x00002000            // 13
@@ -704,7 +704,7 @@ enum SpellEffects
     SPELL_EFFECT_APPLY_AREA_AURA_PET       = 119,
     SPELL_EFFECT_TELEPORT_GRAVEYARD        = 120,
     SPELL_EFFECT_NORMALIZED_WEAPON_DMG     = 121,
-    SPELL_EFFECT_122                       = 122,
+    SPELL_EFFECT_SERVER_SIDE               = 122,
     SPELL_EFFECT_SEND_TAXI                 = 123,
     SPELL_EFFECT_PLAYER_PULL               = 124,
     SPELL_EFFECT_MODIFY_THREAT_PERCENT     = 125,
@@ -1268,9 +1268,12 @@ enum Targets
     TARGET_POINT_AT_SW                 = 85,                // from spell desc: "(SW)"
     TARGET_RANDOM_NEARBY_DEST          = 86,                // "Test Nearby Dest Random" - random around selected destination
     TARGET_SELF2                       = 87,
+    TARGET_88                          = 88,
     TARGET_DIRECTLY_FORWARD            = 89,
     TARGET_NONCOMBAT_PET               = 90,
-    TARGET_UNK_92                      = 92,                // from spell 61969. TARGET_CREATOR would fit...
+    TARGET_91                          = 91,
+    TARGET_UNIT_CREATOR                = 92,
+    TARGET_93                          = 93,
     TARGET_OWNED_VEHICLE               = 94,
     TARGET_UNIT_DRIVER                 = 95,
     TARGET_UNIT_PASSENGER_0            = 96,
@@ -1282,7 +1285,15 @@ enum Targets
     TARGET_UNIT_PASSENGER_6            = 102,
     TARGET_UNIT_PASSENGER_7            = 103,
     TARGET_IN_FRONT_OF_CASTER_30       = 104,
+    TARGET_105                         = 105,
+    TARGET_106                         = 106,
+    TARGET_107                         = 107,
+    TARGET_108                         = 108,
+    TARGET_109                         = 109,
+    TARGET_110                         = 110,
 };
+
+#define MAX_SPELL_TARGET               110
 
 enum SpellMissInfo
 {
@@ -2653,6 +2664,7 @@ enum DiminishingGroup
     // Warrior Specific
     DIMINISHING_CHARGE,
     // Other
+    DIMINISHING_TAUNT,
     // Don't Diminish, but limit duration to 10s
     DIMINISHING_LIMITONLY
 };

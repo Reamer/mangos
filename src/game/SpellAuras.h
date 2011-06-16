@@ -28,6 +28,7 @@ struct Modifier
     int32 m_amount;
     int32 m_miscvalue;
     uint32 periodictime;
+    int32 m_baseamount;
 };
 
 class Unit;
@@ -55,6 +56,7 @@ class MANGOS_DLL_SPEC SpellAuraHolder
         void BuildUpdatePacket(WorldPacket& data) const;
         void SendAuraUpdate(bool remove) const;
         void HandleSpellSpecificBoosts(bool apply);
+        void HandleSpellSpecificBoostsForward(bool apply);
         void CleanupTriggeredSpells();
 
         void setDiminishGroup(DiminishingGroup group) { m_AuraDRGroup = group; }
@@ -303,6 +305,7 @@ class MANGOS_DLL_SPEC Aura
         void HandleModPowerRegen(bool Apply, bool Real);
         void HandleModPowerRegenPCT(bool Apply, bool Real);
         void HandleChannelDeathItem(bool Apply, bool Real);
+        void HandleDamagePercentTaken(bool Apply, bool Real);
         void HandlePeriodicDamagePCT(bool Apply, bool Real);
         void HandleAuraModAttackPower(bool Apply, bool Real);
         void HandleAuraTransform(bool Apply, bool Real);
@@ -447,7 +450,7 @@ class MANGOS_DLL_SPEC Aura
         void TriggerSpell();
         void TriggerSpellWithValue();
 
-        uint32 const *getAuraSpellClassMask() const { return  m_spellAuraHolder->GetSpellProto()->GetEffectSpellClassMask(m_effIndex); }
+        ClassFamilyMask const& GetAuraSpellClassMask() const { return  m_spellAuraHolder->GetSpellProto()->GetEffectSpellClassMask(m_effIndex); }
         bool isAffectedOnSpell(SpellEntry const *spell) const;
         bool CanProcFrom(SpellEntry const *spell, uint32 EventProcEx, uint32 procEx, bool active, bool useClassMask) const;
         bool IsEffectStacking();
@@ -457,6 +460,8 @@ class MANGOS_DLL_SPEC Aura
         SpellAuraHolder* const GetHolder() const { return m_spellAuraHolder; }
 
         bool IsLastAuraOnHolder();
+
+        bool HasMechanic(uint32 mechanic) const;
     protected:
         Aura(SpellEntry const* spellproto, SpellEffectIndex eff, int32 *currentBasePoints, SpellAuraHolder *holder, Unit *target, Unit *caster = NULL, Item* castItem = NULL);
 

@@ -66,6 +66,7 @@
 #include "CharacterDatabaseCleaner.h"
 #include "AuctionHouseBot.h"
 #include "LFGMgr.h"
+#include "WardenDataStorage.h"
 
 INSTANTIATE_SINGLETON_1( World );
 
@@ -248,12 +249,12 @@ World::AddSession_ (WorldSession* s)
     }
 
     WorldPacket packet(SMSG_AUTH_RESPONSE, 1 + 4 + 1 + 4 + 1);
-    packet << uint8 (AUTH_OK);
-    packet << uint32 (0);                                   // BillingTimeRemaining
-    packet << uint8 (0);                                    // BillingPlanFlags
-    packet << uint32 (0);                                   // BillingTimeRested
-    packet << uint8 (s->Expansion());                       // 0 - normal, 1 - TBC, must be set in database manually for each account
-    s->SendPacket (&packet);
+    packet << uint8(AUTH_OK);
+    packet << uint32(0);                                    // BillingTimeRemaining
+    packet << uint8(0);                                     // BillingPlanFlags
+    packet << uint32(0);                                    // BillingTimeRested
+    packet << uint8(s->Expansion());                        // 0 - normal, 1 - TBC, 2 - WotLK. Must be set in database manually for each account.
+    s->SendPacket(&packet);
 
     s->SendAddonsInfo();
 
@@ -523,10 +524,11 @@ void World::LoadConfigSettings(bool reload)
 
     ///- Read other configuration items from the config file
 
-    // movement anticheat
+    // Anticheat
     setConfig(CONFIG_BOOL_ANTICHEAT_ENABLE,              "Anticheat.Enable", false);
     setConfigPos(CONFIG_UINT32_ANTICHEAT_ACTION_DELAY,   "Anticheat.DelayAfterAction",30);
     setConfigPos(CONFIG_UINT32_ANTICHEAT_GMLEVEL,        "Anticheat.GmLevel",0);
+    setConfig(CONFIG_BOOL_ANTICHEAT_WARDEN,              "Anticheat.Warden", false);
 
     setConfigMinMax(CONFIG_UINT32_COMPRESSION, "Compression", 1, 1, 9);
     setConfig(CONFIG_BOOL_ADDON_CHANNEL, "AddonChannel", true);
@@ -612,6 +614,8 @@ void World::LoadConfigSettings(bool reload)
     setConfig(CONFIG_BOOL_LFG_DEBUG_ENABLE, "LFG.Debug",false);
     setConfig(CONFIG_BOOL_LFR_EXTEND, "LFR.Extend",false);
     setConfigMinMax(CONFIG_UINT32_LFG_MAXKICKS, "LFG.MaxKicks", 5, 1, 10);
+
+    setConfig(CONFIG_BOOL_CHECK_GO_IN_PATH, "CheckGOInPath",false);
 
     setConfigMinMax(CONFIG_UINT32_START_PLAYER_MONEY, "StartPlayerMoney", 0, 0, MAX_MONEY_AMOUNT);
 
@@ -995,8 +999,11 @@ void World::SetInitialWorldSettings()
     sLog.outString( "Loading InstanceTemplate..." );
     sObjectMgr.LoadInstanceTemplate();
 
-    sLog.outString( "Loading SkillLineAbilityMultiMap Data..." );
+    sLog.outString("Loading SkillLineAbilityMultiMap Data...");
     sSpellMgr.LoadSkillLineAbilityMap();
+
+    sLog.outString("Loading SkillRaceClassInfoMultiMap Data...");
+    sSpellMgr.LoadSkillRaceClassInfoMap();
 
     ///- Clean up and pack instances
     sLog.outString( "Cleaning up instances..." );
@@ -1062,6 +1069,9 @@ void World::SetInitialWorldSettings()
 
     sLog.outString( "Loading Creature templates..." );
     sObjectMgr.LoadCreatureTemplates();
+
+    sLog.outString( "Loading Creature spells..." );
+    sObjectMgr.LoadCreatureSpells();
 
     sLog.outString( "Loading Creature Model for race..." ); // must be after creature templates
     sObjectMgr.LoadCreatureModelRace();
@@ -1427,8 +1437,8 @@ void World::SetInitialWorldSettings()
     uint32 nextGameEvent = sGameEventMgr.Initialize();
     m_timers[WUPDATE_EVENTS].SetInterval(nextGameEvent);    //depend on next event
 
-    sLog.outString("Loading Warden Modules..." );
-    WardenModuleStorage.Init();
+    sLog.outString("Loading Warden Data..." );
+    WardenDataStorage.Init();
 
     // Delete all characters which have been deleted X days before
     Player::DeleteOldCharacters();

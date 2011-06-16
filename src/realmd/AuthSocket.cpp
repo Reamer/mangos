@@ -44,6 +44,13 @@ enum eStatus
     STATUS_AUTHED
 };
 
+enum AccountFlags
+{
+    ACCOUNT_FLAG_GM         = 0x00000001,
+    ACCOUNT_FLAG_TRIAL      = 0x00000008,
+    ACCOUNT_FLAG_PROPASS    = 0x00800000,
+};
+
 // GCC have alternative #pragma pack(N) syntax and old gcc version not support pack(push,N), also any gcc version not support it at some paltform
 #if defined( __GNUC__ )
 #pragma pack(1)
@@ -110,9 +117,9 @@ typedef struct AUTH_LOGON_PROOF_S
     uint8   cmd;
     uint8   error;
     uint8   M2[20];
-    uint32  unk1;                                           // AccountFlags (trial 0x08, ProPass 0x800000, gm 0x01)
-    uint32  unk2;                                           // SurveyId
-    uint16  unk3;                                           // some flags (AccountMsgAvailable = 0x01)
+    uint32  accountFlags;                                   // see enum AccountFlags
+    uint32  surveyId;                                       // SurveyId
+    uint16  unkFlags;                                       // some flags (AccountMsgAvailable = 0x01)
 } sAuthLogonProof_S;
 
 typedef struct AUTH_LOGON_PROOF_S_BUILD_6005
@@ -298,9 +305,9 @@ void AuthSocket::SendProof(Sha1Hash sha)
             memcpy(proof.M2, sha.GetDigest(), 20);
             proof.cmd = CMD_AUTH_LOGON_PROOF;
             proof.error = 0;
-            proof.unk1 = 0x00800000;
-            proof.unk2 = 0x00;
-            proof.unk3 = 0x00;
+            proof.accountFlags = ACCOUNT_FLAG_PROPASS;
+            proof.surveyId = 0x00000000;
+            proof.unkFlags = 0x0000;
 
             send((char *)&proof, sizeof(proof));
             break;
@@ -352,6 +359,10 @@ bool AuthSocket::_HandleLogonChallenge()
 
     _login = (const char*)ch->I;
     _build = ch->build;
+    _os = (const char*)ch->os;
+
+    if(_os.size() > 4)
+        return false;
 
     ///- Normalize account name
     //utf8ToUpperOnlyLatin(_login); -- client already send account in expected form
@@ -665,7 +676,7 @@ bool AuthSocket::_HandleLogonProof()
         ///- Update the sessionkey, last_ip, last login time and reset number of failed logins in the account table for this account
         // No SQL injection (escaped user name) and IP address as received by socket
         const char* K_hex = K.AsHexStr();
-        LoginDatabase.PExecute("UPDATE account SET sessionkey = '%s', last_ip = '%s', last_login = NOW(), locale = '%u', failed_logins = 0 WHERE username = '%s'", K_hex, get_remote_address().c_str(), GetLocaleByName(_localizationName), _safelogin.c_str() );
+        LoginDatabase.PExecute("UPDATE account SET sessionkey = '%s', last_ip = '%s', last_login = NOW(), locale = '%u', os = '%s', failed_logins = 0 WHERE username = '%s'", K_hex, get_remote_address().c_str(), GetLocaleByName(_localizationName), _os.c_str(), _safelogin.c_str() );
         OPENSSL_free((void*)K_hex);
 
         ///- Finish SRP6 and send the final result to the client
@@ -771,6 +782,10 @@ bool AuthSocket::_HandleReconnectChallenge()
 
     EndianConvert(ch->build);
     _build = ch->build;
+    _os = (const char*)ch->os;
+
+    if(_os.size() > 4)
+        return false;
 
     QueryResult *result = LoginDatabase.PQuery ("SELECT sessionkey FROM account WHERE username = '%s'", _safelogin.c_str ());
 
