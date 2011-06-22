@@ -2027,24 +2027,20 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
         case TARGET_ALL_ENEMY_IN_AREA:
         {
             FillAreaTargets(targetUnitMap, radius, PUSH_DEST_CENTER, SPELL_TARGETS_AOE_DAMAGE);
-            if (m_spellInfo->Id == 42005)                   // Bloodboil
+            if (m_spellInfo->Id == 62240 || m_spellInfo->Id == 62920)      // Solar Flare
             {
-                FillAreaTargets(targetUnitMap, radius, PUSH_DEST_CENTER, SPELL_TARGETS_AOE_DAMAGE);
-                if (m_spellInfo->Id == 62240 || m_spellInfo->Id == 62920)      // Solar Flare
+                if (SpellAuraHolder *holder = m_caster->GetSpellAuraHolder(62239))
+                    unMaxTargets = holder->GetStackAmount();
+                else
+                    unMaxTargets = 1;
+            }
+            else if (m_spellInfo->Id == 42005)                   // Bloodboil
+            {   
+                // manually cuting, because the spell hits only the 5 furthest away targets
+                if (targetUnitMap.size() > unMaxTargets)
                 {
-                    if (SpellAuraHolder *holder = m_caster->GetSpellAuraHolder(62239))
-                        unMaxTargets = holder->GetStackAmount();
-                    else
-                        unMaxTargets = 1;
-                }
-                else if (m_spellInfo->Id == 42005)                   // Bloodboil
-                {   
-                    // manually cuting, because the spell hits only the 5 furthest away targets
-                    if (targetUnitMap.size() > unMaxTargets)
-                    {
-                        targetUnitMap.sort(TargetDistanceOrderFarAway(m_caster));
-                        targetUnitMap.resize(unMaxTargets);
-                    }
+                    targetUnitMap.sort(TargetDistanceOrderFarAway(m_caster));
+                    targetUnitMap.resize(unMaxTargets);
                 }
             }
             break;
