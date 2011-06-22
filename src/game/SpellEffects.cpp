@@ -6801,8 +6801,18 @@ void Spell::EffectInterruptCast(SpellEffectIndex eff_idx)
         if (Spell* spell = unitTarget->GetCurrentSpell(CurrentSpellTypes(i)))
         {
             SpellEntry const* curSpellInfo = spell->m_spellInfo;
+            // extra Spells which should be interruptible
+            bool interruptible = false;
+            switch (curSpellInfo->Id)
+            {
+                case 62661:                                 // Searing Flames (General Vezax - Ulduar)
+                    interruptible = true;
+                    break;
+                default:
+                    interruptible = false;
+            }
             // check if we can interrupt spell
-            if ((curSpellInfo->InterruptFlags & SPELL_INTERRUPT_FLAG_INTERRUPT) && curSpellInfo->PreventionType == SPELL_PREVENTION_TYPE_SILENCE )
+            if (((curSpellInfo->InterruptFlags & SPELL_INTERRUPT_FLAG_INTERRUPT) && curSpellInfo->PreventionType == SPELL_PREVENTION_TYPE_SILENCE) || interruptible)
             {
                 unitTarget->ProhibitSpellSchool(GetSpellSchoolMask(curSpellInfo), CalculateSpellDuration(m_spellInfo, m_caster));
                 unitTarget->InterruptSpell(CurrentSpellTypes(i),false);
