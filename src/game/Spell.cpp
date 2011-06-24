@@ -2397,16 +2397,16 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
             {
                 FillAreaTargets(targetUnitMap, radius, PUSH_SELF_CENTER, SPELL_TARGETS_HOSTILE);
                 break;
-            }
+            }*/ 
             // Gravity Bomb
-            else if (m_spellInfo->Id == 63025 || m_spellInfo->Id == 64233)
+            if (m_spellInfo->Id == 63025 || m_spellInfo->Id == 64233)
             {
                 FillAreaTargets(targetUnitMap, radius, PUSH_SELF_CENTER, SPELL_TARGETS_HOSTILE);
                 targetUnitMap.remove(m_caster);
                 break;
-            }*/ 
+            } 
             // Circle of Healing
-            if (m_spellInfo->SpellFamilyName == SPELLFAMILY_PRIEST && m_spellInfo->SpellVisual[0] == 8253)
+            else if (m_spellInfo->SpellFamilyName == SPELLFAMILY_PRIEST && m_spellInfo->SpellVisual[0] == 8253)
             {
                 Unit* target = m_targets.getUnitTarget();
                 if(!target)

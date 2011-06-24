@@ -8202,7 +8202,7 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                 }
                 case 64475:                                 // Ignis Strength of the Creator stack decreasing
                 {
-                    if (!unitTarget || !m_caster)
+                    if (!unitTarget)
                         return;
                     if (SpellAuraHolder *holder = unitTarget->GetSpellAuraHolder(64473))
                         if (holder->ModStackAmount(-1))
