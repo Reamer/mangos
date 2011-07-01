@@ -118,6 +118,7 @@ ChatCommand * ChatHandler::getCommandTable()
         { "alliance",       SEC_ADMINISTRATOR,  false, &ChatHandler::HandleAuctionAllianceCommand,     "", NULL },
         { "goblin",         SEC_ADMINISTRATOR,  false, &ChatHandler::HandleAuctionGoblinCommand,       "", NULL },
         { "horde",          SEC_ADMINISTRATOR,  false, &ChatHandler::HandleAuctionHordeCommand,        "", NULL },
+        { "item",           SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleAuctionItemCommand,         "", NULL },
         { "",               SEC_ADMINISTRATOR,  false, &ChatHandler::HandleAuctionCommand,             "", NULL },
         { NULL,             0,                  false, NULL,                                           "", NULL }
     };
@@ -968,6 +969,27 @@ void ChatHandler::SendGlobalSysMessage(const char *str)
     }
 
     delete [] buf;
+}
+
+void ChatHandler::PSendGlobalSysMessage(int32 entry, ...)
+{
+    const char *format = GetMangosString(entry);
+    va_list ap;
+    char str [2048];
+    va_start(ap, entry);
+    vsnprintf(str, 2048, format, ap);
+    va_end(ap);
+    SendGlobalSysMessage(str);
+}
+
+void ChatHandler::PSendGlobalSysMessage(const char *format, ...)
+{
+    va_list ap;
+    char str [2048];
+    va_start(ap, format);
+    vsnprintf(str, 2048, format, ap);
+    va_end(ap);
+    SendGlobalSysMessage(str);
 }
 
 void ChatHandler::SendSysMessage(int32 entry)

@@ -359,6 +359,15 @@ void Spell::EffectSchoolDMG(SpellEffectIndex effect_idx)
                         damage+= uint32(m_caster->GetTotalAttackPowerValue(BASE_ATTACK) * 0.12f);
                         break;
                     }
+                    // Mana Detonation
+                    case 27820:
+                    {
+                        if (unitTarget == m_caster)
+                            damage = 0;
+                        else
+                            damage = m_caster->GetMaxPower(POWER_MANA);
+                        break;
+                    }
                     // percent max target health
                     case 29142:                             // Eyesore Blaster
                     case 35139:                             // Throw Boom's Doom
@@ -469,7 +478,7 @@ void Spell::EffectSchoolDMG(SpellEffectIndex effect_idx)
                     case 70836:
                     {
                         float distance = unitTarget->GetDistance2d(m_caster); 
-                        damage *= exp(-distance/(10.0f));
+                        damage *= exp(-distance/(27.5f));
                         break;
                     }
                     case 74607:
@@ -649,10 +658,15 @@ void Spell::EffectSchoolDMG(SpellEffectIndex effect_idx)
                     // found Immolate or Shadowflame
                     if (aura)
                     {
-                        int32 damagetick = aura->GetModifier()->m_amount;
-                        // Save value of further damage
-                        m_currentBasePoints[1] = damagetick * 2 / 3;
-                        damage += damagetick * 3;
+                        int32 duration = GetSpellDuration(aura->GetSpellProto());
+                        int32 per_time = aura->GetSpellProto()->EffectAmplitude[aura->GetEffIndex()];
+                        int32 num_ticks = duration > 0 && per_time > 0 ? duration / per_time : 0;
+                        int32 basepoints = num_ticks * aura->GetModifier()->m_amount;
+
+                        // 60% of the dot aura damage is direct damage, value stored in basepoints of effect 1
+                        damage += basepoints * m_currentBasePoints[EFFECT_INDEX_1] / 100;
+                        // 40% of the dot aura damage is dot damage, value stored in basepoints of effect 2
+                        m_currentBasePoints[EFFECT_INDEX_1] = basepoints * m_currentBasePoints[EFFECT_INDEX_2] / (100 * GetSpellAuraMaxTicks(m_spellInfo));
 
                         // Glyph of Conflagrate
                         if (!m_caster->HasAura(56235))
@@ -924,7 +938,7 @@ void Spell::EffectSchoolDMG(SpellEffectIndex effect_idx)
             case SPELLFAMILY_DEATHKNIGHT:
             {
                 // Blood Boil - bonus for diseased targets
-                if (m_spellInfo->SpellFamilyFlags.test<CF_DEATHKNIGHT_BLOOD_BOIL>() && unitTarget->GetAura(SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_DEATHKNIGHT, ClassFamilyMask::create<CF_DEATHKNIGHT_FF_BP_ACTIVE>(), m_caster->GetObjectGuid()))
+                if (m_spellInfo->SpellFamilyFlags.test<CF_DEATHKNIGHT_BLOOD_BOIL>() && unitTarget->GetAura<SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_DEATHKNIGHT, CF_DEATHKNIGHT_FF_BP_ACTIVE>(m_caster->GetObjectGuid()))
                 {
                     damage += damage / 2;
                     damage += int32(m_caster->GetTotalAttackPowerValue(BASE_ATTACK)* 0.035f);
@@ -2187,6 +2201,14 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
 
                     return;
                 }
+                case 51336:                                 // Magic Pull
+                {
+                    if (!unitTarget)
+                        return;
+
+                    m_caster->CastSpell(unitTarget, 50770, true);
+                    return;
+                }
                 case 51420:                                 // Digging for Treasure Ping
                 {
                     if (!unitTarget || unitTarget->GetTypeId() != TYPEID_UNIT)
@@ -2684,6 +2706,22 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     ((Creature*)unitTarget)->ForcedDespawn(1000);
                     return;
                 }
+                case 62653:                                 // Tidal Wave
+                {
+                     if (!unitTarget)
+                        return;
+
+                     m_caster->CastSpell(unitTarget, 62654, true);
+                     return;
+                }
+                case 62935:                                 // Tidal Wave (H)
+                {
+                   if (!unitTarget)
+                      return;
+
+                   m_caster->CastSpell(unitTarget, 62936, true);
+                   return;
+                }
                 case 67019:                                 // Flask of the North
                 {
                     if (m_caster->GetTypeId() != TYPEID_PLAYER)
@@ -2742,6 +2780,43 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                 {
                     ((Player*)m_caster)->RemoveSpellCooldown(53385, true);
                     return;
+                }
+                case 70961:                                 // Shattered Bones (Icecrown Citadel, trash mob The Damned)
+                {
+                    m_caster->CastSpell(m_caster, m_spellInfo->CalculateSimpleValue(eff_idx), true);
+                    break;
+                }
+                case 70895:                                 // Dark Transformation (Icecrown Citadel, Lady Deathwhisper encounter)
+                {
+                    if (!unitTarget)
+                        return;
+
+                    unitTarget->CastSpell(unitTarget, 70900, true);
+                    break;
+                }
+                case 70896:                                 // Dark Empowerment (Icecrown Citadel, Lady Deathwhisper encounter)
+                {
+                    if (!unitTarget)
+                        return;
+
+                    unitTarget->CastSpell(unitTarget, 70901, true);
+                    break;
+                }
+                case 70897:                                 // Dark Martyrdom (Icecrown Citadel, Lady Deathwhisper encounter)
+                {
+                    if (!unitTarget || unitTarget->GetTypeId() != TYPEID_UNIT)
+                        return;
+
+                    switch (unitTarget->GetEntry())
+                    {
+                        case 37949:                         // Cult Adherent
+                            unitTarget->CastSpell(unitTarget, 70903, true);
+                            break;
+                        case 37890:                         // Cult Fanatic
+                            unitTarget->CastSpell(unitTarget, 71236, true);
+                            break;
+                    }
+                    break;
                 }
                 case 71336:                                 // Pact of the Darkfallen
                 {
@@ -3738,21 +3813,21 @@ void Spell::EffectClearQuest(SpellEffectIndex eff_idx)
 
 void Spell::EffectForceCast(SpellEffectIndex eff_idx)
 {
-    if( !unitTarget )
+    if (!unitTarget)
         return;
 
     uint32 triggered_spell_id = m_spellInfo->EffectTriggerSpell[eff_idx];
 
     // normal case
-    SpellEntry const *spellInfo = sSpellStore.LookupEntry( triggered_spell_id );
+    SpellEntry const *spellInfo = sSpellStore.LookupEntry(triggered_spell_id);
 
-    if(!spellInfo)
+    if (!spellInfo)
     {
-        sLog.outError("EffectForceCast of spell %u: triggering unknown spell id %i", m_spellInfo->Id,triggered_spell_id);
+        sLog.outError("EffectForceCast of spell %u: triggering unknown spell id %i", m_spellInfo->Id, triggered_spell_id);
         return;
     }
 
-    unitTarget->CastSpell(unitTarget, spellInfo, true, NULL, NULL, m_originalCasterGUID);
+    unitTarget->CastSpell(unitTarget, spellInfo, true, NULL, NULL, m_originalCasterGUID, m_spellInfo);
 }
 
 void Spell::EffectTriggerSpell(SpellEffectIndex effIndex)
@@ -3776,6 +3851,17 @@ void Spell::EffectTriggerSpell(SpellEffectIndex effIndex)
             unitTarget->RemoveSpellsCausingAura(SPELL_AURA_MOD_ROOT);
             unitTarget->RemoveSpellsCausingAura(SPELL_AURA_MOD_DECREASE_SPEED);
             unitTarget->RemoveSpellsCausingAura(SPELL_AURA_MOD_STALKED);
+
+            // if this spell is given to NPC it must handle rest by it's own AI
+            if (unitTarget->GetTypeId() != TYPEID_PLAYER)
+                return;
+
+            uint32 spellId = 1784;
+            // reset cooldown on it if needed
+            if (((Player*)unitTarget)->HasSpellCooldown(spellId))
+                ((Player*)unitTarget)->RemoveSpellCooldown(spellId);
+
+            m_caster->CastSpell(unitTarget, spellId, true);
             return;
         }
         // just skip
@@ -3841,6 +3927,13 @@ void Spell::EffectTriggerSpell(SpellEffectIndex effIndex)
             }
             return;
         }
+        // Coldflame (Lord Marrowgar - Icecrown Citadel) - have casting time 0.2s, must be casted with triggered=false
+        case 69147:
+        {
+            m_caster->CastSpell(m_caster, triggered_spell_id, false);
+            return;
+        }
+
     }
 
     // normal case
@@ -4160,9 +4253,6 @@ void Spell::EffectApplyAura(SpellEffectIndex eff_idx)
 {
     if(!unitTarget)
         return;
-    //Hack for Obsidian Sanctum Spell Flame Tsunami Damage Aura (57492)
-    if(unitTarget->GetTypeId() == TYPEID_PLAYER && m_spellInfo->Id == 60430)
-        return;
 
     // ghost spell check, allow apply any auras at player loading in ghost mode (will be cleanup after load)
     if ( (!unitTarget->isAlive() && !(IsDeathOnlySpell(m_spellInfo) || IsDeathPersistentSpell(m_spellInfo))) &&
@@ -4446,7 +4536,7 @@ void Spell::EffectHeal(SpellEffectIndex /*eff_idx*/)
             if (unitTarget == m_targets.getUnitTarget())
             {
                 // check for Riptide
-                Aura* riptide = unitTarget->GetAura(SPELL_AURA_PERIODIC_HEAL, SPELLFAMILY_SHAMAN, ClassFamilyMask::create<CF_SHAMAN_RIPTIDE>(), caster->GetObjectGuid());
+                Aura* riptide = unitTarget->GetAura<SPELL_AURA_PERIODIC_HEAL, SPELLFAMILY_SHAMAN, CF_SHAMAN_RIPTIDE>(caster->GetObjectGuid());
                 if (riptide)
                 {
                     addhealth += addhealth/4;
@@ -4996,73 +5086,12 @@ void Spell::EffectSummonChangeItem(SpellEffectIndex eff_idx)
     if (!newitemid)
         return;
 
-    uint16 pos = m_CastItem->GetPos();
+    Item* oldItem = m_CastItem;
 
-    Item *pNewItem = Item::CreateItem( newitemid, 1, player);
-    if (!pNewItem)
-        return;
+    // prevent crash at access and unexpected charges counting with item update queue corrupt
+    ClearCastItem();
 
-    for(uint8 j= PERM_ENCHANTMENT_SLOT; j<=TEMP_ENCHANTMENT_SLOT; ++j)
-    {
-        if (m_CastItem->GetEnchantmentId(EnchantmentSlot(j)))
-            pNewItem->SetEnchantment(EnchantmentSlot(j), m_CastItem->GetEnchantmentId(EnchantmentSlot(j)), m_CastItem->GetEnchantmentDuration(EnchantmentSlot(j)), m_CastItem->GetEnchantmentCharges(EnchantmentSlot(j)));
-    }
-
-    if (m_CastItem->GetUInt32Value(ITEM_FIELD_DURABILITY) < m_CastItem->GetUInt32Value(ITEM_FIELD_MAXDURABILITY))
-    {
-        double loosePercent = 1 - m_CastItem->GetUInt32Value(ITEM_FIELD_DURABILITY) / double(m_CastItem->GetUInt32Value(ITEM_FIELD_MAXDURABILITY));
-        player->DurabilityLoss(pNewItem, loosePercent);
-    }
-
-    if (player->IsInventoryPos(pos))
-    {
-        ItemPosCountVec dest;
-        uint8 msg = player->CanStoreItem( m_CastItem->GetBagSlot(), m_CastItem->GetSlot(), dest, pNewItem, true );
-        if (msg == EQUIP_ERR_OK)
-        {
-            player->DestroyItem(m_CastItem->GetBagSlot(), m_CastItem->GetSlot(), true);
-
-            // prevent crash at access and unexpected charges counting with item update queue corrupt
-            ClearCastItem();
-
-            player->StoreItem( dest, pNewItem, true);
-            return;
-        }
-    }
-    else if (player->IsBankPos (pos))
-    {
-        ItemPosCountVec dest;
-        uint8 msg = player->CanBankItem( m_CastItem->GetBagSlot(), m_CastItem->GetSlot(), dest, pNewItem, true );
-        if (msg == EQUIP_ERR_OK)
-        {
-            player->DestroyItem(m_CastItem->GetBagSlot(), m_CastItem->GetSlot(), true);
-
-            // prevent crash at access and unexpected charges counting with item update queue corrupt
-            ClearCastItem();
-
-            player->BankItem( dest, pNewItem, true);
-            return;
-        }
-    }
-    else if (player->IsEquipmentPos (pos))
-    {
-        uint16 dest;
-        uint8 msg = player->CanEquipItem( m_CastItem->GetSlot(), dest, pNewItem, true );
-        if (msg == EQUIP_ERR_OK)
-        {
-            player->DestroyItem(m_CastItem->GetBagSlot(), m_CastItem->GetSlot(), true);
-
-            // prevent crash at access and unexpected charges counting with item update queue corrupt
-            ClearCastItem();
-
-            player->EquipItem( dest, pNewItem, true);
-            player->AutoUnequipOffhandIfNeed();
-            return;
-        }
-    }
-
-    // fail
-    delete pNewItem;
+    player->ConvertItem(oldItem, newitemid);
 }
 
 void Spell::EffectProficiency(SpellEffectIndex /*eff_idx*/)
@@ -6452,7 +6481,8 @@ void Spell::EffectWeaponDmg(SpellEffectIndex eff_idx)
                 // for spells with divided damage to targets
                 case 66765: case 66809: case 67331:         // Meteor Fists
                 case 67333:                                 // Meteor Fists
-                case 69055:                                 // Bone Slice
+                case 69055:                                 // Bone Slice (Icecrown Citadel, Lord Marrowgar, normal)
+                case 70814:                                 // Bone Slice (Icecrown Citadel, Lord Marrowgar, heroic)
                 case 71021:                                 // Saber Lash
                 {
                     uint32 count = 0;
@@ -6492,7 +6522,7 @@ void Spell::EffectWeaponDmg(SpellEffectIndex eff_idx)
             if(m_spellInfo->SpellVisual[0] == 12295 && m_spellInfo->SpellIconID == 1508)
             {
                 // Sunder Armor
-                Aura* sunder = unitTarget->GetAura(SPELL_AURA_MOD_RESISTANCE_PCT, SPELLFAMILY_WARRIOR, ClassFamilyMask::create<CF_WARRIOR_SUNDER_ARMOR>(), m_caster->GetObjectGuid());
+                Aura* sunder = unitTarget->GetAura<SPELL_AURA_MOD_RESISTANCE_PCT, SPELLFAMILY_WARRIOR, CF_WARRIOR_SUNDER_ARMOR>(m_caster->GetObjectGuid());
 
                 // Devastate bonus and sunder armor refresh
                 if (sunder)
@@ -7218,7 +7248,14 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     }
                     if (item)
                         DoCreateItem(eff_idx,item);
-                    break;
+                }
+                case 28560:                                 // Summon Blizzard
+                {
+                    if (!unitTarget)
+                        return;
+
+                    m_caster->SummonCreature(16474, unitTarget->GetPositionX(), unitTarget->GetPositionY(), unitTarget->GetPositionZ(), 0.0f, TEMPSUMMON_TIMED_DESPAWN, 30000);
+                    return;
                 }
                 case 29830:                                 // Mirren's Drinking Hat
                 {
@@ -7900,7 +7937,7 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                 {
                     if(!unitTarget)
                         return;
-                    unitTarget->CastSpell(unitTarget, m_spellInfo->EffectBasePoints[eff_idx]+1, true);
+                    unitTarget->CastSpell(unitTarget, m_spellInfo->CalculateSimpleValue(eff_idx), true);
                     break;
                 }
                 case 52479:                                 // The Gift That Keeps On Giving
@@ -7908,7 +7945,7 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     if (!m_caster || !unitTarget)
                         return;
 
-                    m_caster->CastSpell(m_caster, roll_chance_i(75) ? 52505 : m_spellInfo->EffectBasePoints[eff_idx]+1, true);
+                    m_caster->CastSpell(m_caster, roll_chance_i(75) ? 52505 : m_spellInfo->CalculateSimpleValue(eff_idx), true);
                     ((Creature*)unitTarget)->ForcedDespawn();
                     break;
                 }
@@ -7990,7 +8027,7 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                 // Glyph of Starfire
                 case 54846:
                 {
-                    if (Aura* aura = unitTarget->GetAura(SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_DRUID, ClassFamilyMask::create<CF_DRUID_MOONFIRE>(), m_caster->GetObjectGuid()))
+                    if (Aura* aura = unitTarget->GetAura<SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_DRUID, CF_DRUID_MOONFIRE>(m_caster->GetObjectGuid()))
                     {
                         uint32 countMin = aura->GetAuraMaxDuration();
                         uint32 countMax = GetSpellMaxDuration(aura->GetSpellProto());
@@ -8129,6 +8166,47 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     m_caster->CastSpell(m_caster,59805,true);
                     return;
                 }
+                case 62524:                                 // Attuned to Nature 2 Dose Reduction
+                case 62525:                                 // Attuned to Nature 10 Dose Reduction
+                case 62521:                                 // Attuned to Nature 25 Dose Reduction
+                {
+                    if (!unitTarget)
+                        return;
+
+                    uint32 numStacks = 0;
+
+                    switch(m_spellInfo->Id)
+                    {
+                        case 62524: numStacks = 2;  break;
+                        case 62525: numStacks = 10; break;
+                        case 62521: numStacks = 25; break;
+                    };
+
+                    uint32 spellId = m_spellInfo->CalculateSimpleValue(eff_idx);
+                    unitTarget->RemoveAuraHolderFromStack(spellId, numStacks);
+                    return;
+                }
+                case 62678:                                 // Summon Allies of Nature
+                {
+                    const uint32 randSpells[] =
+                    {
+                        62685,  // Summon Wave - 1 Mob
+                        62686,  // Summon Wave - 3 Mob
+                        62688,  // Summon Wave - 10 Mob
+                    };
+
+                    m_caster->CastSpell(m_caster, randSpells[urand(0, countof(randSpells)-1)], true);
+                    return;
+                }
+                case 62688:                                 // Summon Wave - 10 Mob
+                {
+                    uint32 spellId = m_spellInfo->CalculateSimpleValue(eff_idx);
+
+                    for (uint32 i = 0; i < 10; ++i)
+                        m_caster->CastSpell(m_caster, spellId, true);
+
+                    return;
+                }
                 case 63845:                                 // Create lance
                 {
                     if (!unitTarget || unitTarget->GetTypeId() != TYPEID_PLAYER)
@@ -8143,7 +8221,8 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
 
                     unitTarget->CastSpell(unitTarget, spellid, true);
                     return;
-                }                                                            // random spell learn instead placeholder
+                }
+                                                            // random spell learn instead placeholder
                 case 60893:                                 // Northrend Alchemy Research
                 case 61177:                                 // Northrend Inscription Research
                 case 61288:                                 // Minor Inscription Research
@@ -8512,6 +8591,30 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                         unitTarget->CastSpell(unitTarget, 66334, true);
                     return;
                 }
+                case 69057:                                 // Bone Spike Graveyard (Icecrown Citadel, ->
+                case 70826:                                 // -> Lord Marrowgar encounter, all difficulties)
+                case 72088:                                 // ----- // -----
+                case 72089:                                 // ----- // -----
+                case 73142:                                 // Bone Spike Graveyard (during Bone Storm) ->
+                case 73143:                                 // (Icecrown Citadel, -> Lord Marrowgar encounter, ->
+                case 73144:                                 // all difficulties)
+                case 73145:                                 // ----- // -----
+                {
+                    if (unitTarget)
+                        unitTarget->CastSpell(unitTarget, 69062, true);
+                    return;
+                }
+                case 69140:                                 // Coldflame (Lord Marrowgar - Icecrown Citadel)
+                {
+                    if (unitTarget)
+                        unitTarget->CastSpell(m_caster, m_spellInfo->CalculateSimpleValue(eff_idx), true);
+                    return;
+                }
+                case 69147:                                 // Coldflame (circle, Lord Marrowgar - Icecrown Citadel)
+                {
+                    m_caster->CastSpell(m_caster, m_spellInfo->CalculateSimpleValue(eff_idx), true);
+                    return;
+                }
                 case 70117:                                 // Ice grip (Sindragosa pull effect)
                 {
                     if (!unitTarget)
@@ -8644,6 +8747,14 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     unitTarget->CastSpell(unitTarget, 72231, true);
 
                     break;
+                }
+                case 72705:                                 // Coldflame (in bone storm, Lord Marrowgar - Icecrown Citadel)
+                {
+                    m_caster->CastSpell(m_caster, 72701, true);
+                    m_caster->CastSpell(m_caster, 72702, true);
+                    m_caster->CastSpell(m_caster, 72703, true);
+                    m_caster->CastSpell(m_caster, 72704, true);
+                    return;
                 }
                 case 72864:                                 // Death plague
                 {
@@ -9137,6 +9248,14 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     unitTarget->CastSpell(m_caster, m_spellInfo->CalculateSimpleValue(eff_idx), true);
                     m_caster->CastSpell(m_caster, 47967, true);
                     return;
+                }
+                case 64380:                                 // Shattering Throw
+                {
+                    if (!unitTarget || !unitTarget->isAlive())
+                        return;
+                    // remove immunity effects
+                    m_caster->CastSpell(unitTarget, 39897, true);
+                    break;
                 }
             }
             break;

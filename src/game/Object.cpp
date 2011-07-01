@@ -92,15 +92,6 @@ void Object::_InitValues()
     m_objectUpdated = false;
 }
 
-void Object::_Create(uint32 guidlow, uint32 entry, HighGuid guidhigh)
-{
-    if(!m_uint32Values)
-        _InitValues();
-
-    ObjectGuid guid = ObjectGuid(guidhigh, entry, guidlow);
-    _Create(guid);
-}
-
 void Object::_Create(ObjectGuid guid)
 {
     if(!m_uint32Values)
@@ -255,9 +246,9 @@ void Object::DestroyForPlayer( Player *target, bool anim ) const
 
 void Object::BuildMovementUpdate(ByteBuffer * data, uint16 updateFlags) const
 {
+/* removed by zergtmn. strange...
     uint16 moveFlags2 = (isType(TYPEMASK_UNIT) ? ((Unit*)this)->m_movementInfo.GetMovementFlags2() : MOVEFLAG2_NONE);
 
-/* removed by zergtmn. strange...
     if(GetTypeId() == TYPEID_UNIT)
         if(((Creature*)this)->GetVehicleKit())
             moveFlags2 |= MOVEFLAG2_ALLOW_PITCHING;         // always allow pitch
@@ -1120,8 +1111,8 @@ void Object::MarkForClientUpdate()
 }
 
 WorldObject::WorldObject()
-    : m_isActiveObject(false), m_currMap(NULL), m_mapId(0), m_InstanceId(0), m_phaseMask(PHASEMASK_NORMAL),
-    m_groupLootTimer(0), m_groupLootId(0), m_lootGroupRecipientId(0), m_name("")
+    : m_groupLootTimer(0), m_groupLootId(0), m_lootGroupRecipientId(0),
+    m_isActiveObject(false), m_currMap(NULL), m_mapId(0), m_InstanceId(0), m_phaseMask(PHASEMASK_NORMAL)
 {
 }
 
@@ -1547,7 +1538,7 @@ void WorldObject::UpdateAllowedPositionZ(float x, float y, float &z) const
                 float max_z = GetTerrain()->GetWaterOrGroundLevel(x, y, z, &ground_z, !((Unit const*)this)->HasAuraType(SPELL_AURA_WATER_WALK));
                 if (max_z > INVALID_HEIGHT)
                 {
-                    if (z > max_z)
+                    if (max_z != ground_z && z > max_z)
                         z = max_z;
                     else if (z < ground_z)
                         z = ground_z;
@@ -1834,8 +1825,8 @@ namespace MaNGOS
     class NearUsedPosDo
     {
         public:
-            NearUsedPosDo(WorldObject const& obj, WorldObject const* searcher, float angle, ObjectPosSelector& selector)
-                : i_object(obj), i_searcher(searcher), i_angle(angle), i_selector(selector) {}
+            NearUsedPosDo(WorldObject const& obj, WorldObject const* searcher, float absAngle, ObjectPosSelector& selector)
+                : i_object(obj), i_searcher(searcher), i_absAngle(absAngle), i_selector(selector) {}
 
             void operator()(Corpse*) const {}
             void operator()(DynamicObject*) const {}
@@ -1843,26 +1834,25 @@ namespace MaNGOS
             void operator()(Creature* c) const
             {
                 // skip self or target
-                if(c==i_searcher || c==&i_object)
+                if (c == i_searcher || c == &i_object)
                     return;
 
-                float x,y,z;
+                float x, y, z;
 
-                if( !c->isAlive() || c->hasUnitState(UNIT_STAT_NOT_MOVE) ||
-                    !c->GetMotionMaster()->GetDestination(x,y,z) )
+                if (c->IsStopped() || !c->GetMotionMaster()->GetDestination(x, y, z))
                 {
                     x = c->GetPositionX();
                     y = c->GetPositionY();
-
-                    add(c,x,y);
                 }
+
+                add(c,x,y);
             }
 
             template<class T>
-                void operator()(T* u) const
+            void operator()(T* u) const
             {
                 // skip self or target
-                if(u==i_searcher || u==&i_object)
+                if (u == i_searcher || u == &i_object)
                     return;
 
                 float x,y;
@@ -1876,26 +1866,32 @@ namespace MaNGOS
             // we must add used pos that can fill places around center
             void add(WorldObject* u, float x, float y) const
             {
+                // dist include size of u and i_object
+                float dx = i_object.GetPositionX() - x;
+                float dy = i_object.GetPositionY() - y;
+                float dist2d = sqrt((dx * dx) + (dy * dy));
+
+                float delta = i_selector.m_searcherSize + u->GetObjectBoundingRadius();
+
                 // u is too nearest/far away to i_object
-                if(!i_object.IsInRange2d(x,y,i_selector.m_dist - i_selector.m_size,i_selector.m_dist + i_selector.m_size))
+                if (dist2d < i_selector.m_searcherDist - delta ||
+                    dist2d >= i_selector.m_searcherDist + delta)
                     return;
 
-                float angle = i_object.GetAngle(u)-i_angle;
+                float angle = i_object.GetAngle(u) - i_absAngle;
 
                 // move angle to range -pi ... +pi
-                while( angle > M_PI_F)
+                while (angle > M_PI_F)
                     angle -= 2.0f * M_PI_F;
-                while(angle < -M_PI_F)
+                while (angle < -M_PI_F)
                     angle += 2.0f * M_PI_F;
 
-                // dist include size of u
-                float dist2d = i_object.GetDistance2d(x,y);
-                i_selector.AddUsedPos(u->GetObjectBoundingRadius(), angle, dist2d + i_object.GetObjectBoundingRadius());
+                i_selector.AddUsedArea(u->GetObjectBoundingRadius(), angle, dist2d);
             }
         private:
             WorldObject const& i_object;
             WorldObject const* i_searcher;
-            float              i_angle;
+            float              i_absAngle;
             ObjectPosSelector& i_selector;
     };
 }                                                           // namespace MaNGOS
@@ -1913,16 +1909,16 @@ void WorldObject::GetNearPoint2D(float &x, float &y, float distance2d, float abs
 
 void WorldObject::GetNearPoint(WorldObject const* searcher, float &x, float &y, float &z, float searcher_bounding_radius, float distance2d, float absAngle) const
 {
-    GetNearPoint2D(x, y, distance2d+searcher_bounding_radius, absAngle);
+    GetNearPoint2D(x, y, distance2d + searcher_bounding_radius, absAngle);
     z = GetPositionZ();
 
     // if detection disabled, return first point
     if(!sWorld.getConfig(CONFIG_BOOL_DETECT_POS_COLLISION))
     {
         if (searcher)
-            searcher->UpdateAllowedPositionZ(x,y,z);        // update to LOS height if available
+            searcher->UpdateAllowedPositionZ(x, y, z);      // update to LOS height if available
         else
-            UpdateGroundPositionZ(x,y,z);
+            UpdateGroundPositionZ(x, y, z);
         return;
     }
 
@@ -1932,113 +1928,79 @@ void WorldObject::GetNearPoint(WorldObject const* searcher, float &x, float &y, 
     bool first_los_conflict = false;                        // first point LOS problems
 
     // prepare selector for work
-    ObjectPosSelector selector(GetPositionX(), GetPositionY(), GetObjectBoundingRadius(), distance2d+searcher_bounding_radius);
+    ObjectPosSelector selector(GetPositionX(), GetPositionY(), distance2d + searcher_bounding_radius + GetObjectBoundingRadius(), searcher_bounding_radius);
 
     // adding used positions around object
     {
-        MaNGOS::NearUsedPosDo u_do(*this,searcher,absAngle,selector);
-        MaNGOS::WorldObjectWorker<MaNGOS::NearUsedPosDo> worker(this,u_do);
+        MaNGOS::NearUsedPosDo u_do(*this, searcher, absAngle, selector);
+        MaNGOS::WorldObjectWorker<MaNGOS::NearUsedPosDo> worker(this, u_do);
 
-        Cell::VisitAllObjects(this, worker, distance2d);
+        Cell::VisitAllObjects(this, worker, distance2d + searcher_bounding_radius);
     }
 
     // maybe can just place in primary position
-    if( selector.CheckOriginal() )
+    if (selector.CheckOriginalAngle())
     {
         if (searcher)
-            searcher->UpdateAllowedPositionZ(x,y,z);        // update to LOS height if available
+            searcher->UpdateAllowedPositionZ(x, y, z);      // update to LOS height if available
         else
-            UpdateGroundPositionZ(x,y,z);
+            UpdateGroundPositionZ(x, y, z);
 
-        if(IsWithinLOS(x,y,z))
+        if (IsWithinLOS(x, y, z))
             return;
 
         first_los_conflict = true;                          // first point have LOS problems
     }
 
-    float angle;                                            // candidate of angle for free pos
-
-    // special case when one from list empty and then empty side preferred
-    if(selector.FirstAngle(angle))
-    {
-        GetNearPoint2D(x,y,distance2d,absAngle+angle);
-        z = GetPositionZ();
-
-        if (searcher)
-            searcher->UpdateAllowedPositionZ(x,y,z);        // update to LOS height if available
-        else
-            UpdateGroundPositionZ(x,y,z);
-
-        if(IsWithinLOS(x,y,z))
-            return;
-    }
-
     // set first used pos in lists
     selector.InitializeAngle();
 
+    float angle;                                            // candidate of angle for free pos
+
     // select in positions after current nodes (selection one by one)
-    while(selector.NextAngle(angle))                        // angle for free pos
+    while (selector.NextAngle(angle))                        // angle for free pos
     {
-        GetNearPoint2D(x,y,distance2d,absAngle+angle);
+        GetNearPoint2D(x, y, distance2d + searcher_bounding_radius, absAngle + angle);
         z = GetPositionZ();
 
         if (searcher)
-            searcher->UpdateAllowedPositionZ(x,y,z);        // update to LOS height if available
+            searcher->UpdateAllowedPositionZ(x, y, z);      // update to LOS height if available
         else
-            UpdateGroundPositionZ(x,y,z);
+            UpdateGroundPositionZ(x, y, z);
 
-        if(IsWithinLOS(x,y,z))
+        if (IsWithinLOS(x, y, z))
             return;
     }
 
     // BAD NEWS: not free pos (or used or have LOS problems)
     // Attempt find _used_ pos without LOS problem
-
-    if(!first_los_conflict)
+    if (!first_los_conflict)
     {
         x = first_x;
         y = first_y;
 
         if (searcher)
-            searcher->UpdateAllowedPositionZ(x,y,z);        // update to LOS height if available
+            searcher->UpdateAllowedPositionZ(x, y, z);      // update to LOS height if available
         else
-            UpdateGroundPositionZ(x,y,z);
+            UpdateGroundPositionZ(x, y, z);
         return;
-    }
-
-    // special case when one from list empty and then empty side preferred
-    if( selector.IsNonBalanced() )
-    {
-        if(!selector.FirstAngle(angle))                     // _used_ pos
-        {
-            GetNearPoint2D(x,y,distance2d,absAngle+angle);
-            z = GetPositionZ();
-
-            if (searcher)
-                searcher->UpdateAllowedPositionZ(x,y,z);        // update to LOS height if available
-            else
-                UpdateGroundPositionZ(x,y,z);
-
-            if(IsWithinLOS(x,y,z))
-                return;
-        }
     }
 
     // set first used pos in lists
     selector.InitializeAngle();
 
     // select in positions after current nodes (selection one by one)
-    while(selector.NextUsedAngle(angle))                    // angle for used pos but maybe without LOS problem
+    while (selector.NextUsedAngle(angle))                   // angle for used pos but maybe without LOS problem
     {
-        GetNearPoint2D(x,y,distance2d,absAngle+angle);
+        GetNearPoint2D(x, y, distance2d + searcher_bounding_radius, absAngle + angle);
         z = GetPositionZ();
 
         if (searcher)
-            searcher->UpdateAllowedPositionZ(x,y,z);        // update to LOS height if available
+            searcher->UpdateAllowedPositionZ(x, y, z);      // update to LOS height if available
         else
-            UpdateGroundPositionZ(x,y,z);
+            UpdateGroundPositionZ(x, y, z);
 
-        if(IsWithinLOS(x,y,z))
+        if (IsWithinLOS(x, y, z))
             return;
     }
 
@@ -2047,9 +2009,9 @@ void WorldObject::GetNearPoint(WorldObject const* searcher, float &x, float &y, 
     y = first_y;
 
     if (searcher)
-        searcher->UpdateAllowedPositionZ(x,y,z);            // update to LOS height if available
+        searcher->UpdateAllowedPositionZ(x, y, z);          // update to LOS height if available
     else
-        UpdateGroundPositionZ(x,y,z);
+        UpdateGroundPositionZ(x, y, z);
 }
 
 void WorldObject::SetPhaseMask(uint32 newPhaseMask, bool update)
@@ -2255,17 +2217,12 @@ void WorldObject::SetLootRecipient(Unit *unit)
 }
 
 // Frozen Mod
-void Object::ForceValuesUpdateAtIndex(uint32 i)
+void Object::ForceValuesUpdateAtIndex(uint16 index)
 {
-    m_uint32Values_mirror[i] = GetUInt32Value(i) + 1; // makes server think the field changed
-    if(m_inWorld)
-    {
-        if(!m_objectUpdated)
-        {
-            AddToClientUpdateList();
-            m_objectUpdated = true;
-        }
-    }
+    MANGOS_ASSERT( index < m_valuesCount || PrintIndexError( index, true ) );
+
+    m_uint32Values_mirror[index] = m_uint32Values[index] + 1; // makes server think the field changed
+    MarkForClientUpdate();
 }
 // Frozen Mod
 
