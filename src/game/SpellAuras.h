@@ -454,7 +454,6 @@ class MANGOS_DLL_SPEC Aura
         ClassFamilyMask const& GetAuraSpellClassMask() const { return  m_spellAuraHolder->GetSpellProto()->GetEffectSpellClassMask(m_effIndex); }
         bool isAffectedOnSpell(SpellEntry const *spell) const;
         bool CanProcFrom(SpellEntry const *spell, uint32 EventProcEx, uint32 procEx, bool active, bool useClassMask) const;
-        bool IsEffectStacking();
 
         //SpellAuraHolder const* GetHolder() const { return m_spellHolder; }
         SpellAuraHolder* GetHolder() { return m_spellAuraHolder; }
@@ -496,6 +495,8 @@ class MANGOS_DLL_SPEC Aura
         bool m_stacking:1;                                  // Aura is not overwritten, but effects are not cumulative with similar effects
 
         uint32 m_in_use;                                    // > 0 while in Aura::ApplyModifier call/Aura::Update/etc
+
+        bool IsEffectStacking();
 
         SpellAuraHolder* const m_spellAuraHolder;
     private:
