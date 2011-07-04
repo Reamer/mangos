@@ -2502,6 +2502,12 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     unitTarget->CastSpell(unitTarget, 54581, true, m_CastItem);
                     return;
                 }
+                case 54850:                                 // Emerge
+                {
+                    // Cast Emerge summon
+                    m_caster->CastSpell(m_caster, 54851, true);
+                    return;
+                }
                 case 55004:                                 // Nitro Boosts
                 {
                     if (!m_CastItem)
@@ -2641,6 +2647,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                 {
                     if (!unitTarget)
                         return;
+
                     if (unitTarget->HasAura(64162))
                         unitTarget->DealDamage(unitTarget, unitTarget->GetMaxHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
                     return;
@@ -2852,6 +2859,15 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
 
                     unitTarget->CastSpell(unitTarget, 72195, true);
                     break;
+                }
+                case 51858: // Siphon of Acherus
+                {
+                    if (!unitTarget)
+                    return;
+
+                    m_caster->RemoveAurasDueToSpell(52006);   // Remove Stealth from Eye of Acherus upon cast
+                    ((Creature*)unitTarget)->ForcedDespawn();
+                    return;
                 }
                 default:                                   // DBC encounters main check
                 {
@@ -7248,6 +7264,7 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     }
                     if (item)
                         DoCreateItem(eff_idx,item);
+                    return;
                 }
                 case 28560:                                 // Summon Blizzard
                 {
@@ -7854,7 +7871,7 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     if (!unitTarget)
                         return;
 
-                    unitTarget->CastSpell(unitTarget, m_spellInfo->Id + 1, true);
+                    unitTarget->CastSpell(unitTarget, m_spellInfo->Id + 1, true, NULL, NULL, m_caster->GetObjectGuid());
                     return;
                 }
                 case 50894:                                 // Zul'Drak Rat
@@ -8425,6 +8442,14 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                         unitTarget->RemoveAurasDueToSpell(62297);   // Remove Hodir's Fury
                     break;
                 }
+                case 65238:                                 // Shattered Illusion (Ulduar - Yogg Saron)
+                {
+                    if (!unitTarget)
+                        return;
+
+                    unitTarget->RemoveAurasDueToSpell(64173);
+                    return;
+                }
                 case 65917:                                 // Magic Rooster 
                 { 
                     if (!unitTarget || unitTarget->GetTypeId() != TYPEID_PLAYER) 
@@ -8446,13 +8471,6 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
  
                     unitTarget->CastSpell(unitTarget, spellId, true); 
                     return; 
-                }
-                case 65238:                                 // Shattered Illusion (Ulduar - Yogg Saron)
-                {
-                    if (!unitTarget)
-                        return;
-                    unitTarget->RemoveAurasDueToSpell(m_spellInfo->EffectBasePoints[eff_idx]);
-                    return;
                 }
                 case 64104:                                 // Quest Credit - Trigger - Dummy - 01
                 case 64107:                                 // Quest Credit - Trigger - Dummy - 02
