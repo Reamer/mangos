@@ -8045,6 +8045,22 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
                 targetUnitMap.push_back((Unit*)m_caster);
             break;
         }
+        case 62469: // Freeze - Hodir Ulduar
+        {
+            UnitList tempTargetUnitMap;
+            if(Unit* currentTarget = m_targets.getUnitTarget())
+            {
+                tempTargetUnitMap.push_back(currentTarget);
+                m_targets.setDestination(currentTarget->GetPositionX(), currentTarget->GetPositionY(), currentTarget->GetPositionZ());
+                FillAreaTargets(tempTargetUnitMap, radius, PUSH_DEST_CENTER, SPELL_TARGETS_AOE_DAMAGE);
+                for (UnitList::iterator itr = tempTargetUnitMap.begin(); itr != tempTargetUnitMap.end(); ++itr)
+                {
+                    if (!(*itr)->HasAura(62821)) // Toasty Fire
+                        targetUnitMap.push_back(*itr);
+                }
+            }
+            break;
+        }
         case 64168: // Lunatic Gaze
         case 64164:
         {

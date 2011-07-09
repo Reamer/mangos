@@ -8739,6 +8739,9 @@ void Aura::PeriodicDummyTick()
                     if (target->GetTypeId() != TYPEID_PLAYER)
                         return;
 
+                    if (target->HasAura(62821))     // Toasty Fire
+                        return;
+
                     Unit * caster = GetCaster();
                     if (!caster)
                         return;
