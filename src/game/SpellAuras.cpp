@@ -2055,6 +2055,18 @@ void Aura::TriggerSpell()
                 triggerTarget->CastCustomSpell(triggerTarget, trigger_spell_id, &m_modifier.m_amount, NULL, NULL, true, NULL, this);
                 return;
             }
+            case 28084:                                     // Negative Charge
+            {
+                if (triggerTarget->HasAura(29660))
+                    triggerTarget->RemoveAura(29660, EFFECT_INDEX_0);
+                break;
+            }
+            case 28059:                                     // Positive Charge
+            {
+                if (triggerTarget->HasAura(29659))
+                    triggerTarget->RemoveAura(29659, EFFECT_INDEX_0);
+                break;
+            }
             case 33525:                                     // Ground Slam
                 triggerTarget->CastSpell(triggerTarget, trigger_spell_id, true, NULL, this, casterGUID);
                 return;
@@ -2714,6 +2726,18 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                 if (Unit* caster = GetCaster())
                     caster->CastSpell(caster, 12816, true);
 
+                return;
+            }
+            case 28059:                                     // Positive Charge (Thaddius)
+            {
+                if (target->HasAura(29659))
+                    target->RemoveAurasDueToSpell(29659);
+                return;
+            }
+            case 28084:                                     // Negative Charge (Thaddius)
+            {
+                if (target->HasAura(29660))
+                    target->RemoveAurasDueToSpell(29660);
                 return;
             }
             case 28169:                                     // Mutating Injection
