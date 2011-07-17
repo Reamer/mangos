@@ -2226,21 +2226,22 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                     case 28834:                             // Mark of Rivendare
                     case 28835:                             // Mark of Zeliek
                     {
-                         uint32 stacks = GetStackAmount();
-                         int32 damage = 0;
-                         switch (stacks)
-                         {
+                        uint32 stacks = GetStackAmount();
+                        int32 damage = 0;
+                        switch (stacks)
+                        {
+                            case 0:
                             case 1: return;
                             case 2: damage = 500;   break;
                             case 3: damage = 1500;  break;
                             case 4: damage = 4000;  break;
                             case 5: damage = 12500; break;
                             default: damage = 20000 + (1000 * (stacks - 6)); break;
-                         }
+                        }
 
-                         if (Unit* caster = GetCaster())
-                              caster->CastCustomSpell(target, 28836, &damage, NULL, NULL, true, NULL, this, caster->GetGUID());
-                         return;
+                        if (Unit* caster = GetCaster())
+                            caster->CastCustomSpell(target, 28836, &damage, NULL, NULL, true, NULL, this, caster->GetObjectGuid());
+                        return;
                     }
                     case 31606:                             // Stormcrow Amulet
                     {
