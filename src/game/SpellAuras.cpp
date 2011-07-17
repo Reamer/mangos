@@ -8758,20 +8758,24 @@ void Aura::PeriodicDummyTick()
                     }
                     return;
                 }
-                case 62038:                                 // Biting Cold (Ulduar: Hodir)
+                case 62038: // Biting Cold (Ulduar: Hodir)
                 {
                     if (target->GetTypeId() != TYPEID_PLAYER)
-                        return;
-
-                    if (target->HasAura(62821))     // Toasty Fire
                         return;
 
                     Unit * caster = GetCaster();
                     if (!caster)
                         return;
+
+                    if (!target->HasAura(62821))     // Toasty Fire
+                    {
+                        // dmg dealing every second
+                        target->CastSpell(target, 62188, true, 0, 0, caster->GetObjectGuid());
+                    }
+
                     // aura stack increase every 3 (data in m_miscvalue) seconds and decrease every 1s
                     // Reset reapply counter at move and decrease stack amount by 1
-                    if (((Player*)target)->isMoving())
+                    if (((Player*)target)->isMoving() || target->HasAura(62821))
                     {
                         if (SpellAuraHolder *holder = target->GetSpellAuraHolder(62039))
                         {
@@ -8781,15 +8785,14 @@ void Aura::PeriodicDummyTick()
                         m_modifier.m_miscvalue = 3;
                         return;
                     }
-
                     // We are standing at the moment, countdown
                     if (m_modifier.m_miscvalue > 0)
                     {
                         --m_modifier.m_miscvalue;
                         return;
                     }
+
                     target->CastSpell(target, 62039, true);
-                    target->CastSpell(target, 62188, true, 0, 0, caster->GetObjectGuid());
 
                     // recast every ~3 seconds
                     m_modifier.m_miscvalue = 3;
