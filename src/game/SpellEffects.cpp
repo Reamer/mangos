@@ -381,6 +381,12 @@ void Spell::EffectSchoolDMG(SpellEffectIndex effect_idx)
                     // Positive Charge
                     case 28062:
                     {
+                        // remove pet from damage and buff list
+                        if (unitTarget->GetTypeId() != TYPEID_PLAYER)
+                        {
+                              damage = 0;
+                              break;
+                        }
                         // If target is not (+) charged, then just deal dmg
                         if (!unitTarget->HasAura(28059))
                             break;
@@ -394,6 +400,12 @@ void Spell::EffectSchoolDMG(SpellEffectIndex effect_idx)
                     // Negative Charge
                     case 28085:
                     {
+                        // remove pet from damage and buff list
+                        if (unitTarget->GetTypeId() != TYPEID_PLAYER)
+                        {
+                              damage = 0;
+                              break;
+                        }
                         // If target is not (-) charged, then just deal dmg
                         if (!unitTarget->HasAura(28084))
                             break;
@@ -1438,6 +1450,9 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                 case 28089:                                 // Polarity Shift (Thaddius - Naxxramas)
                 {
                     if (!unitTarget)
+                        return;
+
+                    if (unitTarget->GetTypeId() != TYPEID_PLAYER)
                         return;
 
                     // neutralize the target
