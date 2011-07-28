@@ -2721,8 +2721,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     {
                         if (pHolder->GetStackAmount() < 5)
                         {
-                            unitTarget->MonsterYell("Ich bin tot", 0);
-                            //caster->DealDamage(unitTarget, unitTarget->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
+                            caster->DealDamage(unitTarget, unitTarget->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
                             // don't work
                             //caster->CastSpell(unitTarget, m_spellInfo->EffectBasePoints[eff_idx], true); // spell should be 63120
                             //caster->CastSpell(unitTarget, 63992, true);                                 // Teleport back to Main Room of Yogg Saron

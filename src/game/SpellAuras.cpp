@@ -5777,19 +5777,6 @@ void Aura::HandleAuraPeriodicDummy(bool apply, bool Real)
                 case 63050:                                   // Sanity (Yogg Saron - Ulduar)
                 {
                                                               // here is the special handling of Sanity
-                    Unit *caster = GetCaster();
-                    if (!caster)
-                    {
-                        target->RemoveAurasDueToSpell(63050);
-                        return;
-                    }
-
-                    if (!caster->isAlive())
-                    {
-                        target->RemoveAurasDueToSpell(63050);
-                        return;
-                    }
-
                     uint32 stacks = GetHolder()->GetStackAmount();
 
                     if ((stacks < 30) && !(target->HasAura(63752)))
