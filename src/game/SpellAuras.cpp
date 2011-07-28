@@ -2080,10 +2080,6 @@ void Aura::TriggerSpell()
                 triggerTarget->CastSpell(triggerTarget, trigger_spell_id, true, NULL, this);
                 return;
             case 53563:                                     // Beacon of Light
-            case 52658:                                     // Static Overload (normal&heroic) (Ionar in Halls of Lightning)
-            case 59795:
-            case 63018:                                     // Searing Light (normal&heroic) (XT-002 in Ulduar)
-            case 65121:
                 // original caster must be target
                 target->CastSpell(target, trigger_spell_id, true, NULL, this, target->GetObjectGuid());
                 return;
@@ -8842,7 +8838,7 @@ void Aura::PeriodicDummyTick()
                         target->RemoveAurasDueToSpell(63050);
                         return;
                     }
-                    uint32 stacks = GetHolder()->GetStackAmount();
+                    uint32 stacks = GetStackAmount();
                     if ((stacks < 30) && !(target->HasAura(63752)))
                     {
                         target->CastSpell(target, 63752, true);
