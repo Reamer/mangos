@@ -7905,6 +7905,53 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
     // Resulting effect depends on spell that we want to cast
     switch (m_spellInfo->Id)
     {
+        case 28524: // Frost Breath VERY HACKY
+        case 29318:
+        {
+            if (m_spellInfo->Id == 29318)
+            {
+                SpellTargetPosition const* st = sSpellMgr.GetSpellTargetPosition(m_spellInfo->Id);
+                if(st)
+                {
+                    if (st->target_mapId == m_caster->GetMapId())
+                        m_targets.setDestination(st->target_X, st->target_Y, st->target_Z);
+                }
+            }
+            UnitList tempTargetUnitMap1;    // all targets
+            UnitList tempTargetUnitMap2;    // all with Icebolt Aura
+            FillAreaTargets(tempTargetUnitMap1, radius, PUSH_DEST_CENTER, SPELL_TARGETS_AOE_DAMAGE);
+
+            for (UnitList::iterator itr = tempTargetUnitMap1.begin(); itr != tempTargetUnitMap1.end(); ++itr)
+            {
+                if ((*itr)->HasAura(28522)) // Icebolt
+                {
+                    tempTargetUnitMap2.push_back(*itr);
+                }
+            }
+            for (UnitList::iterator itr = tempTargetUnitMap1.begin(); itr != tempTargetUnitMap1.end(); ++itr)
+            {
+                bool alone = true;
+                for (UnitList::iterator ittr = tempTargetUnitMap2.begin(); ittr != tempTargetUnitMap2.end(); ++ittr)
+                {
+                    if ((*itr) == (*ittr))
+                    {
+                        alone = false;
+                        continue;
+                    }
+                    if ((*itr)->GetDistance2d(*ittr) <= 10.0f)
+                    {
+                        if(m_caster->GetDistanceOrder((*ittr),(*itr),false))
+                        {
+                            alone = false;
+                        }
+                    }
+                }
+                if (alone)
+                    targetUnitMap.push_back(*itr);
+            }
+            // always return true -> perfect group all behind icebolt(iceblocks) -> no targets
+            return true;
+        }
         case 46584: // Raise Dead
         {
             Unit* pCorpseTarget = NULL;
