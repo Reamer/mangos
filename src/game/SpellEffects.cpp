@@ -7320,6 +7320,22 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     m_caster->SummonCreature(16474, unitTarget->GetPositionX(), unitTarget->GetPositionY(), unitTarget->GetPositionZ(), 0.0f, TEMPSUMMON_TIMED_DESPAWN, 30000);
                     return;
                 }
+                case 28526:                                 // Icebolt - Saphiron (Naxxramas)
+                {
+                    if (!unitTarget)
+                        return;
+
+                    Unit* pTarget = unitTarget->SelectRandomUnfriendlyTarget(0, 100.0f);
+                    for (int i = 0; i < 10; i++)
+                    {
+                        if (pTarget->GetTypeId() == TYPEID_PLAYER)
+                            break;
+                        pTarget = unitTarget->SelectRandomUnfriendlyTarget(0, 100.0f);
+                    }
+                    if (pTarget->GetTypeId() == TYPEID_PLAYER)
+                        unitTarget->CastSpell(pTarget, 28522, false);
+                    return;
+                }
                 case 29830:                                 // Mirren's Drinking Hat
                 {
                     uint32 item = 0;
