@@ -5756,12 +5756,18 @@ void Spell::DoSummonWild(SpellEffectIndex eff_idx, uint32 forceFaction)
 
     float radius = GetSpellRadius(sSpellRadiusStore.LookupEntry(m_spellInfo->EffectRadiusIndex[eff_idx]));
     int32 duration = GetSpellDuration(m_spellInfo);
-    // duration increase for Leviathan (Freya Wall)
+    // Special Summon Cases
     switch (m_spellInfo->Id)
     {
         case 62907:
         case 62947:
             duration = 30000;
+            break;
+        case 29105:
+        case 28864:
+            radius = 1;
+            break;
+        default:
             break;
     }
     TempSummonType summonType = (duration == 0) ? TEMPSUMMON_DEAD_DESPAWN : TEMPSUMMON_TIMED_OR_DEAD_DESPAWN;
