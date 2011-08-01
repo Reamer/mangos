@@ -1389,13 +1389,12 @@ void Aura::TriggerSpell()
                     }
                     case 27819:                             // Detonate Mana (Naxxramas: Kel'Thuzad)
                     {
-                        if (!target->GetMaxPower(POWER_MANA))
-                            return;
-
-                        uint32 uiBurnMana = urand(1800, 2200);
-                        uint32 uiCurrMana = target->GetPower(POWER_MANA);
-                        target->SetPower(POWER_MANA, uiBurnMana > uiCurrMana ? 0 : uiCurrMana - uiBurnMana);
-                        target->CastSpell(target, 27820, true);
+                        if (uint32 maxMana = target->GetMaxPower(POWER_MANA))
+                        {
+                            int32 uiBurnMana = (maxMana/100) * 20;
+                            target->ModifyPower(POWER_MANA, -uiBurnMana);
+                            target->CastCustomSpell(target, 27820, &uiBurnMana, 0, 0, true);
+                        }
                         return;
                     }
 //                    // Controller Timer
