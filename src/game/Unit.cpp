@@ -4459,7 +4459,7 @@ bool Unit::AddSpellAuraHolder(SpellAuraHolder *holder)
         {
             SpellAuraHolder *foundHolder = iter->second;
             if (foundHolder->GetCasterGuid() == holder->GetCasterGuid() ||
-                foundHolder->GetCasterGuid().IsPet() && holder->GetCasterGuid().IsPet())
+                foundHolder->GetCasterGuid().IsCreatureOrPet() && holder->GetCasterGuid().IsCreatureOrPet())
             {
                 // Aura can stack on self -> Stack it;
                 if (aurSpellInfo->StackAmount)
@@ -4500,9 +4500,12 @@ bool Unit::AddSpellAuraHolder(SpellAuraHolder *holder)
                     }
                 }
 
-                // can be only single
-                RemoveSpellAuraHolder(foundHolder, AURA_REMOVE_BY_STACK);
-                break;
+                // only one holder per caster on same target
+                if (foundHolder->GetCasterGuid() == holder->GetCasterGuid())
+                {
+                    RemoveSpellAuraHolder(foundHolder, AURA_REMOVE_BY_STACK);
+                    break;
+                }
             }
 
             bool bRemove = true;
