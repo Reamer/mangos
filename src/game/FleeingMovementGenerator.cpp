@@ -20,8 +20,10 @@
 #include "CreatureAI.h"
 #include "MapManager.h"
 #include "FleeingMovementGenerator.h"
-#include "DestinationHolderImp.h"
 #include "ObjectAccessor.h"
+#include "movement/MoveSplineInit.h"
+#include "movement/MoveSpline.h"
+#include "PathFinder.h"
 
 #define MIN_QUIET_DISTANCE 28.0f
 #define MAX_QUIET_DISTANCE 43.0f
@@ -41,27 +43,20 @@ void FleeingMovementGenerator<T>::_setTargetLocation(T &owner)
         return;
 
     owner.addUnitState(UNIT_STAT_FLEEING_MOVE);
-    Traveller<T> traveller(owner);
-    
-    PathInfo path(&owner, x, y, z);
+
+    PathFinder path(&owner);
+    path.setPathLengthLimit(30.0f);
+    path.calculate(x, y, z);
     if(!(path.getPathType() & PATHFIND_NORMAL))
     {
         i_nextCheckTime.Reset(urand(1000, 1500));
         return;
     }
 
-    PointPath pointPath = path.getFullPath();
-
-    float speed = traveller.Speed() * 0.001f; // in ms
-    uint32 traveltime = uint32(pointPath.GetTotalLength() / speed);
-    SplineFlags flags = (owner.GetTypeId() == TYPEID_UNIT) ? ((Creature*)&owner)->GetSplineFlags() : SPLINEFLAG_WALKMODE;
-    owner.SendMonsterMoveByPath(pointPath, 1, std::min<uint32>(pointPath.size(), 5), flags, traveltime);
-
-    PathNode p = pointPath[std::min<uint32>(pointPath.size()-1, 4)];
-    owner.UpdateAllowedPositionZ(p.x, p.y, p.z);
-
-    i_destinationHolder.SetDestination(traveller, p.x, p.y, p.z, false);
-
+    Movement::MoveSplineInit init(owner);
+    init.MovebyPath(path.getPath());
+    init.SetWalk(false);
+    int32 traveltime = init.Launch();
     i_nextCheckTime.Reset(traveltime + urand(800, 1500));
 }
 
@@ -72,7 +67,7 @@ bool FleeingMovementGenerator<T>::_getPoint(T &owner, float &x, float &y, float 
         return false;
 
     float dist_from_caster, angle_to_caster;
-    if(Unit *fright = ObjectAccessor::GetUnit(owner, i_frightGUID))
+    if(Unit* fright = ObjectAccessor::GetUnit(owner, i_frightGuid))
     {
         dist_from_caster = fright->GetDistance(&owner);
         if(dist_from_caster > 0.2f)
@@ -111,7 +106,7 @@ bool FleeingMovementGenerator<T>::_getPoint(T &owner, float &x, float &y, float 
     z = curr_z;
 
     owner.UpdateAllowedPositionZ(x, y, z);
-    
+
     return true;
 }
 
@@ -119,16 +114,13 @@ template<class T>
 void FleeingMovementGenerator<T>::Initialize(T &owner)
 {
     owner.addUnitState(UNIT_STAT_FLEEING|UNIT_STAT_FLEEING_MOVE);
+    owner.StopMoving();
 
     if(owner.GetTypeId() == TYPEID_UNIT)
-    {
-        ((Creature*)&owner)->RemoveSplineFlag(SPLINEFLAG_WALKMODE);
-        ((Creature*)&owner)->SetTargetGuid(ObjectGuid());
-    }
+        owner.SetTargetGuid(ObjectGuid());
 
     _setTargetLocation(owner);
 }
-
 
 template<>
 void FleeingMovementGenerator<Player>::Finalize(Player &owner)
@@ -140,7 +132,6 @@ void FleeingMovementGenerator<Player>::Finalize(Player &owner)
 template<>
 void FleeingMovementGenerator<Creature>::Finalize(Creature &owner)
 {
-    owner.AddSplineFlag(SPLINEFLAG_WALKMODE);
     owner.clearUnitState(UNIT_STAT_FLEEING|UNIT_STAT_FLEEING_MOVE);
 }
 
@@ -170,28 +161,10 @@ bool FleeingMovementGenerator<T>::Update(T &owner, const uint32 & time_diff)
         return true;
     }
 
-    Traveller<T> traveller(owner);
-
     i_nextCheckTime.Update(time_diff);
-
-    if( (owner.IsStopped() && !i_destinationHolder.HasArrived()) || !i_destinationHolder.HasDestination() )
-    {
+    if (i_nextCheckTime.Passed() && owner.movespline->Finalized())
         _setTargetLocation(owner);
-        return true;
-    }
 
-    if (i_destinationHolder.UpdateTraveller(traveller, time_diff, false))
-    {
-        if (!IsActive(owner))                               // force stop processing (movement can move out active zone with cleanup movegens list)
-            return true;                                    // not expire now, but already lost
-
-        i_destinationHolder.ResetUpdate(100);
-        if(i_nextCheckTime.Passed() && i_destinationHolder.HasArrived())
-        {
-            _setTargetLocation(owner);
-            return true;
-        }
-    }
     return true;
 }
 

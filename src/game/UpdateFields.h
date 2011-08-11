@@ -118,7 +118,8 @@ enum EUnitFields
     UNIT_FIELD_FLAGS                          = OBJECT_END + 0x0035, // Size: 1, Type: INT, Flags: PUBLIC
     UNIT_FIELD_FLAGS_2                        = OBJECT_END + 0x0036, // Size: 1, Type: INT, Flags: PUBLIC
     UNIT_FIELD_AURASTATE                      = OBJECT_END + 0x0037, // Size: 1, Type: INT, Flags: PUBLIC
-    UNIT_FIELD_BASEATTACKTIME                 = OBJECT_END + 0x0038, // Size: 2, Type: INT, Flags: PUBLIC
+    UNIT_FIELD_BASEATTACKTIME                 = OBJECT_END + 0x0038, // Size: 1, Type: INT, Flags: PUBLIC
+    UNIT_FIELD_BASEATTACKTIME_2               = OBJECT_END + 0x0039, // Size: 1, Type: INT, Flags: PUBLIC
     UNIT_FIELD_RANGEDATTACKTIME               = OBJECT_END + 0x003A, // Size: 1, Type: INT, Flags: PRIVATE
     UNIT_FIELD_BOUNDINGRADIUS                 = OBJECT_END + 0x003B, // Size: 1, Type: FLOAT, Flags: PUBLIC
     UNIT_FIELD_COMBATREACH                    = OBJECT_END + 0x003C, // Size: 1, Type: FLOAT, Flags: PUBLIC
@@ -144,16 +145,16 @@ enum EUnitFields
     UNIT_FIELD_STAT2                          = OBJECT_END + 0x0050, // Size: 1, Type: INT, Flags: PRIVATE, OWNER
     UNIT_FIELD_STAT3                          = OBJECT_END + 0x0051, // Size: 1, Type: INT, Flags: PRIVATE, OWNER
     UNIT_FIELD_STAT4                          = OBJECT_END + 0x0052, // Size: 1, Type: INT, Flags: PRIVATE, OWNER
-    UNIT_FIELD_POSSTAT0                       = OBJECT_END + 0x0053, // Size: 1, Type: INT, Flags: PRIVATE, OWNER
-    UNIT_FIELD_POSSTAT1                       = OBJECT_END + 0x0054, // Size: 1, Type: INT, Flags: PRIVATE, OWNER
-    UNIT_FIELD_POSSTAT2                       = OBJECT_END + 0x0055, // Size: 1, Type: INT, Flags: PRIVATE, OWNER
-    UNIT_FIELD_POSSTAT3                       = OBJECT_END + 0x0056, // Size: 1, Type: INT, Flags: PRIVATE, OWNER
-    UNIT_FIELD_POSSTAT4                       = OBJECT_END + 0x0057, // Size: 1, Type: INT, Flags: PRIVATE, OWNER
-    UNIT_FIELD_NEGSTAT0                       = OBJECT_END + 0x0058, // Size: 1, Type: INT, Flags: PRIVATE, OWNER
-    UNIT_FIELD_NEGSTAT1                       = OBJECT_END + 0x0059, // Size: 1, Type: INT, Flags: PRIVATE, OWNER
-    UNIT_FIELD_NEGSTAT2                       = OBJECT_END + 0x005A, // Size: 1, Type: INT, Flags: PRIVATE, OWNER
-    UNIT_FIELD_NEGSTAT3                       = OBJECT_END + 0x005B, // Size: 1, Type: INT, Flags: PRIVATE, OWNER
-    UNIT_FIELD_NEGSTAT4                       = OBJECT_END + 0x005C, // Size: 1, Type: INT, Flags: PRIVATE, OWNER
+    UNIT_FIELD_POSSTAT0                       = OBJECT_END + 0x0053, // Size: 1, Type: FLOAT, Flags: PRIVATE, OWNER
+    UNIT_FIELD_POSSTAT1                       = OBJECT_END + 0x0054, // Size: 1, Type: FLOAT, Flags: PRIVATE, OWNER
+    UNIT_FIELD_POSSTAT2                       = OBJECT_END + 0x0055, // Size: 1, Type: FLOAT, Flags: PRIVATE, OWNER
+    UNIT_FIELD_POSSTAT3                       = OBJECT_END + 0x0056, // Size: 1, Type: FLOAT, Flags: PRIVATE, OWNER
+    UNIT_FIELD_POSSTAT4                       = OBJECT_END + 0x0057, // Size: 1, Type: FLOAT, Flags: PRIVATE, OWNER
+    UNIT_FIELD_NEGSTAT0                       = OBJECT_END + 0x0058, // Size: 1, Type: FLOAT, Flags: PRIVATE, OWNER
+    UNIT_FIELD_NEGSTAT1                       = OBJECT_END + 0x0059, // Size: 1, Type: FLOAT, Flags: PRIVATE, OWNER
+    UNIT_FIELD_NEGSTAT2                       = OBJECT_END + 0x005A, // Size: 1, Type: FLOAT, Flags: PRIVATE, OWNER
+    UNIT_FIELD_NEGSTAT3                       = OBJECT_END + 0x005B, // Size: 1, Type: FLOAT, Flags: PRIVATE, OWNER
+    UNIT_FIELD_NEGSTAT4                       = OBJECT_END + 0x005C, // Size: 1, Type: FLOAT, Flags: PRIVATE, OWNER
     UNIT_FIELD_RESISTANCES                    = OBJECT_END + 0x005D, // Size: 7, Type: INT, Flags: PRIVATE, OWNER, PARTY_LEADER
     UNIT_FIELD_RESISTANCEBUFFMODSPOSITIVE     = OBJECT_END + 0x0064, // Size: 7, Type: INT, Flags: PRIVATE, OWNER
     UNIT_FIELD_RESISTANCEBUFFMODSNEGATIVE     = OBJECT_END + 0x006B, // Size: 7, Type: INT, Flags: PRIVATE, OWNER
@@ -391,6 +392,45 @@ enum EUnitFields
     PLAYER_GLYPHS_ENABLED                     = UNIT_END + 0x0498, // Size: 1, Type: INT, Flags: PRIVATE
     PLAYER_PET_SPELL_POWER                    = UNIT_END + 0x0499, // Size: 1, Type: INT, Flags: PRIVATE
     PLAYER_END                                = UNIT_END + 0x049A,
+
+    // ----------------------------------------------------------------------------------------------
+
+    MANGOSR2_AP_MELEE_1                        = 0x007B, // TYPE: INT
+    MANGOSR2_AP_MELEE_2                        = 0x007C, // TYPE: INT
+    MANGOSR2_AP_RANGED_1                       = 0x007E, // TYPE: INT
+    MANGOSR2_AP_RANGED_2                       = 0x007F, // TYPE: INT
+
+    MANGOSR2_BLOCKRATING                       = 0x04D3, // TYPE: INT
+    MANGOSR2_DEFRATING                         = 0x04D0, // TYPE: INT
+    MANGOSR2_DODGERATING                       = 0x04D1, // TYPE: INT
+    MANGOSR2_PARRYRATING                       = 0x04D2, // TYPE: INT
+    MANGOSR2_RESILIENCE                        = 0x04DE, // TYPE: INT
+
+    MANGOSR2_MANAREGEN                         = 0x0028, // TYPE: FLOAT
+
+    MANGOSR2_MELEE_HITRATING                   = 0x04D4, // TYPE: INT
+    MANGOSR2_MELEE_CRITRATING                  = 0x04D7, // TYPE: INT
+    MANGOSR2_MELEE_HASTERATING                 = 0x04E0, // TYPE: INT
+    MANGOSR2_MELEE_MAINMINDMG                  = 0x0046, // TYPE: FLOAT
+    MANGOSR2_MELEE_MAINMAXDMG                  = 0x0047, // TYPE: FLOAT
+    MANGOSR2_MELEE_OFFMINDMG                   = 0x0046, // TYPE: FLOAT
+    MANGOSR2_MELEE_OFFMAXDMG                   = 0x0047, // TYPE: FLOAT
+    MANGOSR2_MELLE_OFFTIME                     = 0x003E, // TYPE: FLOAT
+    MANGOSR2_MELLE_MAINTIME                    = 0x003E, // TYPE: FLOAT
+
+    MANGOSR2_RANGED_CRITRATING                 = 0x04D8, // TYPE: INT
+    MANGOSR2_RANGED_HASTERATING                = 0x04E1, // TYPE: INT
+    MANGOSR2_RANGED_HITRATING                  = 0x04D5, // TYPE: INT
+    MANGOSR2_RANGED_MINDMG                     = 0x0081, // TYPE: FLOAT
+    MANGOSR2_RANGED_MAXDMG                     = 0x0082, // TYPE: FLOAT
+    MANGOSR2_RANGED_ATTACKTIME                 = 0x003F, // TYPE: FLOAT
+
+    MANGOSR2_SPELL_HITRATING                   = 0x04D6, // TYPE: INT
+    MANGOSR2_SPELL_CRITRATING                  = 0x04D9, // TYPE: INT
+    MANGOSR2_SPELL_HASTERATING                 = 0x04E2, // TYPE: INT
+    MANGOSR2_SPELL_BONUSDMG                    = 0x0496, // TYPE: INT
+    MANGOSR2_SPELL_BONUSHEAL                   = 0x04A8, // TYPE: INT
+    MANGOSR2_SPELL_CRITPROC                    = 0x040B, // TYPE: FLOAT
 };
 
 enum EGameObjectFields

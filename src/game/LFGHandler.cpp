@@ -247,17 +247,14 @@ void WorldSession::HandleLfgPlayerLockInfoRequestOpcode(WorldPacket &/*recv_data
             data << uint32((*itr)->Entry());                     // Entry
             LFGReward const* reward = sLFGMgr.GetRandomDungeonReward(*itr,GetPlayer());
             Quest const* qRew = NULL;
-            qRew = NULL;
             if (reward)
             {
-                if (GetPlayer()->GetQuestRewardStatus(reward->reward[0].questId))
-                {
-                    qRew = sObjectMgr.GetQuestTemplate(reward->reward[1].questId);
-                    done = 1;
-                }
-                else
-                    qRew = sObjectMgr.GetQuestTemplate(reward->reward[0].questId);
+                Quest const* pQuest = sObjectMgr.GetQuestTemplate(reward->reward[0].questId);
 
+                if (!GetPlayer()->CanTakeQuest(pQuest, false))
+                    done = 1;
+
+                qRew = sObjectMgr.GetQuestTemplate(reward->reward[done].questId);
             }
             if (qRew)
             {
@@ -467,7 +464,7 @@ void WorldSession::SendLfgUpdateParty(LFGUpdateType updateType, LFGType type)
             queued = true;
             break;
         case LFG_UPDATETYPE_CLEAR_LOCK_LIST:
-            // join = true;  
+            // join = true;
             // TODO: Sometimes queued and extrainfo - Check ocurrences...
             queued = true;
             extrainfo = false;

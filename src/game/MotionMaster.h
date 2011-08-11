@@ -48,6 +48,7 @@ enum MovementGeneratorType
     ASSISTANCE_DISTRACT_MOTION_TYPE = 12,                   // IdleMovementGenerator.h (second part of flee for assistance)
     TIMED_FLEEING_MOTION_TYPE       = 13,                   // FleeingMovementGenerator.h (alt.second part of flee for assistance)
     FOLLOW_MOTION_TYPE              = 14,                   // TargetedMovementGenerator.h
+    EFFECT_MOTION_TYPE              = 15,
 };
 
 enum MMCleanFlag
@@ -101,12 +102,13 @@ class MANGOS_DLL_SPEC MotionMaster : private std::stack<MovementGenerator *>
         void MoveChase(Unit* target, float dist = 0.0f, float angle = 0.0f);
         void MoveConfused();
         void MoveFleeing(Unit* enemy, uint32 timeLimit = 0);
-        void MovePoint(uint32 id, float x, float y, float z, bool usePathfinding = true);
+        void MovePoint(uint32 id, float x,float y,float z, bool generatePath = true);
         void MoveSeekAssistance(float x,float y,float z);
         void MoveSeekAssistanceDistract(uint32 timer);
         void MoveWaypoint();
         void MoveTaxiFlight(uint32 path, uint32 pathnode);
         void MoveDistract(uint32 timeLimit);
+        void MoveJump(float x, float y, float z, float horizontalSpeed, float max_height, uint32 id = 0, bool isKnockBack = false);
 
         MovementGeneratorType GetCurrentMovementGeneratorType() const;
 
@@ -129,4 +131,7 @@ class MANGOS_DLL_SPEC MotionMaster : private std::stack<MovementGenerator *>
         ExpireList *m_expList;
         uint8       m_cleanFlag;
 };
+
+#define DEFAULT_WALK_SPEED 24.0f
+
 #endif

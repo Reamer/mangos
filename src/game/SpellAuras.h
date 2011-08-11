@@ -33,7 +33,6 @@ struct Modifier
 
 class Unit;
 struct SpellEntry;
-struct SpellModifier;
 struct ProcTriggerSpell;
 
 // forward decl
@@ -96,11 +95,11 @@ class MANGOS_DLL_SPEC SpellAuraHolder
 
         void SetInUse(bool state)
         {
-            if(state)
+            if (state)
                 ++m_in_use;
             else
             {
-                if(m_in_use)
+                if (m_in_use)
                     --m_in_use;
             }
         }
@@ -125,12 +124,14 @@ class MANGOS_DLL_SPEC SpellAuraHolder
         uint8 GetAuraLevel() const { return m_auraLevel; }
         void SetAuraLevel(uint8 level) { m_auraLevel = level; }
         uint32 GetAuraCharges() const { return m_procCharges; }
-        void SetAuraCharges(uint32 charges)
+        void SetAuraCharges(uint32 charges, bool update = true)
         {
             if (m_procCharges == charges)
                 return;
             m_procCharges = charges;
-            SendAuraUpdate(false);
+
+            if (update)
+                SendAuraUpdate(false);
         }
         bool DropAuraCharge()                               // return true if last charge dropped
         {
@@ -194,15 +195,15 @@ typedef void(Aura::*pAuraHandler)(bool Apply, bool Real);
 // Real == true at aura add/remove
 // Real == false at aura mod unapply/reapply; when adding/removing dependent aura/item/stat mods
 //
-// Code in aura handler can be guarded by if(Real) check if it should execution only at real add/remove of aura
+// Code in aura handler can be guarded by if (Real) check if it should execution only at real add/remove of aura
 //
-// MAIN RULE: Code MUST NOT be guarded by if(Real) check if it modifies any stats
+// MAIN RULE: Code MUST NOT be guarded by if (Real) check if it modifies any stats
 //      (percent auras, stats mods, etc)
-// Second rule: Code must be guarded by if(Real) check if it modifies object state (start/stop attack, send packets to client, etc)
+// Second rule: Code must be guarded by if (Real) check if it modifies object state (start/stop attack, send packets to client, etc)
 //
-// Other case choice: each code line moved under if(Real) check is mangos speedup,
-//      each setting object update field code line moved under if(Real) check is significant mangos speedup, and less server->client data sends
-//      each packet sending code moved under if(Real) check is _large_ mangos speedup, and lot less server->client data sends
+// Other case choice: each code line moved under if (Real) check is mangos speedup,
+//      each setting object update field code line moved under if (Real) check is significant mangos speedup, and less server->client data sends
+//      each packet sending code moved under if (Real) check is _large_ mangos speedup, and lot less server->client data sends
 
 class MANGOS_DLL_SPEC Aura
 {
@@ -378,7 +379,7 @@ class MANGOS_DLL_SPEC Aura
         void HandleAuraAddMechanicAbilities(bool apply, bool Real);
         void HandleAuraSetVehicle(bool apply, bool Real);
         void HandleAuraFactionChange(bool apply, bool real);
-        void HandleAuraStopNaturalManaRegen(bool apply, bool real);
+        void HandleAuraStopNaturalManaRegen(bool apply, bool Real);
 
         virtual ~Aura();
 
@@ -416,7 +417,7 @@ class MANGOS_DLL_SPEC Aura
             m_modifier.m_amount = damage;
             m_modifier.periodictime = periodicTime;
 
-            if(uint32 maxticks = GetAuraMaxTicks())
+            if (uint32 maxticks = GetAuraMaxTicks())
                 m_periodicTick = maxticks - GetAuraDuration() / m_modifier.periodictime;
         }
 
@@ -429,11 +430,11 @@ class MANGOS_DLL_SPEC Aura
 
         void SetInUse(bool state)
         {
-            if(state)
+            if (state)
                 ++m_in_use;
             else
             {
-                if(m_in_use)
+                if (m_in_use)
                     --m_in_use;
             }
         }
@@ -445,6 +446,8 @@ class MANGOS_DLL_SPEC Aura
 
         virtual Unit* GetTriggerTarget() const { return m_spellAuraHolder->GetTarget(); }
 
+        int32 CalculateCrowdControlAuraAmount(Unit * caster);
+
         // add/remove SPELL_AURA_MOD_SHAPESHIFT (36) linked auras
         void HandleShapeshiftBoosts(bool apply);
 
@@ -453,7 +456,7 @@ class MANGOS_DLL_SPEC Aura
 
         ClassFamilyMask const& GetAuraSpellClassMask() const { return  m_spellAuraHolder->GetSpellProto()->GetEffectSpellClassMask(m_effIndex); }
         bool isAffectedOnSpell(SpellEntry const *spell) const;
-        bool CanProcFrom(SpellEntry const *spell, uint32 EventProcEx, uint32 procEx, bool active, bool useClassMask) const;
+        bool CanProcFrom(SpellEntry const *spell, uint32 procFlag, uint32 EventProcEx, uint32 procEx, bool active, bool useClassMask) const;
 
         //SpellAuraHolder const* GetHolder() const { return m_spellHolder; }
         SpellAuraHolder* GetHolder() { return m_spellAuraHolder; }
@@ -476,7 +479,6 @@ class MANGOS_DLL_SPEC Aura
         void ReapplyAffectedPassiveAuras();
 
         Modifier m_modifier;
-        SpellModifier *m_spellmod;
 
         time_t m_applyTime;
 

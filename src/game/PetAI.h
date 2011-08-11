@@ -22,7 +22,6 @@
 #include "CreatureAI.h"
 #include "ObjectGuid.h"
 #include "Timer.h"
-#include "ObjectGuid.h"
 
 class Creature;
 class Spell;
@@ -48,6 +47,7 @@ class MANGOS_DLL_DECL PetAI : public CreatureAI
         void _stopAttack(void);
 
         void UpdateAllies();
+        bool CanAutoCast(Unit* target, SpellEntry const* spellInfo);
 
         TimeTracker i_tracker;
         bool inCombat;

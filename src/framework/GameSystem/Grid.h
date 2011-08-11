@@ -34,7 +34,6 @@
 #include "Policies/ThreadingModel.h"
 #include "TypeContainer.h"
 #include "TypeContainerVisitor.h"
-#include "Timer.h"
 
 // forward declaration
 template<class A, class T, class O> class GridLoader;

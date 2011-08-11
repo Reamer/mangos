@@ -63,8 +63,8 @@
 #include "WaypointManager.h"
 #include "GMTicketMgr.h"
 #include "Util.h"
+#include "AuctionHouseBot/AuctionHouseBot.h"
 #include "CharacterDatabaseCleaner.h"
-#include "AuctionHouseBot.h"
 #include "LFGMgr.h"
 #include "WardenDataStorage.h"
 
@@ -154,7 +154,7 @@ Player* World::FindPlayerInZone(uint32 zone)
         Player *player = itr->second->GetPlayer();
         if(!player)
             continue;
-        if( player->IsInWorld() && player->GetZoneId() == zone )
+        if ( player->IsInWorld() && player->GetZoneId() == zone )
         {
             // Used by the weather system. We return the player to broadcast the change weather message to him and all players in the zone.
             return player;
@@ -168,7 +168,7 @@ WorldSession* World::FindSession(uint32 id) const
 {
     SessionMap::const_iterator itr = m_sessions.find(id);
 
-    if(itr != m_sessions.end())
+    if (itr != m_sessions.end())
         return itr->second;                                 // also can return NULL for kicked session
     else
         return NULL;
@@ -180,7 +180,7 @@ bool World::RemoveSession(uint32 id)
     ///- Find the session, kick the user, but we can't delete session at this moment to prevent iterator invalidation
     SessionMap::const_iterator itr = m_sessions.find(id);
 
-    if(itr != m_sessions.end() && itr->second)
+    if (itr != m_sessions.end() && itr->second)
     {
         if (itr->second->PlayerLoading())
             return false;
@@ -219,10 +219,10 @@ World::AddSession_ (WorldSession* s)
     {
         SessionMap::const_iterator old = m_sessions.find(s->GetAccountId ());
 
-        if(old != m_sessions.end())
+        if (old != m_sessions.end())
         {
             // prevent decrease sessions count if session queued
-            if(RemoveQueuedSession(old->second))
+            if (RemoveQueuedSession(old->second))
                 decrease_session = false;
             // not remove replaced session form queue if listed
             delete old->second;
@@ -237,7 +237,7 @@ World::AddSession_ (WorldSession* s)
 
     //so we don't count the user trying to
     //login as a session and queue the socket that we are using
-    if(decrease_session)
+    if (decrease_session)
         --Sessions;
 
     if (pLimit > 0 && Sessions >= pLimit && s->GetSecurity () == SEC_PLAYER )
@@ -340,7 +340,7 @@ bool World::RemoveQueuedSession(WorldSession* sess)
         --sessions;
 
     // accept first in queue
-    if( (!m_playerLimit || (int32)sessions < m_playerLimit) && !m_QueuedSessions.empty() )
+    if ( (!m_playerLimit || (int32)sessions < m_playerLimit) && !m_QueuedSessions.empty() )
     {
         WorldSession* pop_sess = m_QueuedSessions.front();
         pop_sess->SetInQueue(false);
@@ -374,7 +374,7 @@ Weather* World::FindWeather(uint32 id) const
 {
     WeatherMap::const_iterator itr = m_weathers.find(id);
 
-    if(itr != m_weathers.end())
+    if (itr != m_weathers.end())
         return itr->second;
     else
         return 0;
@@ -386,7 +386,7 @@ void World::RemoveWeather(uint32 id)
     // not called at the moment. Kept for completeness
     WeatherMap::iterator itr = m_weathers.find(id);
 
-    if(itr != m_weathers.end())
+    if (itr != m_weathers.end())
     {
         delete itr->second;
         m_weathers.erase(itr);
@@ -496,7 +496,7 @@ void World::LoadConfigSettings(bool reload)
     setConfigPos(CONFIG_FLOAT_RATE_AUCTION_TIME, "Rate.Auction.Time", 1.0f);
     setConfig(CONFIG_FLOAT_RATE_AUCTION_DEPOSIT, "Rate.Auction.Deposit", 1.0f);
     setConfig(CONFIG_FLOAT_RATE_AUCTION_CUT,     "Rate.Auction.Cut", 1.0f);
-    setConfigPos(CONFIG_UINT32_AUCTION_DEPOSIT_MIN, "Auction.Deposit.Min", SILVER);
+    setConfig(CONFIG_UINT32_AUCTION_DEPOSIT_MIN, "Auction.Deposit.Min", SILVER);
     setConfig(CONFIG_FLOAT_RATE_HONOR, "Rate.Honor",1.0f);
     setConfigPos(CONFIG_FLOAT_RATE_MINING_AMOUNT, "Rate.Mining.Amount", 1.0f);
     setConfigPos(CONFIG_FLOAT_RATE_MINING_NEXT,   "Rate.Mining.Next", 1.0f);
@@ -526,15 +526,15 @@ void World::LoadConfigSettings(bool reload)
 
     // Anticheat
     setConfig(CONFIG_BOOL_ANTICHEAT_ENABLE,              "Anticheat.Enable", false);
-    setConfigPos(CONFIG_UINT32_ANTICHEAT_ACTION_DELAY,   "Anticheat.DelayAfterAction",30);
-    setConfigPos(CONFIG_UINT32_ANTICHEAT_GMLEVEL,        "Anticheat.GmLevel",0);
+    setConfig(CONFIG_UINT32_ANTICHEAT_ACTION_DELAY,   "Anticheat.DelayAfterAction",30);
+    setConfig(CONFIG_UINT32_ANTICHEAT_GMLEVEL,        "Anticheat.GmLevel",0);
     setConfig(CONFIG_BOOL_ANTICHEAT_WARDEN,              "Anticheat.Warden", false);
 
     setConfigMinMax(CONFIG_UINT32_COMPRESSION, "Compression", 1, 1, 9);
     setConfig(CONFIG_BOOL_ADDON_CHANNEL, "AddonChannel", true);
     setConfig(CONFIG_BOOL_CLEAN_CHARACTER_DB, "CleanCharacterDB", true);
     setConfig(CONFIG_BOOL_GRID_UNLOAD, "GridUnload", true);
-    setConfigPos(CONFIG_UINT32_INTERVAL_SAVE, "PlayerSave.Interval", 15 * MINUTE * IN_MILLISECONDS);
+    setConfig(CONFIG_UINT32_INTERVAL_SAVE, "PlayerSave.Interval", 15 * MINUTE * IN_MILLISECONDS);
     setConfigMinMax(CONFIG_UINT32_MIN_LEVEL_STAT_SAVE, "PlayerSave.Stats.MinLevel", 0, 0, MAX_LEVEL);
     setConfig(CONFIG_BOOL_STATS_SAVE_ONLY_ON_LOGOUT, "PlayerSave.Stats.SaveOnlyOnLogout", true);
 
@@ -609,21 +609,24 @@ void World::LoadConfigSettings(bool reload)
     setConfig(CONFIG_FLOAT_PLAYERBOT_MINDISTANCE, "PlayerbotAI.FollowDistanceMin", 0.5f);
     setConfig(CONFIG_FLOAT_PLAYERBOT_MAXDISTANCE, "PlayerbotAI.FollowDistanceMax", 1.0f);
 
-    setConfig(CONFIG_BOOL_LFG_ENABLE, "LFG.Enable",false);
-    setConfig(CONFIG_BOOL_LFR_ENABLE, "LFR.Enable",false);
-    setConfig(CONFIG_BOOL_LFG_DEBUG_ENABLE, "LFG.Debug",false);
-    setConfig(CONFIG_BOOL_LFR_EXTEND, "LFR.Extend",false);
+    setConfig(CONFIG_BOOL_LFG_ENABLE, "LFG.Enable", false);
+    setConfig(CONFIG_BOOL_LFR_ENABLE, "LFR.Enable", false);
+    setConfig(CONFIG_BOOL_LFG_DEBUG_ENABLE, "LFG.Debug", false);
+    setConfig(CONFIG_BOOL_LFR_EXTEND, "LFR.Extend", false);
+    setConfig(CONFIG_BOOL_LFG_ONLYLASTENCOUNTER, "LFG.OnlyLastEncounterForCompleteDungeon", false);
     setConfigMinMax(CONFIG_UINT32_LFG_MAXKICKS, "LFG.MaxKicks", 5, 1, 10);
 
-    setConfig(CONFIG_BOOL_CHECK_GO_IN_PATH, "CheckGOInPath",false);
+    setConfig(CONFIG_BOOL_CHECK_GO_IN_PATH, "CheckGOInPath", false);
 
     setConfigMinMax(CONFIG_UINT32_START_PLAYER_MONEY, "StartPlayerMoney", 0, 0, MAX_MONEY_AMOUNT);
 
-    setConfigPos(CONFIG_UINT32_MAX_HONOR_POINTS, "MaxHonorPoints", 75000);
+    setConfig(CONFIG_UINT32_MAX_HONOR_POINTS, "MaxHonorPoints", 75000);
 
     setConfigMinMax(CONFIG_UINT32_START_HONOR_POINTS, "StartHonorPoints", 0, 0, getConfig(CONFIG_UINT32_MAX_HONOR_POINTS));
 
-    setConfigPos(CONFIG_UINT32_MAX_ARENA_POINTS, "MaxArenaPoints", 5000);
+    setConfig(CONFIG_BOOL_ALLOW_HONOR_KILLS_TITLES, "AllowHonorKillsTitles", false);
+
+    setConfig(CONFIG_UINT32_MAX_ARENA_POINTS, "MaxArenaPoints", 5000);
 
     setConfigMinMax(CONFIG_UINT32_START_ARENA_POINTS, "StartArenaPoints", 0, 0, getConfig(CONFIG_UINT32_MAX_ARENA_POINTS));
 
@@ -668,7 +671,7 @@ void World::LoadConfigSettings(bool reload)
 
     setConfigMin(CONFIG_UINT32_MASS_MAILER_SEND_PER_TICK, "MassMailer.SendPerTick", 10, 1);
 
-    setConfigPos(CONFIG_UINT32_UPTIME_UPDATE, "UpdateUptimeInterval", 10);
+    setConfig(CONFIG_UINT32_UPTIME_UPDATE, "UpdateUptimeInterval", 10);
     if (reload)
     {
         m_timers[WUPDATE_UPTIME].SetInterval(getConfig(CONFIG_UINT32_UPTIME_UPDATE)*MINUTE*IN_MILLISECONDS);
@@ -680,15 +683,15 @@ void World::LoadConfigSettings(bool reload)
     setConfig(CONFIG_UINT32_SKILL_CHANCE_GREEN,  "SkillChance.Green",  25);
     setConfig(CONFIG_UINT32_SKILL_CHANCE_GREY,   "SkillChance.Grey",   0);
 
-    setConfigPos(CONFIG_UINT32_SKILL_CHANCE_MINING_STEPS,   "SkillChance.MiningSteps",   75);
-    setConfigPos(CONFIG_UINT32_SKILL_CHANCE_SKINNING_STEPS, "SkillChance.SkinningSteps", 75);
+    setConfig(CONFIG_UINT32_SKILL_CHANCE_MINING_STEPS,   "SkillChance.MiningSteps",   75);
+    setConfig(CONFIG_UINT32_SKILL_CHANCE_SKINNING_STEPS, "SkillChance.SkinningSteps", 75);
 
     setConfig(CONFIG_BOOL_SKILL_PROSPECTING, "SkillChance.Prospecting", false);
     setConfig(CONFIG_BOOL_SKILL_MILLING,     "SkillChance.Milling",     false);
 
-    setConfigPos(CONFIG_UINT32_SKILL_GAIN_CRAFTING,  "SkillGain.Crafting",  1);
-    setConfigPos(CONFIG_UINT32_SKILL_GAIN_DEFENSE,   "SkillGain.Defense",   1);
-    setConfigPos(CONFIG_UINT32_SKILL_GAIN_GATHERING, "SkillGain.Gathering", 1);
+    setConfig(CONFIG_UINT32_SKILL_GAIN_CRAFTING,  "SkillGain.Crafting",  1);
+    setConfig(CONFIG_UINT32_SKILL_GAIN_DEFENSE,   "SkillGain.Defense",   1);
+    setConfig(CONFIG_UINT32_SKILL_GAIN_GATHERING, "SkillGain.Gathering", 1);
     setConfig(CONFIG_UINT32_SKILL_GAIN_WEAPON,       "SkillGain.Weapon",    1);
 
     setConfig(CONFIG_BOOL_SKILL_FAIL_LOOT_FISHING,         "SkillFail.Loot.Fishing", true);
@@ -722,12 +725,8 @@ void World::LoadConfigSettings(bool reload)
     setConfig(CONFIG_UINT32_WORLD_BOSS_LEVEL_DIFF, "WorldBossLevelDiff", 3);
 
     // note: disable value (-1) will assigned as 0xFFFFFFF, to prevent overflow at calculations limit it to max possible player level MAX_LEVEL(100)
-    setConfig(CONFIG_UINT32_QUEST_LOW_LEVEL_HIDE_DIFF, "Quests.LowLevelHideDiff", 4);
-    if (getConfig(CONFIG_UINT32_QUEST_LOW_LEVEL_HIDE_DIFF) > MAX_LEVEL)
-        setConfig(CONFIG_UINT32_QUEST_LOW_LEVEL_HIDE_DIFF, MAX_LEVEL);
-    setConfig(CONFIG_UINT32_QUEST_HIGH_LEVEL_HIDE_DIFF, "Quests.HighLevelHideDiff", 7);
-    if (getConfig(CONFIG_UINT32_QUEST_HIGH_LEVEL_HIDE_DIFF) > MAX_LEVEL)
-        setConfig(CONFIG_UINT32_QUEST_HIGH_LEVEL_HIDE_DIFF, MAX_LEVEL);
+    setConfigMinMax(CONFIG_INT32_QUEST_LOW_LEVEL_HIDE_DIFF, "Quests.LowLevelHideDiff", 4, -1, MAX_LEVEL);
+    setConfigMinMax(CONFIG_INT32_QUEST_HIGH_LEVEL_HIDE_DIFF, "Quests.HighLevelHideDiff", 7, -1, MAX_LEVEL);
 
     setConfigMinMax(CONFIG_UINT32_QUEST_DAILY_RESET_HOUR, "Quests.Daily.ResetHour", 6, 0, 23);
     setConfigMinMax(CONFIG_UINT32_QUEST_WEEKLY_RESET_WEEK_DAY, "Quests.Weekly.ResetWeekDay", 3, 0, 6);
@@ -749,11 +748,11 @@ void World::LoadConfigSettings(bool reload)
     setConfig(CONFIG_UINT32_CHAT_STRICT_LINK_CHECKING_KICK,     "ChatStrictLinkChecking.Kick", 0);
 
     setConfig(CONFIG_BOOL_CORPSE_EMPTY_LOOT_SHOW,      "Corpse.EmptyLootShow", true);
-    setConfigPos(CONFIG_UINT32_CORPSE_DECAY_NORMAL,    "Corpse.Decay.NORMAL",    300);
-    setConfigPos(CONFIG_UINT32_CORPSE_DECAY_RARE,      "Corpse.Decay.RARE",      900);
-    setConfigPos(CONFIG_UINT32_CORPSE_DECAY_ELITE,     "Corpse.Decay.ELITE",     600);
-    setConfigPos(CONFIG_UINT32_CORPSE_DECAY_RAREELITE, "Corpse.Decay.RAREELITE", 1200);
-    setConfigPos(CONFIG_UINT32_CORPSE_DECAY_WORLDBOSS, "Corpse.Decay.WORLDBOSS", 3600);
+    setConfig(CONFIG_UINT32_CORPSE_DECAY_NORMAL,    "Corpse.Decay.NORMAL",    300);
+    setConfig(CONFIG_UINT32_CORPSE_DECAY_RARE,      "Corpse.Decay.RARE",      900);
+    setConfig(CONFIG_UINT32_CORPSE_DECAY_ELITE,     "Corpse.Decay.ELITE",     600);
+    setConfig(CONFIG_UINT32_CORPSE_DECAY_RAREELITE, "Corpse.Decay.RAREELITE", 1200);
+    setConfig(CONFIG_UINT32_CORPSE_DECAY_WORLDBOSS, "Corpse.Decay.WORLDBOSS", 3600);
 
     setConfig(CONFIG_INT32_DEATH_SICKNESS_LEVEL, "Death.SicknessLevel", 11);
 
@@ -790,15 +789,17 @@ void World::LoadConfigSettings(bool reload)
     setConfig(CONFIG_UINT32_ARENA_SEASON_PREVIOUS_ID,                  "Arena.ArenaSeasonPrevious.ID", 0);
     setConfigMin(CONFIG_INT32_ARENA_STARTRATING,                       "Arena.StartRating", -1, -1);
     setConfigMin(CONFIG_INT32_ARENA_STARTPERSONALRATING,               "Arena.StartPersonalRating", -1, -1);
-
+    setConfig(CONFIG_UINT32_LOSERNOCHANGE,                             "Arena.LoserNoChange", 0);
+    setConfig(CONFIG_UINT32_LOSERHALFCHANGE,                           "Arena.LoserHalfChange", 0);
+ 
     setConfig(CONFIG_BOOL_OFFHAND_CHECK_AT_TALENTS_RESET, "OffhandCheckAtTalentsReset", false);
 
     setConfig(CONFIG_BOOL_KICK_PLAYER_ON_BAD_PACKET, "Network.KickOnBadPacket", false);
 
-    if(int clientCacheId = sConfig.GetIntDefault("ClientCacheVersion", 0))
+    if (int clientCacheId = sConfig.GetIntDefault("ClientCacheVersion", 0))
     {
         // overwrite DB/old value
-        if(clientCacheId > 0)
+        if (clientCacheId > 0)
         {
             setConfig(CONFIG_UINT32_CLIENTCACHE_VERSION, clientCacheId);
             sLog.outString("Client cache version set to: %u", clientCacheId);
@@ -830,13 +831,13 @@ void World::LoadConfigSettings(bool reload)
     m_relocation_lower_limit_sq  = pow(sConfig.GetFloatDefault("Visibility.RelocationLowerLimit",10), 2);
 
     m_VisibleUnitGreyDistance = sConfig.GetFloatDefault("Visibility.Distance.Grey.Unit", 1);
-    if(m_VisibleUnitGreyDistance >  MAX_VISIBILITY_DISTANCE)
+    if (m_VisibleUnitGreyDistance >  MAX_VISIBILITY_DISTANCE)
     {
         sLog.outError("Visibility.Distance.Grey.Unit can't be greater %f",MAX_VISIBILITY_DISTANCE);
         m_VisibleUnitGreyDistance = MAX_VISIBILITY_DISTANCE;
     }
     m_VisibleObjectGreyDistance = sConfig.GetFloatDefault("Visibility.Distance.Grey.Object", 10);
-    if(m_VisibleObjectGreyDistance >  MAX_VISIBILITY_DISTANCE)
+    if (m_VisibleObjectGreyDistance >  MAX_VISIBILITY_DISTANCE)
     {
         sLog.outError("Visibility.Distance.Grey.Object can't be greater %f",MAX_VISIBILITY_DISTANCE);
         m_VisibleObjectGreyDistance = MAX_VISIBILITY_DISTANCE;
@@ -844,12 +845,12 @@ void World::LoadConfigSettings(bool reload)
 
     //visibility on continents
     m_MaxVisibleDistanceOnContinents      = sConfig.GetFloatDefault("Visibility.Distance.Continents",     DEFAULT_VISIBILITY_DISTANCE);
-    if(m_MaxVisibleDistanceOnContinents < 45*getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO))
+    if (m_MaxVisibleDistanceOnContinents < 45*getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO))
     {
         sLog.outError("Visibility.Distance.Continents can't be less max aggro radius %f", 45*getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO));
         m_MaxVisibleDistanceOnContinents = 45*getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO);
     }
-    else if(m_MaxVisibleDistanceOnContinents + m_VisibleUnitGreyDistance >  MAX_VISIBILITY_DISTANCE)
+    else if (m_MaxVisibleDistanceOnContinents + m_VisibleUnitGreyDistance >  MAX_VISIBILITY_DISTANCE)
     {
         sLog.outError("Visibility.Distance.Continents can't be greater %f",MAX_VISIBILITY_DISTANCE - m_VisibleUnitGreyDistance);
         m_MaxVisibleDistanceOnContinents = MAX_VISIBILITY_DISTANCE - m_VisibleUnitGreyDistance;
@@ -857,12 +858,12 @@ void World::LoadConfigSettings(bool reload)
 
     //visibility in instances
     m_MaxVisibleDistanceInInstances        = sConfig.GetFloatDefault("Visibility.Distance.Instances",       DEFAULT_VISIBILITY_INSTANCE);
-    if(m_MaxVisibleDistanceInInstances < 45*getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO))
+    if (m_MaxVisibleDistanceInInstances < 45*getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO))
     {
         sLog.outError("Visibility.Distance.Instances can't be less max aggro radius %f",45*getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO));
         m_MaxVisibleDistanceInInstances = 45*getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO);
     }
-    else if(m_MaxVisibleDistanceInInstances + m_VisibleUnitGreyDistance >  MAX_VISIBILITY_DISTANCE)
+    else if (m_MaxVisibleDistanceInInstances + m_VisibleUnitGreyDistance >  MAX_VISIBILITY_DISTANCE)
     {
         sLog.outError("Visibility.Distance.Instances can't be greater %f",MAX_VISIBILITY_DISTANCE - m_VisibleUnitGreyDistance);
         m_MaxVisibleDistanceInInstances = MAX_VISIBILITY_DISTANCE - m_VisibleUnitGreyDistance;
@@ -870,19 +871,19 @@ void World::LoadConfigSettings(bool reload)
 
     //visibility in BG/Arenas
     m_MaxVisibleDistanceInBGArenas        = sConfig.GetFloatDefault("Visibility.Distance.BGArenas",       DEFAULT_VISIBILITY_BGARENAS);
-    if(m_MaxVisibleDistanceInBGArenas < 45*getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO))
+    if (m_MaxVisibleDistanceInBGArenas < 45*getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO))
     {
         sLog.outError("Visibility.Distance.BGArenas can't be less max aggro radius %f",45*getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO));
         m_MaxVisibleDistanceInBGArenas = 45*getConfig(CONFIG_FLOAT_RATE_CREATURE_AGGRO);
     }
-    else if(m_MaxVisibleDistanceInBGArenas + m_VisibleUnitGreyDistance >  MAX_VISIBILITY_DISTANCE)
+    else if (m_MaxVisibleDistanceInBGArenas + m_VisibleUnitGreyDistance >  MAX_VISIBILITY_DISTANCE)
     {
         sLog.outError("Visibility.Distance.BGArenas can't be greater %f",MAX_VISIBILITY_DISTANCE - m_VisibleUnitGreyDistance);
         m_MaxVisibleDistanceInBGArenas = MAX_VISIBILITY_DISTANCE - m_VisibleUnitGreyDistance;
     }
 
     m_MaxVisibleDistanceInFlight    = sConfig.GetFloatDefault("Visibility.Distance.InFlight",      DEFAULT_VISIBILITY_DISTANCE);
-    if(m_MaxVisibleDistanceInFlight + m_VisibleObjectGreyDistance > MAX_VISIBILITY_DISTANCE)
+    if (m_MaxVisibleDistanceInFlight + m_VisibleObjectGreyDistance > MAX_VISIBILITY_DISTANCE)
     {
         sLog.outError("Visibility.Distance.InFlight can't be greater %f",MAX_VISIBILITY_DISTANCE-m_VisibleObjectGreyDistance);
         m_MaxVisibleDistanceInFlight = MAX_VISIBILITY_DISTANCE - m_VisibleObjectGreyDistance;
@@ -891,12 +892,12 @@ void World::LoadConfigSettings(bool reload)
     ///- Load the CharDelete related config options
     setConfigMinMax(CONFIG_UINT32_CHARDELETE_METHOD, "CharDelete.Method", 0, 0, 1);
     setConfigMinMax(CONFIG_UINT32_CHARDELETE_MIN_LEVEL, "CharDelete.MinLevel", 0, 0, getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL));
-    setConfigPos(CONFIG_UINT32_CHARDELETE_KEEP_DAYS, "CharDelete.KeepDays", 30);
+    setConfig(CONFIG_UINT32_CHARDELETE_KEEP_DAYS, "CharDelete.KeepDays", 30);
 
     if (configNoReload(reload, CONFIG_UINT32_GUID_RESERVE_SIZE_CREATURE, "GuidReserveSize.Creature", 100))
-        setConfigPos(CONFIG_UINT32_GUID_RESERVE_SIZE_CREATURE,   "GuidReserveSize.Creature",   100);
+        setConfig(CONFIG_UINT32_GUID_RESERVE_SIZE_CREATURE,   "GuidReserveSize.Creature",   100);
     if (configNoReload(reload, CONFIG_UINT32_GUID_RESERVE_SIZE_GAMEOBJECT, "GuidReserveSize.GameObject", 100))
-        setConfigPos(CONFIG_UINT32_GUID_RESERVE_SIZE_GAMEOBJECT, "GuidReserveSize.GameObject", 100);
+        setConfig(CONFIG_UINT32_GUID_RESERVE_SIZE_GAMEOBJECT, "GuidReserveSize.GameObject", 100);
 
     setConfig(CONFIG_UINT32_MIN_LEVEL_FOR_RAID, "Raid.MinLevel", 10);
 
@@ -950,6 +951,9 @@ void World::SetInitialWorldSettings()
 
     ///- Time server startup
     uint32 uStartTime = WorldTimer::getMSTime();
+
+    ///- Initialize detour memory management
+    dtAllocSetCustom(dtCustomAlloc, dtCustomFree);
 
     ///- Initialize config settings
     LoadConfigSettings();
@@ -1402,6 +1406,9 @@ void World::SetInitialWorldSettings()
     m_timers[WUPDATE_DELETECHARS].SetInterval(DAY*IN_MILLISECONDS); // check for chars to delete every day
     m_timers[WUPDATE_AUTOBROADCAST].SetInterval(abtimer);
 
+    // for AhBot
+    m_timers[WUPDATE_AHBOT].SetInterval(20*IN_MILLISECONDS); // every 20 sec
+
     //to set mailtimer to return mails every day between 4 and 5 am
     //mailtimer is increased when updating auctions
     //one second is 1000 -(tested on win system)
@@ -1452,10 +1459,10 @@ void World::SetInitialWorldSettings()
     // Delete all characters which have been deleted X days before
     Player::DeleteOldCharacters();
 
-    sLog.outString("Initialize AuctionHouseBot...");
-    auctionbot.Initialize();
-
     sLog.outString("Starting Autobroadcast system by Xeross..." );
+
+    sLog.outString("Initialize AuctionHouseBot...");
+    sAuctionBot.Initialize();
 
     sLog.outString( "WORLD: World initialized" );
 
@@ -1557,8 +1564,13 @@ void World::Update(uint32 diff)
 
         ///- Handle expired auctions
         sAuctionMgr.Update();
+    }
 
-        auctionbot.Update();
+    /// <li> Handle AHBot operations
+    if (m_timers[WUPDATE_AHBOT].Passed())
+    {
+        sAuctionBot.Update();
+        m_timers[WUPDATE_AHBOT].Reset();
     }
 
     /// <li> Handle session updates
@@ -1629,7 +1641,7 @@ void World::Update(uint32 diff)
     }
     static uint32 autobroadcaston = 0;
     autobroadcaston = sConfig.GetIntDefault("AutoBroadcast.On", 0);
-    if(autobroadcaston == 1)
+    if (autobroadcaston == 1)
     {
         if (m_timers[WUPDATE_AUTOBROADCAST].Passed())
         {
@@ -1681,7 +1693,7 @@ namespace MaNGOS
             {
                 char const* text = sObjectMgr.GetMangosString(i_textId,loc_idx);
 
-                if(i_args)
+                if (i_args)
                 {
                     // we need copy va_list before use or original va_list will corrupted
                     va_list ap;
@@ -1824,7 +1836,7 @@ void World::KickAllLess(AccountTypes sec)
 {
     // session not removed at kick and will removed in next update tick
     for (SessionMap::const_iterator itr = m_sessions.begin(); itr != m_sessions.end(); ++itr)
-        if(itr->second->GetSecurity() < sec)
+        if (itr->second->GetSecurity() < sec)
             itr->second->KickPlayer();
 }
 
@@ -1860,7 +1872,7 @@ BanReturn World::BanAccount(BanMode mode, std::string nameOrIP, uint32 duration_
 
     if(!resultAccounts)
     {
-        if(mode==BAN_IP)
+        if (mode==BAN_IP)
             return BAN_SUCCESS;                             // ip correctly banned but nobody affected (yet)
         else
             return BAN_NOTFOUND;                                // Nobody to ban
@@ -1872,7 +1884,7 @@ BanReturn World::BanAccount(BanMode mode, std::string nameOrIP, uint32 duration_
         Field* fieldsAccount = resultAccounts->Fetch();
         uint32 account = fieldsAccount->GetUInt32();
 
-        if(mode!=BAN_IP)
+        if (mode!=BAN_IP)
         {
             //No SQL injection as strings are escaped
             LoginDatabase.PExecute("INSERT INTO account_banned VALUES ('%u', UNIX_TIMESTAMP(), UNIX_TIMESTAMP()+%u, '%s', '%s', '1')",
@@ -1880,7 +1892,7 @@ BanReturn World::BanAccount(BanMode mode, std::string nameOrIP, uint32 duration_
         }
 
         if (WorldSession* sess = FindSession(account))
-            if(std::string(sess->GetPlayerName()) != author)
+            if (std::string(sess->GetPlayerName()) != author)
                 sess->KickPlayer();
     }
     while( resultAccounts->NextRow() );
@@ -1926,7 +1938,7 @@ void World::_UpdateGameTime()
     if(!m_stopEvent && m_ShutdownTimer > 0 && elapsed > 0)
     {
         ///- ... and it is overdue, stop the world (set m_stopEvent)
-        if( m_ShutdownTimer <= elapsed )
+        if ( m_ShutdownTimer <= elapsed )
         {
             if(!(m_ShutdownMask & SHUTDOWN_MASK_IDLE) || GetActiveAndQueuedSessionCount()==0)
                 m_stopEvent = true;                         // exist code already set
@@ -1947,14 +1959,14 @@ void World::_UpdateGameTime()
 void World::ShutdownServ(uint32 time, uint32 options, uint8 exitcode)
 {
     // ignore if server shutdown at next tick
-    if(m_stopEvent)
+    if (m_stopEvent)
         return;
 
     m_ShutdownMask = options;
     m_ExitCode = exitcode;
 
     ///- If the shutdown time is 0, set m_stopEvent (except if shutdown is 'idle' with remaining sessions)
-    if(time==0)
+    if (time==0)
     {
         if(!(options & SHUTDOWN_MASK_IDLE) || GetActiveAndQueuedSessionCount()==0)
             m_stopEvent = true;                             // exist code already set
@@ -1973,7 +1985,7 @@ void World::ShutdownServ(uint32 time, uint32 options, uint8 exitcode)
 void World::ShutdownMsg(bool show, Player* player)
 {
     // not show messages for idle shutdown mode
-    if(m_ShutdownMask & SHUTDOWN_MASK_IDLE)
+    if (m_ShutdownMask & SHUTDOWN_MASK_IDLE)
         return;
 
     ///- Display a message every 12 hours, hours, 5 minutes, minute, 5 seconds and finally seconds
@@ -2023,7 +2035,7 @@ void World::SendServerMessage(ServerMessageType type, const char *text, Player* 
     data << uint32(type);
     data << text;
 
-    if(player)
+    if (player)
         player->GetSession()->SendPacket(&data);
     else
         SendGlobalMessage( &data );
@@ -2068,7 +2080,7 @@ void World::ProcessCliCommands()
         CliHandler handler(command->m_cliAccountId, command->m_cliAccessLevel, callbackArg, zprint);
         handler.ParseCommands(command->m_command);
 
-        if(command->m_commandFinished)
+        if (command->m_commandFinished)
             command->m_commandFinished(callbackArg, !handler.HasSentErrorMessage());
 
         delete command;
@@ -2081,7 +2093,7 @@ void World::SendBroadcast()
     static int nextid;
 
     QueryResult *result;
-    if(nextid != 0)
+    if (nextid != 0)
     {
         result = CharacterDatabase.PQuery("SELECT `text`, `next` FROM `autobroadcast` WHERE `id` = %u", nextid);
     }
@@ -2100,13 +2112,13 @@ void World::SendBroadcast()
 
     static uint32 abcenter = 0;
     abcenter = sConfig.GetIntDefault("AutoBroadcast.Center", 0);
-    if(abcenter == 0)
+    if (abcenter == 0)
     {
         sWorld.SendWorldText(LANG_AUTO_BROADCAST, msg.c_str());
 
         sLog.outString("AutoBroadcast: '%s'",msg.c_str());
     }
-    if(abcenter == 1)
+    if (abcenter == 1)
     {
         WorldPacket data(SMSG_NOTIFICATION, (msg.size()+1));
         data << msg;
@@ -2114,7 +2126,7 @@ void World::SendBroadcast()
 
         sLog.outString("AutoBroadcast: '%s'",msg.c_str());
     }
-    if(abcenter == 2)
+    if (abcenter == 2)
     {
         sWorld.SendWorldText(LANG_AUTO_BROADCAST, msg.c_str());
 
@@ -2373,7 +2385,7 @@ void World::UpdateMaxSessionCounters()
 void World::LoadDBVersion()
 {
     QueryResult* result = WorldDatabase.Query("SELECT version, creature_ai_version, cache_id FROM db_version LIMIT 1");
-    if(result)
+    if (result)
     {
         Field* fields = result->Fetch();
 
@@ -2385,16 +2397,21 @@ void World::LoadDBVersion()
         delete result;
     }
 
-    if(m_DBVersion.empty())
+    if (m_DBVersion.empty())
         m_DBVersion = "Unknown world database.";
 
-    if(m_CreatureEventAIVersion.empty())
+    if (m_CreatureEventAIVersion.empty())
         m_CreatureEventAIVersion = "Unknown creature EventAI.";
 }
 
 void World::setConfig(eConfigUInt32Values index, char const* fieldname, uint32 defvalue)
 {
     setConfig(index, sConfig.GetIntDefault(fieldname,defvalue));
+    if (int32(getConfig(index)) < 0)
+    {
+        sLog.outError("%s (%i) can't be negative. Using %u instead.", fieldname, int32(getConfig(index)), defvalue);
+        setConfig(index, defvalue);
+    }
 }
 
 void World::setConfig(eConfigInt32Values index, char const* fieldname, int32 defvalue)
@@ -2410,16 +2427,6 @@ void World::setConfig(eConfigFloatValues index, char const* fieldname, float def
 void World::setConfig( eConfigBoolValues index, char const* fieldname, bool defvalue )
 {
     setConfig(index, sConfig.GetBoolDefault(fieldname,defvalue));
-}
-
-void World::setConfigPos(eConfigUInt32Values index, char const* fieldname, uint32 defvalue)
-{
-    setConfig(index, fieldname, defvalue);
-    if (int32(getConfig(index)) < 0)
-    {
-        sLog.outError("%s (%i) can't be negative. Using %u instead.", fieldname, int32(getConfig(index)), defvalue);
-        setConfig(index, defvalue);
-    }
 }
 
 void World::setConfigPos(eConfigFloatValues index, char const* fieldname, float defvalue)

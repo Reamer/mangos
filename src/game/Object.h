@@ -138,6 +138,7 @@ class MANGOS_DLL_SPEC Object
             ClearUpdateMask(true);
             m_inWorld = false;
         }
+        bool IsInitialized() const { return (m_uint32Values ? true : false);}
 
         ObjectGuid const& GetObjectGuid() const { return GetGuidValue(OBJECT_FIELD_GUID); }
         const uint64 GetGUID() const { return GetObjectGuid().GetRawValue(); }  // DEPRECATED, not use, will removed soon
@@ -497,7 +498,6 @@ class MANGOS_DLL_SPEC WorldObject : public Object
         virtual const char* GetNameForLocaleIdx(int32 /*locale_idx*/) const { return GetName(); }
 
         float GetDistance( const WorldObject* obj ) const;
-        float GetDistanceSqr(float x, float y, float z) const;
         float GetDistance(float x, float y, float z) const;
         float GetDistance2d(const WorldObject* obj) const;
         float GetDistance2d(float x, float y) const;
@@ -527,9 +527,14 @@ class MANGOS_DLL_SPEC WorldObject : public Object
         bool IsInRange2d(float x, float y, float minRange, float maxRange) const;
         bool IsInRange3d(float x, float y, float z, float minRange, float maxRange) const;
 
+        bool IsInBetween(const WorldObject *obj1, const WorldObject *obj2, float size = 0) const;
+        float GetExactDist2dSq(float x, float y) const
+        { float dx = m_position.x - x; float dy = m_position.y - y; return dx*dx + dy*dy; }
+        float GetExactDist2d(const float x, const float y) const
+        { return sqrt(GetExactDist2dSq(x, y)); }
+
         float GetAngle( const WorldObject* obj ) const;
         float GetAngle( const float x, const float y ) const;
-        bool HasInArc( const float arcangle, const float x, const float y) const;
         bool HasInArc( const float arcangle, const WorldObject* obj ) const;
         bool isInFrontInMap(WorldObject const* target,float distance, float arc = M_PI) const;
         bool isInBackInMap(WorldObject const* target, float distance, float arc = M_PI) const;
@@ -602,9 +607,15 @@ class MANGOS_DLL_SPEC WorldObject : public Object
         void SetLootRecipient(Unit* unit);
         Player* GetOriginalLootRecipient() const;           // ignore group changes/etc, not for looting
 
+        // helper functions to select units
+        Creature* GetClosestCreatureWithEntry(WorldObject* pSource, uint32 uiEntry, float fMaxSearchRange);
+        GameObject* GetClosestGameObjectWithEntry(const WorldObject* pSource, uint32 uiEntry, float fMaxSearchRange);
+        void GetGameObjectListWithEntryInGrid(std::list<GameObject*>& lList, uint32 uiEntry, float fMaxSearchRange);
+
         bool isActiveObject() const { return m_isActiveObject || m_viewPoint.hasViewers(); }
 
         ViewPoint& GetViewPoint() { return m_viewPoint; }
+
 
         // ASSERT print helper
         bool PrintCoordinatesError(float x, float y, float z, char const* descr) const;

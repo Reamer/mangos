@@ -20,11 +20,10 @@
 #include "TargetedMovementGenerator.h"
 #include "Errors.h"
 #include "Creature.h"
-#include "DestinationHolderImp.h"
+#include "Player.h"
 #include "World.h"
-
-//#include "ace/High_Res_Timer.h"
-//class ACE_High_Res_Timer;
+#include "movement/MoveSplineInit.h"
+#include "movement/MoveSpline.h"
 
 //-----------------------------------------------//
 template<class T, typename D>
@@ -41,7 +40,7 @@ void TargetedMovementGeneratorMedium<T,D>::_setTargetLocation(T &owner)
     // prevent redundant micro-movement for pets, other followers.
     if (i_offset && i_target->IsWithinDistInMap(&owner,2*i_offset))
     {
-        if (i_destinationHolder.HasDestination())
+        if (!owner.movespline->Finalized())
             return;
 
         owner.GetPosition(x, y, z);
@@ -49,7 +48,14 @@ void TargetedMovementGeneratorMedium<T,D>::_setTargetLocation(T &owner)
     else if (!i_offset)
     {
         // to nearest contact position
-        i_target->GetContactPoint( &owner, x, y, z );
+        float dist = 0.0f;
+        if (owner.getVictim() && owner.getVictim()->GetObjectGuid() == i_target->GetObjectGuid())
+            dist = owner.GetFloatValue(UNIT_FIELD_COMBATREACH) + i_target->GetFloatValue(UNIT_FIELD_COMBATREACH) - i_target->GetObjectBoundingRadius() - owner.GetObjectBoundingRadius() - 1.0f;
+
+        if (dist < 0.5f)
+            dist = 0.5f;
+
+        i_target->GetContactPoint(&owner, x, y, z, dist);
     }
     else
     {
@@ -74,65 +80,24 @@ void TargetedMovementGeneratorMedium<T,D>::_setTargetLocation(T &owner)
             return;
     */
 
-    //ACE_High_Res_Timer timer = ACE_High_Res_Timer();
-    //ACE_hrtime_t elapsed;
-    //timer.start();
-
-    bool forceDest = false;
-    // allow pets following their master to cheat while generating paths
-    if(owner.GetTypeId() == TYPEID_UNIT && ((Creature*)&owner)->IsPet()
-        && owner.hasUnitState(UNIT_STAT_FOLLOW))
-        forceDest = true;
-
-    bool newPathCalculated = true;
     if(!i_path)
-        i_path = new PathInfo(&owner, x, y, z, false, forceDest);
-    else
-        newPathCalculated = i_path->Update(x, y, z, false, forceDest);
+        i_path = new PathFinder(&owner);
 
-    //timer.stop();
-    //timer.elapsed_microseconds(elapsed);
-    //sLog.outDebug("Path found in %llu microseconds", elapsed);
-
-    // nothing we can do here ...
+    // allow pets following their master to cheat while generating paths
+    bool forceDest = (owner.GetTypeId() == TYPEID_UNIT && ((Creature*)&owner)->IsPet()
+                        && owner.hasUnitState(UNIT_STAT_FOLLOW));
+    i_path->calculate(x, y, z, forceDest);
     if(i_path->getPathType() & PATHFIND_NOPATH)
         return;
 
-    PointPath pointPath = i_path->getFullPath();
-
-    if (i_destinationHolder.HasArrived() && m_pathPointsSent)
-        --m_pathPointsSent;
-
-    Traveller<T> traveller(owner);
-    i_path->getNextPosition(x, y, z);
-    i_destinationHolder.SetDestination(traveller, x, y, z, false);
-
-    // send the path if:
-    //    we have brand new path
-    //    we have visited almost all of the previously sent points
-    //    movespeed has changed
-    //    the owner is stopped (caused by some movement effects)
-    if (newPathCalculated || m_pathPointsSent < 2 || i_recalculateTravel || owner.IsStopped())
-    {
-        // send 10 nodes, or send all nodes if there are less than 10 left
-        m_pathPointsSent = std::min<uint32>(10, pointPath.size() - 1);
-        uint32 endIndex = m_pathPointsSent + 1;
-
-        // dist to next node + world-unit length of the path
-        x -= owner.GetPositionX();
-        y -= owner.GetPositionY();
-        z -= owner.GetPositionZ();
-        float dist = sqrt(x*x + y*y + z*z) + pointPath.GetTotalLength(1, endIndex);
-
-        // calculate travel time, set spline, then send path
-        uint32 traveltime = uint32(dist / (traveller.Speed()*0.001f));
-        SplineFlags flags = (owner.GetTypeId() == TYPEID_UNIT) ? ((Creature*)&owner)->GetSplineFlags() : SPLINEFLAG_WALKMODE;
-        owner.SendMonsterMoveByPath(pointPath, 1, endIndex, flags, traveltime);
-    }
-
     D::_addUnitStateMove(owner);
-    if (owner.GetTypeId() == TYPEID_UNIT && ((Creature*)&owner)->CanFly())
-        ((Creature&)owner).AddSplineFlag(SPLINEFLAG_FLYING);
+    i_targetReached = false;
+    i_recalculateTravel = false;
+
+    Movement::MoveSplineInit init(owner);
+    init.MovebyPath(i_path->getPath());
+    init.SetWalk(((D*)this)->EnableWalking());
+    init.Launch();
 }
 
 template<>
@@ -167,7 +132,7 @@ bool TargetedMovementGeneratorMedium<T,D>::Update(T &owner, const uint32 & time_
     if (!i_target.isValid() || !i_target->IsInWorld())
         return false;
 
-    if (!owner.isAlive())
+    if (!owner.isAlive() || !owner.IsInWorld())
         return true;
 
     if (owner.hasUnitState(UNIT_STAT_NOT_MOVE))
@@ -191,73 +156,40 @@ bool TargetedMovementGeneratorMedium<T,D>::Update(T &owner, const uint32 & time_
         return true;
     }
 
-    if (i_path && (i_path->getPathType() & PATHFIND_NOPATH))
-        return true;
-
-    Traveller<T> traveller(owner);
-
-    if (!i_destinationHolder.HasDestination())
-        _setTargetLocation(owner);
-
-    if (i_destinationHolder.UpdateTraveller(traveller, time_diff, i_recalculateTravel || owner.IsStopped()))
+    i_recheckDistance.Update(time_diff);
+    if (i_recheckDistance.Passed())
     {
-        if (!IsActive(owner))                               // force stop processing (movement can move out active zone with cleanup movegens list)
-            return true;                                    // not expire now, but already lost
-
-        // put targeted movement generators on a higher priority
-        if (owner.GetObjectBoundingRadius())
-            i_destinationHolder.ResetUpdate(100);
+        i_recheckDistance.Reset(100);
 
         //More distance let have better performance, less distance let have more sensitive reaction at target move.
-        float dist = i_target->GetObjectBoundingRadius() + owner.GetObjectBoundingRadius() + sWorld.getConfig(CONFIG_FLOAT_RATE_TARGET_POS_RECALCULATION_RANGE);
+        float allowed_dist = owner.GetObjectBoundingRadius() + sWorld.getConfig(CONFIG_FLOAT_RATE_TARGET_POS_RECALCULATION_RANGE);
+        G3D::Vector3 dest = owner.movespline->FinalDestination();
 
-        float x,y,z;
-        i_target->GetPosition(x, y, z);
-        PathNode next_point(x, y, z);
+        bool targetMoved = false;
+        if (owner.GetTypeId() == TYPEID_UNIT && ((Creature*)&owner)->CanFly())
+            targetMoved = !i_target->IsWithinDist3d(dest.x, dest.y, dest.z, allowed_dist);
+        else
+            targetMoved = !i_target->IsWithinDist2d(dest.x, dest.y, allowed_dist);
 
-        bool targetMoved = false, needNewDest = false;
-        bool forceRecalc = i_recalculateTravel || owner.IsStopped();
-        if (i_path && !forceRecalc)
-        {
-            PathNode end_point = i_path->getEndPosition();
-            next_point = i_path->getNextPosition();
-
-            needNewDest = i_destinationHolder.HasArrived() && !inRange(next_point, i_path->getActualEndPosition(), dist, dist);
-            if(!needNewDest)
-            {
-                // GetClosePoint() will always return a point on the ground, so we need to
-                // handle the difference in elevation when the creature is flying
-                if (owner.GetTypeId() == TYPEID_UNIT && ((Creature*)&owner)->CanFly())
-                    targetMoved = i_target->GetDistanceSqr(end_point.x, end_point.y, end_point.z) > dist*dist;
-                else
-                    targetMoved = i_target->GetDistance2d(end_point.x, end_point.y) > dist;
-            }
-        }
-
-        if (!i_path || targetMoved || needNewDest || forceRecalc)
-        {
-            // (re)calculate path
+        if (targetMoved)
             _setTargetLocation(owner);
+    }
 
-            next_point = i_path->getNextPosition();
+    if (owner.movespline->Finalized())
+    {
+        if (i_angle == 0.f && !owner.HasInArc(0.01f, i_target.getTarget()))
+            owner.SetInFront(i_target.getTarget());
 
-            // Set new Angle For Map::
-            owner.SetOrientation(owner.GetAngle(next_point.x, next_point.y));
-        }
-        // Update the Angle of the target only for Map::, no need to send packet for player
-        else if (!i_angle && !owner.HasInArc(0.01f, next_point.x, next_point.y))
-            owner.SetOrientation(owner.GetAngle(next_point.x, next_point.y));
-
-        if ((owner.IsStopped() && !i_destinationHolder.HasArrived()) || i_recalculateTravel)
+        if (!i_targetReached)
         {
-            i_recalculateTravel = false;
-
-            //Angle update will take place into owner.StopMoving()
-            owner.SetOrientation(owner.GetAngle(next_point.x, next_point.y));
-
-            owner.StopMoving();
+            i_targetReached = true;
             static_cast<D*>(this)->_reachTarget(owner);
         }
+    }
+    else
+    {
+        if (i_recalculateTravel)
+            _setTargetLocation(owner);
     }
     return true;
 }
@@ -280,12 +212,8 @@ void ChaseMovementGenerator<Player>::Initialize(Player &owner)
 template<>
 void ChaseMovementGenerator<Creature>::Initialize(Creature &owner)
 {
+    owner.SetWalk(false);
     owner.addUnitState(UNIT_STAT_CHASE|UNIT_STAT_CHASE_MOVE);
-    owner.RemoveSplineFlag(SPLINEFLAG_WALKMODE);
-
-    if (((Creature*)&owner)->CanFly())
-        owner.AddSplineFlag(SPLINEFLAG_FLYING);
-
     _setTargetLocation(owner);
 }
 
@@ -309,15 +237,15 @@ void ChaseMovementGenerator<T>::Reset(T &owner)
 
 //-----------------------------------------------//
 template<>
-void FollowMovementGenerator<Creature>::_updateWalkMode(Creature &u)
+bool FollowMovementGenerator<Creature>::EnableWalking() const
 {
-    if (i_target.isValid() && u.IsPet())
-        u.UpdateWalkMode(i_target.getTarget());
+    return i_target.isValid() && i_target->IsWalking();
 }
 
 template<>
-void FollowMovementGenerator<Player>::_updateWalkMode(Player &)
+bool FollowMovementGenerator<Player>::EnableWalking() const
 {
+    return false;
 }
 
 template<>
@@ -342,7 +270,6 @@ template<>
 void FollowMovementGenerator<Player>::Initialize(Player &owner)
 {
     owner.addUnitState(UNIT_STAT_FOLLOW|UNIT_STAT_FOLLOW_MOVE);
-    _updateWalkMode(owner);
     _updateSpeed(owner);
     _setTargetLocation(owner);
 }
@@ -351,12 +278,7 @@ template<>
 void FollowMovementGenerator<Creature>::Initialize(Creature &owner)
 {
     owner.addUnitState(UNIT_STAT_FOLLOW|UNIT_STAT_FOLLOW_MOVE);
-    _updateWalkMode(owner);
     _updateSpeed(owner);
-
-    if (((Creature*)&owner)->CanFly())
-        owner.AddSplineFlag(SPLINEFLAG_FLYING);
-
     _setTargetLocation(owner);
 }
 
@@ -364,7 +286,6 @@ template<class T>
 void FollowMovementGenerator<T>::Finalize(T &owner)
 {
     owner.clearUnitState(UNIT_STAT_FOLLOW|UNIT_STAT_FOLLOW_MOVE);
-    _updateWalkMode(owner);
     _updateSpeed(owner);
 }
 
@@ -372,7 +293,6 @@ template<class T>
 void FollowMovementGenerator<T>::Interrupt(T &owner)
 {
     owner.clearUnitState(UNIT_STAT_FOLLOW|UNIT_STAT_FOLLOW_MOVE);
-    _updateWalkMode(owner);
     _updateSpeed(owner);
 }
 

@@ -77,8 +77,9 @@ enum WorldTimers
     WUPDATE_CORPSES     = 3,
     WUPDATE_EVENTS      = 4,
     WUPDATE_DELETECHARS = 5,
-    WUPDATE_AUTOBROADCAST = 6,
-    WUPDATE_COUNT       = 7
+    WUPDATE_AHBOT       = 6,
+    WUPDATE_AUTOBROADCAST = 7,
+    WUPDATE_COUNT       = 8
 };
 
 /// Configuration elements
@@ -152,8 +153,6 @@ enum eConfigUInt32Values
     CONFIG_UINT32_CREATURE_FAMILY_ASSISTANCE_DELAY,
     CONFIG_UINT32_CREATURE_FAMILY_FLEE_DELAY,
     CONFIG_UINT32_WORLD_BOSS_LEVEL_DIFF,
-    CONFIG_UINT32_QUEST_LOW_LEVEL_HIDE_DIFF,
-    CONFIG_UINT32_QUEST_HIGH_LEVEL_HIDE_DIFF,
     CONFIG_UINT32_QUEST_DAILY_RESET_HOUR,
     CONFIG_UINT32_QUEST_WEEKLY_RESET_WEEK_DAY,
     CONFIG_UINT32_QUEST_WEEKLY_RESET_HOUR,
@@ -193,6 +192,8 @@ enum eConfigUInt32Values
     CONFIG_UINT32_ANTICHEAT_ACTION_DELAY,
     CONFIG_UINT32_NUMTHREADS,
     CONFIG_UINT32_RANDOM_BG_RESET_HOUR,
+    CONFIG_UINT32_LOSERNOCHANGE,
+    CONFIG_UINT32_LOSERHALFCHANGE,
     CONFIG_UINT32_RAF_MAXGRANTLEVEL,
     CONFIG_UINT32_RAF_MAXREFERALS,
     CONFIG_UINT32_RAF_MAXREFERERS,
@@ -209,6 +210,8 @@ enum eConfigInt32Values
     CONFIG_INT32_DEATH_SICKNESS_LEVEL = 0,
     CONFIG_INT32_ARENA_STARTRATING,
     CONFIG_INT32_ARENA_STARTPERSONALRATING,
+    CONFIG_INT32_QUEST_LOW_LEVEL_HIDE_DIFF,
+    CONFIG_INT32_QUEST_HIGH_LEVEL_HIDE_DIFF,
     CONFIG_INT32_VALUE_COUNT
 };
 
@@ -354,15 +357,17 @@ enum eConfigBoolValues
     CONFIG_BOOL_ANTICHEAT_WARDEN,
     CONFIG_BOOL_ALLOW_FLIGHT_ON_OLD_MAPS,
     CONFIG_BOOL_ARMORY_SUPPORT,
-    CONFIG_BOOL_MMAP_ENABLED,
     CONFIG_BOOL_LFG_ENABLE,
     CONFIG_BOOL_LFR_ENABLE,
     CONFIG_BOOL_LFG_DEBUG_ENABLE,
     CONFIG_BOOL_LFR_EXTEND,
+    CONFIG_BOOL_LFG_ONLYLASTENCOUNTER,
     CONFIG_BOOL_PLAYERBOT_DISABLE,
     CONFIG_BOOL_PLAYERBOT_DEBUGWHISPER,
     CONFIG_BOOL_CHECK_GO_IN_PATH,
-    CONFIG_BOOL_VALUE_COUNT
+    CONFIG_BOOL_VALUE_COUNT,
+    CONFIG_BOOL_ALLOW_HONOR_KILLS_TITLES,
+    CONFIG_BOOL_MMAP_ENABLED
 };
 
 /// Can be used in SMSG_AUTH_RESPONSE packet
@@ -634,7 +639,6 @@ class World
         void setConfig(eConfigInt32Values index, char const* fieldname, int32 defvalue);
         void setConfig(eConfigFloatValues index, char const* fieldname, float defvalue);
         void setConfig(eConfigBoolValues index, char const* fieldname, bool defvalue);
-        void setConfigPos(eConfigUInt32Values index, char const* fieldname, uint32 defvalue);
         void setConfigPos(eConfigFloatValues index, char const* fieldname, float defvalue);
         void setConfigMin(eConfigUInt32Values index, char const* fieldname, uint32 defvalue, uint32 minvalue);
         void setConfigMin(eConfigInt32Values index, char const* fieldname, int32 defvalue, int32 minvalue);

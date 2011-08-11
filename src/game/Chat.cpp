@@ -34,6 +34,7 @@
 #include "SpellMgr.h"
 #include "PoolManager.h"
 #include "GameEventMgr.h"
+#include "AuctionHouseBot/AuctionHouseBot.h"
 
 // Supported shift-links (client generated and server side)
 // |color|Hachievement:achievement_id:player_guid_hex:completed_0_1:mm:dd:yy_from_2000:criteriaMask1:criteriaMask2:criteriaMask3:criteriaMask4|h[name]|h|r
@@ -110,6 +111,44 @@ ChatCommand * ChatHandler::getCommandTable()
         { "add",            SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleAchievementAddCommand,      "", NULL },
         { "remove",         SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleAchievementRemoveCommand,   "", NULL },
         { "",               SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleAchievementCommand,         "", NULL },
+        { NULL,             0,                  true,  NULL,                                           "", NULL }
+    };
+
+    static ChatCommand ahbotItemsAmountCommandTable[] =
+    {
+        { "grey",           SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleAHBotItemsAmountQualityCommand<AUCTION_QUALITY_GREY>,  "", NULL },
+        { "white",          SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleAHBotItemsAmountQualityCommand<AUCTION_QUALITY_WHITE>, "", NULL },
+        { "green",          SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleAHBotItemsAmountQualityCommand<AUCTION_QUALITY_GREEN>, "", NULL },
+        { "blue",           SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleAHBotItemsAmountQualityCommand<AUCTION_QUALITY_BLUE>,  "", NULL },
+        { "purple",         SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleAHBotItemsAmountQualityCommand<AUCTION_QUALITY_PURPLE>,"", NULL },
+        { "orange",         SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleAHBotItemsAmountQualityCommand<AUCTION_QUALITY_ORANGE>,"", NULL },
+        { "yellow",         SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleAHBotItemsAmountQualityCommand<AUCTION_QUALITY_YELLOW>,"", NULL },
+        { "",               SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleAHBotItemsAmountCommand,      "", NULL },
+        { NULL,             0,                  true,  NULL,                                             "", NULL }
+    };
+
+    static ChatCommand ahbotItemsRatioCommandTable[] =
+    {
+        { "alliance",       SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleAHBotItemsRatioHouseCommand<AUCTION_HOUSE_ALLIANCE>,  "", NULL },
+        { "horde",          SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleAHBotItemsRatioHouseCommand<AUCTION_HOUSE_HORDE>,     "", NULL },
+        { "neutral",        SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleAHBotItemsRatioHouseCommand<AUCTION_HOUSE_NEUTRAL>,   "", NULL },
+        { "",               SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleAHBotItemsRatioCommand,      "", NULL },
+        { NULL,             0,                  true,  NULL,                                             "", NULL }
+    };
+
+    static ChatCommand ahbotItemsCommandTable[] =
+    {
+        { "amount",         SEC_ADMINISTRATOR,  true,  NULL,                                           "", ahbotItemsAmountCommandTable},
+        { "ratio",          SEC_ADMINISTRATOR,  true,  NULL,                                           "", ahbotItemsRatioCommandTable},
+        { NULL,             0,                  true,  NULL,                                           "", NULL }
+    };
+
+    static ChatCommand ahbotCommandTable[] =
+    {
+        { "items",          SEC_ADMINISTRATOR,  true,  NULL,                                           "", ahbotItemsCommandTable},
+        { "rebuild",        SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleAHBotRebuildCommand,        "", NULL },
+        { "reload",         SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleAHBotReloadCommand,         "", NULL },
+        { "status",         SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleAHBotStatusCommand,         "", NULL },
         { NULL,             0,                  true,  NULL,                                           "", NULL }
     };
 
@@ -226,6 +265,7 @@ ChatCommand * ChatHandler::getCommandTable()
         { "spellcoefs",     SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleDebugSpellCoefsCommand,          "", NULL },
         { "spellmods",      SEC_ADMINISTRATOR,  false, &ChatHandler::HandleDebugSpellModsCommand,           "", NULL },
         { "uws",            SEC_ADMINISTRATOR,  false, &ChatHandler::HandleDebugUpdateWorldStateCommand,    "", NULL },
+        { "entervehicle",   SEC_GAMEMASTER,     false, &ChatHandler::HandleDebugEnterVehicleCommand,        "", NULL },
         { NULL,             0,                  false, NULL,                                                "", NULL }
     };
 
@@ -710,6 +750,7 @@ ChatCommand * ChatHandler::getCommandTable()
         { "account",        SEC_PLAYER,         true,  NULL,                                           "", accountCommandTable  },
         { "achievement",    SEC_ADMINISTRATOR,  true,  NULL,                                           "", achievementCommandTable },
         { "auction",        SEC_ADMINISTRATOR,  false, NULL,                                           "", auctionCommandTable  },
+        { "ahbot",          SEC_ADMINISTRATOR,  true,  NULL,                                           "", ahbotCommandTable    },
         { "cast",           SEC_ADMINISTRATOR,  false, NULL,                                           "", castCommandTable     },
         { "character",      SEC_GAMEMASTER,     true,  NULL,                                           "", characterCommandTable},
         { "debug",          SEC_MODERATOR,      true,  NULL,                                           "", debugCommandTable    },
@@ -804,7 +845,7 @@ ChatCommand * ChatHandler::getCommandTable()
         { NULL,             0,                  false, NULL,                                           "", NULL }
     };
 
-    if(load_command_table)
+    if (load_command_table)
     {
         load_command_table = false;
 
@@ -873,7 +914,7 @@ bool ChatHandler::HasLowerSecurity(Player* target, ObjectGuid guid, bool strong)
 
     if (target)
         target_session = target->GetSession();
-    else if (guid)
+    else
         target_account = sObjectMgr.GetPlayerAccountIdByGUID(guid);
 
     if(!target_session && !target_account)
@@ -914,19 +955,19 @@ bool ChatHandler::HasLowerSecurityAccount(WorldSession* target, uint32 target_ac
 bool ChatHandler::hasStringAbbr(const char* name, const char* part)
 {
     // non "" command
-    if( *name )
+    if ( *name )
     {
         // "" part from non-"" command
-        if( !*part )
+        if ( !*part )
             return false;
 
         for(;;)
         {
-            if( !*part )
+            if ( !*part )
                 return true;
-            else if( !*name )
+            else if ( !*name )
                 return false;
-            else if( tolower( *name ) != tolower( *part ) )
+            else if ( tolower( *name ) != tolower( *part ) )
                 return false;
             ++name; ++part;
         }
@@ -1232,22 +1273,7 @@ void ChatHandler::ExecuteCommand(const char* text)
             if ((this->*(command->Handler))((char*)text))   // text content destroyed at call
             {
                 if (command->SecurityLevel > SEC_PLAYER)
-                {
-                    // chat case
-                    if (m_session)
-                    {
-                        Player* p = m_session->GetPlayer();
-                        ObjectGuid sel_guid = p->GetSelectionGuid();
-                        sLog.outCommand(GetAccountId(),"Command: %s [Player: %s (Account: %u) X: %f Y: %f Z: %f Map: %u Selected: %s]",
-                            fullcmd.c_str(),p->GetName(),GetAccountId(),p->GetPositionX(),p->GetPositionY(),p->GetPositionZ(),p->GetMapId(),
-                            sel_guid.GetString().c_str());
-                    }
-                    else                                        // 0 account -> console
-                    {
-                        sLog.outCommand(GetAccountId(),"Command: %s [Account: %u from %s]",
-                            fullcmd.c_str(),GetAccountId(),GetAccountId() ? "RA-connection" : "Console");
-                    }
-                }
+                    LogCommand(fullcmd.c_str());
             }
             // some commands have custom error messages. Don't send the default one in these cases.
             else if (!HasSentErrorMessage())
@@ -1338,13 +1364,13 @@ bool ChatHandler::ParseCommands(const char* text)
     MANGOS_ASSERT(text);
     MANGOS_ASSERT(*text);
 
-    //if(m_session->GetSecurity() == SEC_PLAYER)
+    //if (m_session->GetSecurity() == SEC_PLAYER)
     //    return false;
 
     /// chat case (.command or !command format)
     if (m_session)
     {
-        if(text[0] != '!' && text[0] != '.')
+        if (text[0] != '!' && text[0] != '.')
             return false;
 
         /// ignore single . and ! in line
@@ -1469,7 +1495,7 @@ valid examples:
 | will be escaped to ||
 */
 
-    if(strlen(message) > 255)
+    if (strlen(message) > 255)
         return false;
 
     const char validSequence[6] = "cHhhr";
@@ -1490,21 +1516,21 @@ valid examples:
 
             ++message;
             char commandChar = *message;
-            if(validCommands.find(commandChar) == std::string::npos)
+            if (validCommands.find(commandChar) == std::string::npos)
                 return false;
 
             ++message;
             // validate sequence
-            if(sWorld.getConfig(CONFIG_UINT32_CHAT_STRICT_LINK_CHECKING_SEVERITY) == 2)
+            if (sWorld.getConfig(CONFIG_UINT32_CHAT_STRICT_LINK_CHECKING_SEVERITY) == 2)
             {
-                if(commandChar == *validSequenceIterator)
+                if (commandChar == *validSequenceIterator)
                 {
                     if (validSequenceIterator == validSequence+4)
                         validSequenceIterator = validSequence;
                     else
                         ++validSequenceIterator;
                 }
-                else if(commandChar != '|')
+                else if (commandChar != '|')
                     return false;
             }
         }
@@ -1536,7 +1562,7 @@ valid examples:
 
             reader.ignore(255, '|');
         }
-        else if(reader.get() != '|')
+        else if (reader.get() != '|')
         {
             DEBUG_LOG("ChatHandler::isValidChatMessage sequence aborted unexpectedly");
             return false;
@@ -1559,7 +1585,7 @@ valid examples:
         // | in normal messages is escaped by ||
         if (commandChar != '|')
         {
-            if(commandChar == *validSequenceIterator)
+            if (commandChar == *validSequenceIterator)
             {
                 if (validSequenceIterator == validSequence+4)
                     validSequenceIterator = validSequence;
@@ -1572,7 +1598,7 @@ valid examples:
                 return false;
             }
         }
-        else if(validSequence != validSequenceIterator)
+        else if (validSequence != validSequenceIterator)
         {
             // no escaped pipes in sequences
             DEBUG_LOG("ChatHandler::isValidChatMessage got escaped pipe in sequence");
@@ -1655,7 +1681,7 @@ valid examples:
                             {
                                 propertyId*=10;
                                 propertyId += c-'0';
-                            } else if(c == '-')
+                            } else if (c == '-')
                                 negativeNumber = true;
                             else
                                 return false;
@@ -1736,9 +1762,9 @@ valid examples:
                         return false;
                     }
                 }
-                else if(strcmp(buffer, "trade") == 0)
+                else if (strcmp(buffer, "trade") == 0)
                 {
-                    if(color != CHAT_LINK_COLOR_TRADE)
+                    if (color != CHAT_LINK_COLOR_TRADE)
                         return false;
 
                     // read spell entry
@@ -1758,10 +1784,10 @@ valid examples:
                         c = reader.peek();
                     }
                 }
-                else if(strcmp(buffer, "talent") == 0)
+                else if (strcmp(buffer, "talent") == 0)
                 {
                     // talent links are always supposed to be blue
-                    if(color != CHAT_LINK_COLOR_TALENT)
+                    if (color != CHAT_LINK_COLOR_TALENT)
                         return false;
 
                     // read talent entry
@@ -1785,7 +1811,7 @@ valid examples:
                         c = reader.peek();
                     }
                 }
-                else if(strcmp(buffer, "spell") == 0)
+                else if (strcmp(buffer, "spell") == 0)
                 {
                     if (color != CHAT_LINK_COLOR_SPELL)
                         return false;
@@ -1804,7 +1830,7 @@ valid examples:
                     if (!linkedSpell)
                         return false;
                 }
-                else if(strcmp(buffer, "enchant") == 0)
+                else if (strcmp(buffer, "enchant") == 0)
                 {
                     if (color != CHAT_LINK_COLOR_ENCHANT)
                         return false;
@@ -1823,7 +1849,7 @@ valid examples:
                     if (!linkedSpell)
                         return false;
                 }
-                else if(strcmp(buffer, "achievement") == 0)
+                else if (strcmp(buffer, "achievement") == 0)
                 {
                     if (color != CHAT_LINK_COLOR_ACHIEVEMENT)
                         return false;
@@ -1846,9 +1872,9 @@ valid examples:
                         c = reader.peek();
                     }
                 }
-                else if(strcmp(buffer, "glyph") == 0)
+                else if (strcmp(buffer, "glyph") == 0)
                 {
-                    if(color != CHAT_LINK_COLOR_GLYPH)
+                    if (color != CHAT_LINK_COLOR_GLYPH)
                         return false;
 
                     // first id is slot, drop it
@@ -1920,7 +1946,7 @@ valid examples:
                                 return false;
                             }
 
-                            for(uint8 i=0; i<MAX_LOCALE; ++i)
+                            for(uint8 i=0; i < MAX_LOCALE; ++i)
                             {
                                 uint32 skillLineNameLength = strlen(skillLine->name[i]);
                                 if (skillLineNameLength > 0 && strncmp(skillLine->name[i], buffer, skillLineNameLength) == 0)
@@ -1957,7 +1983,7 @@ valid examples:
                             }
 
                             bool foundName = false;
-                            for(uint8 i=0; i<ql->Title.size(); i++)
+                            for(uint8 i=0; i < ql->Title.size(); ++i)
                             {
                                 if (ql->Title[i] == buffer)
                                 {
@@ -1972,7 +1998,7 @@ valid examples:
                             }
                         }
                     }
-                    else if(linkedItem)
+                    else if (linkedItem)
                     {
                         char* const* suffix = itemSuffix?itemSuffix->nameSuffix:(itemProperty?itemProperty->nameSuffix:NULL);
 
@@ -2045,7 +2071,7 @@ valid examples:
     }
 
     // check if every opened sequence was also closed properly
-    if(validSequence != validSequenceIterator)
+    if (validSequence != validSequenceIterator)
         DEBUG_LOG("ChatHandler::isValidChatMessage EOF in active sequence");
 
     return validSequence == validSequenceIterator;
@@ -2126,7 +2152,7 @@ void ChatHandler::FillMessageData( WorldPacket *data, WorldSession* session, uin
     *data << ObjectGuid(targetGuid);
     *data << uint32(messageLength);
     *data << message;
-    if(session && session->GetPlayer() && type != CHAT_MSG_WHISPER_INFORM && type != CHAT_MSG_DND && type != CHAT_MSG_AFK)
+    if (session && session->GetPlayer() && type != CHAT_MSG_WHISPER_INFORM && type != CHAT_MSG_DND && type != CHAT_MSG_AFK)
         *data << uint8(session->GetPlayer()->chatTag());
     else
         *data << uint8(0);
@@ -2365,6 +2391,14 @@ char* ChatHandler::ExtractLiteralArg(char** args, char const* lit /*= NULL*/)
     if (lit)
     {
         int l = strlen(lit);
+
+        int largs = 0;
+        while(head[largs] && !isWhiteSpace(head[largs]))
+            ++largs;
+
+        if (largs < l)
+            l = largs;
+
         int diff = strncmp(head, lit, l);
 
         if (diff != 0)
@@ -2974,7 +3008,7 @@ ObjectGuid ChatHandler::ExtractGuidFromLink(char** text)
             if (!ExtractUInt32(&idS, lowguid))
                 return ObjectGuid();
 
-            if(GameObjectData const* data = sObjectMgr.GetGOData(lowguid) )
+            if (GameObjectData const* data = sObjectMgr.GetGOData(lowguid) )
                 return ObjectGuid(HIGHGUID_GAMEOBJECT, data->id, lowguid);
             else
                 return ObjectGuid();
@@ -3094,7 +3128,7 @@ bool ChatHandler::ExtractLocationFromLink(char** text, uint32& mapid, float& x, 
             if (!ExtractUInt32(&idS, lowguid))
                 return false;
 
-            if(CreatureData const* data = sObjectMgr.GetCreatureData(lowguid) )
+            if (CreatureData const* data = sObjectMgr.GetCreatureData(lowguid) )
             {
                 mapid = data->mapid;
                 x = data->posX;
@@ -3111,7 +3145,7 @@ bool ChatHandler::ExtractLocationFromLink(char** text, uint32& mapid, float& x, 
             if (!ExtractUInt32(&idS, lowguid))
                 return false;
 
-            if(GameObjectData const* data = sObjectMgr.GetGOData(lowguid) )
+            if (GameObjectData const* data = sObjectMgr.GetGOData(lowguid) )
             {
                 mapid = data->mapid;
                 x = data->posX;
@@ -3269,30 +3303,30 @@ bool ChatHandler::ExtractPlayerTarget(char** args, Player** player /*= NULL*/, O
         Player* pl = sObjectMgr.GetPlayer(name.c_str());
 
         // if allowed player pointer
-        if(player)
+        if (player)
             *player = pl;
 
         // if need guid value from DB (in name case for check player existence)
         ObjectGuid guid = !pl && (player_guid || player_name) ? sObjectMgr.GetPlayerGuidByName(name) : ObjectGuid();
 
         // if allowed player guid (if no then only online players allowed)
-        if(player_guid)
+        if (player_guid)
             *player_guid = pl ? pl->GetObjectGuid() : guid;
 
-        if(player_name)
+        if (player_name)
             *player_name = pl || guid ? name : "";
     }
     else
     {
         Player* pl = getSelectedPlayer();
         // if allowed player pointer
-        if(player)
+        if (player)
             *player = pl;
         // if allowed player guid (if no then only online players allowed)
-        if(player_guid)
+        if (player_guid)
             *player_guid = pl ? pl->GetObjectGuid() : ObjectGuid();
 
-        if(player_name)
+        if (player_name)
             *player_name = pl ? pl->GetName() : "";
     }
 
@@ -3570,6 +3604,24 @@ std::string ChatHandler::PrepareStringNpcOrGoSpawnInformation(uint32 guid)
     }
 
     return str;
+}
+
+void ChatHandler::LogCommand(char const* fullcmd)
+{
+    // chat case
+    if (m_session)
+    {
+        Player* p = m_session->GetPlayer();
+        ObjectGuid sel_guid = p->GetSelectionGuid();
+        sLog.outCommand(GetAccountId(),"Command: %s [Player: %s (Account: %u) X: %f Y: %f Z: %f Map: %u Selected: %s]",
+            fullcmd, p->GetName(), GetAccountId(), p->GetPositionX(), p->GetPositionY(), p->GetPositionZ(), p->GetMapId(),
+            sel_guid.GetString().c_str());
+    }
+    else                                        // 0 account -> console
+    {
+        sLog.outCommand(GetAccountId(),"Command: %s [Account: %u from %s]",
+            fullcmd, GetAccountId(), GetAccountId() ? "RA-connection" : "Console");
+    }
 }
 
 // Instantiate template for helper function

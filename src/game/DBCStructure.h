@@ -219,6 +219,7 @@ struct AchievementCriteriaEntry
         struct
         {
             uint32  mapID;                                  // 3 Reference to Map.dbc
+            uint32  count;                                  // 4
         } win_arena;
 
         // ACHIEVEMENT_CRITERIA_TYPE_PLAY_ARENA             = 33
@@ -1078,6 +1079,15 @@ struct ItemBagFamilyEntry
     uint32   ID;                                            // 0        m_ID
     //char*     name[16]                                    // 1-16     m_name_lang
     //                                                      // 17       name flags
+};
+
+struct ItemClassEntry
+{
+    uint32   ID;                                            // 0        m_ID
+    //uint32   unk1;                                        // 1
+    //uint32   unk2;                                        // 2        only weapon have 1 in field, other 0
+    char*    name[16];                                      // 3-19     m_name_lang
+    //                                                      // 20       name flags
 };
 
 struct ItemDisplayInfoEntry

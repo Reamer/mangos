@@ -44,6 +44,7 @@
 // Playerbot mod
 #include "playerbot/PlayerbotMgr.h"
 #include "playerbot/PlayerbotAI.h"
+#include "SpellAuras.h"
 
 #include<string>
 #include<vector>
@@ -119,36 +120,6 @@ struct PlayerTalent
 
 typedef UNORDERED_MAP<uint32, PlayerSpell> PlayerSpellMap;
 typedef UNORDERED_MAP<uint32, PlayerTalent> PlayerTalentMap;
-
-// Spell modifier (used for modify other spells)
-struct SpellModifier
-{
-    SpellModifier() : charges(0), lastAffected(NULL) {}
-
-    SpellModifier(SpellModOp _op, SpellModType _type, int32 _value, uint32 _spellId, uint64 _mask, uint32 _mask2 = 0, int16 _charges = 0)
-        : op(_op), type(_type), charges(_charges), value(_value), mask(_mask, _mask2), spellId(_spellId), lastAffected(NULL)
-    {}
-
-    SpellModifier(SpellModOp _op, SpellModType _type, int32 _value, uint32 _spellId, ClassFamilyMask _mask, int16 _charges = 0)
-        : op(_op), type(_type), charges(_charges), value(_value), mask(_mask), spellId(_spellId), lastAffected(NULL)
-    {}
-
-    SpellModifier(SpellModOp _op, SpellModType _type, int32 _value, SpellEntry const* spellEntry, SpellEffectIndex eff, int16 _charges = 0);
-
-    SpellModifier(SpellModOp _op, SpellModType _type, int32 _value, Aura const* aura, int16 _charges = 0);
-
-    bool isAffectedOnSpell(SpellEntry const *spell) const;
-
-    SpellModOp   op   : 8;
-    SpellModType type : 8;
-    int16 charges     : 16;
-    int32 value;
-    ClassFamilyMask mask;
-    uint32 spellId;
-    Spell const* lastAffected;
-};
-
-typedef std::list<SpellModifier*> SpellModList;
 
 struct SpellCooldown
 {
@@ -239,16 +210,16 @@ struct Glyph
 
     void SetId(uint32 newId)
     {
-        if(newId == id)
+        if (newId == id)
             return;
 
-        if(id == 0 && uState == GLYPH_UNCHANGED)            // not exist yet in db and already saved
+        if (id == 0 && uState == GLYPH_UNCHANGED)            // not exist yet in db and already saved
         {
             uState = GLYPH_NEW;
         }
         else if (newId == 0)
         {
-            if(uState == GLYPH_NEW)                         // delete before add new -> no change
+            if (uState == GLYPH_NEW)                         // delete before add new -> no change
                 uState = GLYPH_UNCHANGED;
             else                                            // delete existing data
                 uState = GLYPH_DELETED;
@@ -386,7 +357,7 @@ struct Runes
 
     void SetRuneState(uint8 index, bool set = true)
     {
-        if(set)
+        if (set)
             runeState |= (1 << index);                      // usable
         else
             runeState &= ~(1 << index);                     // on cooldown
@@ -1150,18 +1121,18 @@ class MANGOS_DLL_SPEC Player : public Unit
                                                             // mount_id can be used in scripting calls
         void ContinueTaxiFlight();
         bool isAcceptTickets() const { return GetSession()->GetSecurity() >= SEC_GAMEMASTER && (m_ExtraFlags & PLAYER_EXTRA_GM_ACCEPT_TICKETS); }
-        void SetAcceptTicket(bool on) { if(on) m_ExtraFlags |= PLAYER_EXTRA_GM_ACCEPT_TICKETS; else m_ExtraFlags &= ~PLAYER_EXTRA_GM_ACCEPT_TICKETS; }
+        void SetAcceptTicket(bool on) { if (on) m_ExtraFlags |= PLAYER_EXTRA_GM_ACCEPT_TICKETS; else m_ExtraFlags &= ~PLAYER_EXTRA_GM_ACCEPT_TICKETS; }
         bool isAcceptWhispers() const { return m_ExtraFlags & PLAYER_EXTRA_ACCEPT_WHISPERS; }
-        void SetAcceptWhispers(bool on) { if(on) m_ExtraFlags |= PLAYER_EXTRA_ACCEPT_WHISPERS; else m_ExtraFlags &= ~PLAYER_EXTRA_ACCEPT_WHISPERS; }
+        void SetAcceptWhispers(bool on) { if (on) m_ExtraFlags |= PLAYER_EXTRA_ACCEPT_WHISPERS; else m_ExtraFlags &= ~PLAYER_EXTRA_ACCEPT_WHISPERS; }
         bool isGameMaster() const { return m_ExtraFlags & PLAYER_EXTRA_GM_ON; }
         void SetGameMaster(bool on);
         bool isGMChat() const { return GetSession()->GetSecurity() >= SEC_MODERATOR && (m_ExtraFlags & PLAYER_EXTRA_GM_CHAT); }
-        void SetGMChat(bool on) { if(on) m_ExtraFlags |= PLAYER_EXTRA_GM_CHAT; else m_ExtraFlags &= ~PLAYER_EXTRA_GM_CHAT; }
+        void SetGMChat(bool on) { if (on) m_ExtraFlags |= PLAYER_EXTRA_GM_CHAT; else m_ExtraFlags &= ~PLAYER_EXTRA_GM_CHAT; }
         bool isTaxiCheater() const { return m_ExtraFlags & PLAYER_EXTRA_TAXICHEAT; }
-        void SetTaxiCheater(bool on) { if(on) m_ExtraFlags |= PLAYER_EXTRA_TAXICHEAT; else m_ExtraFlags &= ~PLAYER_EXTRA_TAXICHEAT; }
+        void SetTaxiCheater(bool on) { if (on) m_ExtraFlags |= PLAYER_EXTRA_TAXICHEAT; else m_ExtraFlags &= ~PLAYER_EXTRA_TAXICHEAT; }
         bool isGMVisible() const { return !(m_ExtraFlags & PLAYER_EXTRA_GM_INVISIBLE); }
         void SetGMVisible(bool on);
-        void SetPvPDeath(bool on) { if(on) m_ExtraFlags |= PLAYER_EXTRA_PVP_DEATH; else m_ExtraFlags &= ~PLAYER_EXTRA_PVP_DEATH; }
+        void SetPvPDeath(bool on) { if (on) m_ExtraFlags |= PLAYER_EXTRA_PVP_DEATH; else m_ExtraFlags &= ~PLAYER_EXTRA_PVP_DEATH; }
 
         // 0 = own auction, -1 = enemy auction, 1 = goblin auction
         int GetAuctionAccessMode() const { return m_ExtraFlags & PLAYER_EXTRA_AUCTION_ENEMY ? -1 : (m_ExtraFlags & PLAYER_EXTRA_AUCTION_NEUTRAL ? 1 : 0); }
@@ -1169,9 +1140,9 @@ class MANGOS_DLL_SPEC Player : public Unit
         {
             m_ExtraFlags &= ~ (PLAYER_EXTRA_AUCTION_ENEMY|PLAYER_EXTRA_AUCTION_NEUTRAL);
 
-            if(state < 0)
+            if (state < 0)
                 m_ExtraFlags |= PLAYER_EXTRA_AUCTION_ENEMY;
-            else if( state > 0)
+            else if ( state > 0)
                 m_ExtraFlags |= PLAYER_EXTRA_AUCTION_NEUTRAL;
         }
 
@@ -1554,13 +1525,13 @@ class MANGOS_DLL_SPEC Player : public Unit
         uint32 GetMoney() const { return GetUInt32Value (PLAYER_FIELD_COINAGE); }
         void ModifyMoney( int32 d )
         {
-            if(d < 0)
+            if (d < 0)
                 SetMoney (GetMoney() > uint32(-d) ? GetMoney() + d : 0);
             else
                 SetMoney (GetMoney() < uint32(MAX_MONEY_AMOUNT - d) ? GetMoney() + d : MAX_MONEY_AMOUNT);
 
             // "At Gold Limit"
-            if(GetMoney() >= MAX_MONEY_AMOUNT)
+            if (GetMoney() >= MAX_MONEY_AMOUNT)
                 SendEquipError(EQUIP_ERR_TOO_MUCH_GOLD,NULL,NULL);
         }
         void SetMoney( uint32 value )
@@ -1690,10 +1661,8 @@ class MANGOS_DLL_SPEC Player : public Unit
         PlayerTalent const* GetKnownTalentById(int32 talentId) const;
         SpellEntry const* GetKnownTalentRankById(int32 talentId) const;
 
-        void AddSpellMod(SpellModifier* mod, bool apply);
-        bool IsAffectedBySpellmod(SpellEntry const *spellInfo, SpellModifier *mod, Spell const* spell = NULL);
+        void AddSpellMod(Aura* aura, bool apply);
         template <class T> T ApplySpellMod(uint32 spellId, SpellModOp op, T &basevalue, Spell const* spell = NULL);
-        void RemoveSpellMods(Spell const* spell);
 
         static uint32 const infinityCooldownDelay = MONTH;  // used for set "infinity cooldowns" for spells and check
         static uint32 const infinityCooldownDelayCheck = MONTH/2;
@@ -1715,6 +1684,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         void RemoveSpellCooldown(uint32 spell_id, bool update = false);
         void RemoveSpellCategoryCooldown(uint32 cat, bool update = false);
         void SendClearCooldown( uint32 spell_id, Unit* target );
+        void SendModifyCooldown( uint32 spell_id, int32 delta);
 
         GlobalCooldownMgr& GetGlobalCooldownMgr() { return m_GlobalCooldownMgr; }
 
@@ -1883,6 +1853,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         void UpdateArmorPenetration();
         void ApplyManaRegenBonus(int32 amount, bool apply);
         void UpdateManaRegen();
+        void ApplyHealthRegenBonus(int32 amount, bool apply);
 
         ObjectGuid const& GetLootGuid() const { return m_lootGuid; }
         void SetLootGuid(ObjectGuid const& guid) { m_lootGuid = guid; }
@@ -2324,7 +2295,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         // Temporarily removed pet cache
         uint32 GetTemporaryUnsummonedPetNumber() const { return m_temporaryUnsummonedPetNumber; }
         void SetTemporaryUnsummonedPetNumber(uint32 petnumber) { m_temporaryUnsummonedPetNumber = petnumber; }
-        void UnsummonPetTemporaryIfAny();
+        void UnsummonPetTemporaryIfAny(bool full = true);
         void ResummonPetTemporaryUnSummonedIfAny();
         bool IsPetNeedBeTemporaryUnsummoned() const { return !IsInWorld() || !isAlive() || IsMounted() /*+in flight*/; }
 
@@ -2602,11 +2573,11 @@ class MANGOS_DLL_SPEC Player : public Unit
         uint16 m_baseSpellPower;
         uint16 m_baseFeralAP;
         uint16 m_baseManaRegen;
+        uint16 m_baseHealthRegen;
         float m_armorPenetrationPct;
         int32 m_spellPenetrationItemMod;
 
-        SpellModList m_spellMods[MAX_SPELLMOD];
-        int32 m_SpellModRemoveCount;
+        AuraList m_spellMods[MAX_SPELLMOD];
         EnchantDurationList m_enchantDuration;
         ItemDurationList m_itemDuration;
         ItemDurationList m_itemSoulboundTradeable;
@@ -2798,38 +2769,28 @@ template <class T> T Player::ApplySpellMod(uint32 spellId, SpellModOp op, T &bas
     if (!spellInfo) return 0;
     int32 totalpct = 0;
     int32 totalflat = 0;
-    for (SpellModList::iterator itr = m_spellMods[op].begin(); itr != m_spellMods[op].end(); ++itr)
+    for (AuraList::iterator itr = m_spellMods[op].begin(); itr != m_spellMods[op].end(); ++itr)
     {
-        SpellModifier *mod = *itr;
+        Aura *aura = *itr;
 
-        if(!IsAffectedBySpellmod(spellInfo,mod,spell))
+        Modifier const* mod = aura->GetModifier();
+
+        if (!aura->isAffectedOnSpell(spellInfo))
             continue;
-        if (mod->type == SPELLMOD_FLAT)
-            totalflat += mod->value;
-        else if (mod->type == SPELLMOD_PCT)
+
+        if (mod->m_auraname == SPELL_AURA_ADD_FLAT_MODIFIER)
+            totalflat += mod->m_amount;
+        else
         {
             // skip percent mods for null basevalue (most important for spell mods with charges )
-            if(basevalue == T(0))
+            if (basevalue == T(0))
                 continue;
 
             // special case (skip >10sec spell casts for instant cast setting)
-            if( mod->op==SPELLMOD_CASTING_TIME  && basevalue >= T(10*IN_MILLISECONDS) && mod->value <= -100)
+            if (mod->m_miscvalue == SPELLMOD_CASTING_TIME  && basevalue >= T(10*IN_MILLISECONDS) && mod->m_amount <= -100)
                 continue;
 
-            totalpct += mod->value;
-        }
-
-        if (mod->charges > 0 )
-        {
-            --mod->charges;
-            if (mod->charges == 0)
-            {
-                mod->charges = -1;
-                mod->lastAffected = spell;
-                if(!mod->lastAffected)
-                    mod->lastAffected = FindCurrentSpellBySpellId(spellId);
-                ++m_SpellModRemoveCount;
-            }
+            totalpct += mod->m_amount;
         }
     }
 

@@ -42,7 +42,7 @@ ConfVersion=2010100901
 #	CharacterDatabaseConnections
 #		 Amount of connections to database which will be used for SELECT queries. Maximum 16 connections per database.
 #		 Please, note, for data consistency only one connection for each database is used for transactions and async SELECTs.
-#		 So formula to find out how many connections will be established: X = �_connections + 1
+#		 So formula to find out how many connections will be established: X = n_connections + 1
 #		 Default: 1 connection for SELECT statements
 #
 #    MaxPingTime
@@ -168,15 +168,6 @@ BindIP = "0.0.0.0"
 #        More distance let have better performence, less distance let have more sensitive reaction at target move.
 #        Default: 1.5
 #
-#    mmap.enabled
-#        Enable/Disable pathfinding using mmaps
-#        Default: 1 (enable)
-#                 0 (disable)
-#
-#    mmap.ignoreMapIds
-#        Disable mmap pathfinding on the listed maps.
-#        List of map ids with delimiter ','
-#
 #    UpdateUptimeInterval
 #        Update realm uptime period in minutes (for save data in 'uptime' table). Must be > 0
 #        Default: 10 (minutes)
@@ -224,8 +215,6 @@ vmap.ignoreSpellIds = "7720"
 vmap.enableIndoorCheck = 1
 DetectPosCollision = 1
 TargetPosRecalculateRange = 1.5
-mmap.enabled = 1
-mmap.ignoreMapIds = ""
 UpdateUptimeInterval = 10
 MaxCoreStuckTime = 0
 AddonChannel = 1
@@ -478,7 +467,7 @@ ChatLogWhisperScreen = 0
 ChatLogChannelScreen = 0
 ChatLogRaidScreen = 0
 ChatLogBattleGroundScreen = 0
-LexicsCutterEnable = 1
+LexicsCutterEnable = 0
 LexicsCutterInnormativeCut = 1
 LexicsCutterCutReplacement = &!@^%!^&*!!!
 LexicsCutterLogFile = innormative-$d.log
@@ -660,6 +649,11 @@ LexicsCutterNoActionOnGM = 1
 #        Amount of honor that new players will start with
 #        Default: 0
 #
+#    AllowHonorKillsTitles
+#        Allow characters to get titles, depending of honor kills amount (something like old 1.xx honor system)
+#        Default: 0 - disallow
+#                 1 - allow
+#
 #    MaxArenaPoints
 #        Max arena points that player can have.
 #        Default: 5000
@@ -699,7 +693,7 @@ LexicsCutterNoActionOnGM = 1
 #        Default: 10
 #
 #   BirthdayTime
-#        Set to birthday (date in unix time), By default 28th August 2005, when MaNGOS got it�s name
+#        Set to birthday (date in unix time), By default 28th August 2005, when MaNGOS got it's name
 #        Default: 1125180000
 #
 #    Instance.IgnoreLevel
@@ -919,6 +913,7 @@ StartHeroicPlayerLevel = 55
 StartPlayerMoney = 0
 MaxHonorPoints = 75000
 StartHonorPoints = 0
+AllowHonorKillsTitles = 0
 MaxArenaPoints = 5000
 StartArenaPoints = 0
 InstantLogout = 1
@@ -1697,6 +1692,16 @@ BattleGround.Random.ResetHour = 6
 #        Default Personal Rating at team creation
 #        Default: -1 (use season dependent default value)
 #
+#    Arena.LoserNoChange
+#        If winner or loser rating is below this limit, loser loses no rating
+#        Default: 0 (disable)
+#                 1400
+#
+#    Arena.LoserHalfChange
+#        If loser rating is below this limit, he loses half of rating
+#        Default: 0 (disable)
+#                 1500
+#
 ###################################################################################################################
 
 Arena.MaxRatingDifference = 150
@@ -1710,6 +1715,8 @@ Arena.ArenaSeason.ID = 1
 Arena.ArenaSeasonPrevious.ID = 0
 Arena.StartRating = -1
 Arena.StartPersonalRating = -1
+Arena.LoserNoChange = 0
+Arena.LoserHalfChange = 0
 
 ###################################################################################################################
 # NETWORK CONFIG
@@ -1743,81 +1750,6 @@ Network.OutKBuff = -1
 Network.OutUBuff = 65536
 Network.TcpNodelay = 1
 Network.KickOnBadPacket = 0
-
-###################################################################################################################
-# AUCTION HOUSE BOT SETTINGS
-#
-#    AuctionHouseBot.EnableSeller
-#        Enable/Disable the part of AHBot that puts items up for auction
-#    Default 0 (disabled)
-#
-#    AuctionHouseBot.EnableBuyer
-#        Enable/Disable the part of AHBot that buys items from players
-#    Default 0 (disabled)
-#
-#    AuctionHouseBot.VendorItems
-#        Include items that can be bought from vendors.
-#    Default 0
-#
-#    AuctionHouseBot.LootItems
-#        Include items that can be looted or fished for.
-#    Default 1
-#
-#    AuctionHouseBot.OtherItems
-#        Include misc. items.
-#    Default 0
-#
-#    AuctionHouseBot.Bonding_types
-#        Indicates which bonding types to allow seller to put up for auction
-#            No_Bind
-#             Default 1
-#            Bind_When_Picked_Up
-#             Default 0
-#            Bind_When_Equipped
-#             Default 1
-#            Bind_When_Use
-#             Default 1
-#            Bind_Quest_Item
-#             Default 0
-# /dev/rsa modify: values of this (AuctionHouseBot.Bonding_types) is integer
-# 0 - disable this type item
-# (1 - 65535) - is koefficient to SellPrice for this type item
-#
-#    AuctionHouseBot.ItemsPerCycle
-#        Number of Items to Add/Remove from the AH during mass operations
-#    Default 200
-#
-#    AuctionHouseBot.UseBuyPriceForSeller
-#        Should the Seller use BuyPrice or SellPrice to determine Bid Prices
-#    Default 0 (use SellPrice)
-#
-#    AuctionHouseBot.MaxItemLevel
-#    /dev/rsa modify:  Maximum item level for auction bot sell
-#    Default 200
-#
-#    AuctionHouseBot.UseBuyPriceForBuyer
-#        Should the Buyer use BuyPrice or SellPrice to determine Bid Prices
-#    Default 0 (use SellPrice)
-#
-#    All other settings have been moved to sql
-#
-#
-###################################################################################################################
-
-AuctionHouseBot.EnableSeller = 0
-AuctionHouseBot.EnableBuyer = 0
-AuctionHouseBot.VendorItems = 0
-AuctionHouseBot.LootItems = 1
-AuctionHouseBot.OtherItems = 0
-AuctionHouseBot.No_Bind = 1
-AuctionHouseBot.Bind_When_Picked_Up = 0
-AuctionHouseBot.Bind_When_Equipped = 1
-AuctionHouseBot.Bind_When_Use = 1
-AuctionHouseBot.Bind_Quest_Item = 0
-AuctionHouseBot.ItemsPerCycle = 200
-AuctionHouseBot.UseBuyPriceForSeller = 0
-AuctionHouseBot.UseBuyPriceForBuyer = 0
-AuctionHouseBot.MaxItemLevel = 200
 
 ###################################################################################################################
 # CONSOLE, REMOTE ACCESS AND SOAP
@@ -1906,7 +1838,7 @@ SOAP.Port = 7878
 #
 ###################################################################################################################
 
-Anticheat.Enable = 1
+Anticheat.Enable = 0
 Anticheat.DelayAfterAction = 30
 Anticheat.GmLevel = 0
 Anticheat.Warden  = 0
@@ -1966,12 +1898,17 @@ Rate.RAF.LevelPerLevel  = 0.5
 #    LFR.Extend              = 0
 #        enabling Raid finder extended operations (not blizzlike!)
 #    LFG.MaxKicks            = 5
+#        max number of kick from group before group disband
+#    LFG.OnlyLastEncounterForCompleteDungeon = 0
+#        need complete only last encounter for dungeon complete (not blizzlike!)
+#
 ###################################################################################################################
 LFR.Enable              = 1
-LFG.Enable              = 0
+LFG.Enable              = 1
 LFG.Debug               = 0
 LFR.Extend              = 0
 LFG.MaxKicks            = 5
+LFG.OnlyLastEncounterForCompleteDungeon = 0
 
 ###################################################################################################################
 # PLAYERBOTAI CONFIGURATION
