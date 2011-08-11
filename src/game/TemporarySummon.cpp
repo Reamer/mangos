@@ -121,13 +121,18 @@ void TemporarySummon::Update( uint32 update_diff,  uint32 diff )
                 return;
             }
 
-            if (m_timer <= update_diff)
+            if (!isInCombat())
             {
-                UnSummon();
-                return;
+                if (m_timer <= update_diff)
+                {
+                    UnSummon();
+                    return;
+                }
+                else
+                    m_timer -= update_diff;
             }
-            else
-                m_timer -= update_diff;
+            else if (m_timer != m_lifetime)
+                m_timer = m_lifetime;
             break;
         }
         default:
