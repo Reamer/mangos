@@ -3949,12 +3949,13 @@ void ObjectMgr::LoadGroups()
             {
                 MapDifficultyEntry const* mapDiff = GetMapDifficultyData(mapId,diff);
                 resetTime = DungeonResetScheduler::CalculateNextResetTime(mapDiff, time(NULL));
-                sLog.outErrorDb("ObjectMgr::Wrong reset time in group_instance corrected to: %d", resetTime);
+                sLog.outErrorDb("ObjectMgr::Wrong reset time in group_instance corrected to: " UI64FMTD, resetTime);
             }
 
             if (resetTime < uint64(time(NULL)))
             {
                 DEBUG_LOG("ObjectMgr::Loading extended instance for player: %d", leaderGuidLow);
+/*
                 bool isExtended = false;
                 QueryResult* result1 = CharacterDatabase.PQuery("SELECT COUNT(guid) FROM character_instance WHERE instance = '%u' AND extend = 1 ", fields[1].GetUInt32());
                 if (result1)
@@ -3973,6 +3974,7 @@ void ObjectMgr::LoadGroups()
                 }
                 else
                     sLog.outErrorDb("ObjectMgr::Loaded instance %d with expired resetTime %u, but his not extended.", fields[2].GetUInt32(), resetTime);
+*/
             }
             else
             {
@@ -5409,7 +5411,7 @@ void ObjectMgr::LoadTavernAreaTriggers()
 uint32 ObjectMgr::GetNearestTaxiNode( float x, float y, float z, uint32 mapid, Team team )
 {
     bool found = false;
-    float dist;
+    float dist = 0.0f;
     uint32 id = 0;
 
     for(uint32 i = 1; i < sTaxiNodesStore.GetNumRows(); ++i)
@@ -5596,12 +5598,12 @@ WorldSafeLocsEntry const *ObjectMgr::GetClosestGraveYard(float x, float y, float
 
     // at corpse map
     bool foundNear = false;
-    float distNear;
+    float distNear = 0.0f;
     WorldSafeLocsEntry const* entryNear = NULL;
 
     // at entrance map for corpse map
     bool foundEntr = false;
-    float distEntr;
+    float distEntr = 0.0f;
     WorldSafeLocsEntry const* entryEntr = NULL;
 
     // some where other

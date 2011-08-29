@@ -132,7 +132,7 @@ World::~World()
 
     m_weathers.clear();
 
-    CliCommandHolder* command;
+    CliCommandHolder* command = NULL;
     while (cliCmdQueue.next(command))
         delete command;
 
@@ -821,6 +821,8 @@ void World::LoadConfigSettings(bool reload)
     setConfig(CONFIG_UINT32_TIMERBAR_FIRE_MAX,        "TimerBar.Fire.Max", 1);
 
     setConfig(CONFIG_BOOL_PET_UNSUMMON_AT_MOUNT,      "PetUnsummonAtMount", true);
+
+    setConfig(CONFIG_BOOL_PET_SAVE_ALL,      "PetSaveAllInDB", false);
 
     setConfig(CONFIG_BOOL_RAID_FLAGS_UNIQUE,      "RaidFlags.Unique", false);
 

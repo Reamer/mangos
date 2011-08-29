@@ -186,8 +186,8 @@ void WorldSession::HandleBattlemasterJoinOpcode( WorldPacket & recv_data )
     BattleGroundQueue& bgQueue = sBattleGroundMgr.m_BattleGroundQueues[bgQueueTypeId];
     if (joinAsGroup)
     {
-        GroupQueueInfo * ginfo;
-        uint32 avgTime;
+        GroupQueueInfo *ginfo = NULL;
+        uint32 avgTime = 0;
 
         if(err > 0)
         {
@@ -474,6 +474,8 @@ void WorldSession::HandleBattleFieldPortOpcode( WorldPacket &recv_data )
             // set the destination team
             _player->SetBGTeam(ginfo.GroupTeam);
             // bg->HandleBeforeTeleportToBattleGround(_player);
+            _player->RemoveSpellsCausingAura(SPELL_AURA_MOUNTED);
+            _player->RemoveSpellsCausingAura(SPELL_AURA_FLY);
             sBattleGroundMgr.SendToBattleGround(_player, ginfo.IsInvitedToBGInstanceGUID, bgTypeId);
             // add only in HandleMoveWorldPortAck()
             // bg->AddPlayer(_player,team);
@@ -755,7 +757,7 @@ void WorldSession::HandleBattlemasterJoinArena( WorldPacket & recv_data )
     BattleGroundQueue &bgQueue = sBattleGroundMgr.m_BattleGroundQueues[bgQueueTypeId];
     if (asGroup)
     {
-        uint32 avgTime;
+        uint32 avgTime = 0;
 
         if(err > 0)
         {

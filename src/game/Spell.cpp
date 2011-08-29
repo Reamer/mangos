@@ -981,8 +981,9 @@ void Spell::AddItemTarget(Item* pitem, SpellEffectIndex effIndex)
 
 void Spell::DoAllEffectOnTarget(TargetInfo *target)
 {
-    if (target->processed)                                  // Check target
+    if (!target || target->processed)                       // Check target
         return;
+
     target->processed = true;                               // Target checked in apply effects procedure
 
     // Get mask of effects for target
@@ -1410,8 +1411,10 @@ void Spell::DoSpellHitOnUnit(Unit *unit, uint32 effectMask)
 
 void Spell::DoAllEffectOnTarget(GOTargetInfo *target)
 {
-    if (target->processed)                                  // Check target
+
+    if (!target || target->processed)                       // Check target
         return;
+
     target->processed = true;                               // Target checked in apply effects procedure
 
     uint32 effectMask = target->effectMask;
@@ -1701,7 +1704,12 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 case 68950:                                 // Fear (ICC: Forge of Souls)
                 case 69057:                                 // Bone Spike Graveyard (Icecrown Citadel, Lord Marrowgar encounter, 10N)
                 case 69140:                                 // Coldflame (Icecrown Citadel, Lord Marrowgar encounter)
+                case 69674:                                 // Mutated Infection
+                case 71224:
+                case 72091:                                 // Frozen Orb (Vault of Archavon, Toravon encounter, normal)
                 case 72378:                                 // Blood Nova
+                case 73022:                                 // Mutated Infection (heroic)
+                case 73023:                                 // Mutated Infection (heroic)
                 case 72088:                                 // Bone Spike Graveyard (Icecrown Citadel, Lord Marrowgar encounter, 10H)
                 case 73058:                                 // Blood Nova
                 case 73142:                                 // Bone Spike Graveyard (during Bone Storm) (Icecrown Citadel, Lord Marrowgar encounter, 10N)
@@ -1738,6 +1746,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 case 72089:                                 // Bone Spike Graveyard (Icecrown Citadel, Lord Marrowgar encounter, 25H)
                 case 73143:                                 // Bone Spike Graveyard (during Bone Storm) (Icecrown Citadel, Lord Marrowgar encounter, 25N)
                 case 73145:                                 // Bone Spike Graveyard (during Bone Storm) (Icecrown Citadel, Lord Marrowgar encounter, 25H)
+                case 72095:                                 // Frozen Orb (Vault of Archavon, Toravon encounter, heroic)
                     unMaxTargets = 3;
                     break;
                 case 61916:                                 // Lightning Whirl (Stormcaller Brundir - Ulduar)
@@ -2376,8 +2385,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                     FillAreaTargets(targetUnitMap, radius, PUSH_DEST_CENTER, SPELL_TARGETS_AOE_DAMAGE);
 
                     // Custom cases
-                    if (m_spellInfo->IsFitToFamily<SPELLFAMILY_PRIEST, CF_PRIEST_MIND_SEAR1>() || // Mind Sear, triggered
-                        m_spellInfo->IsFitToFamily<SPELLFAMILY_DRUID, CF_DRUID_STARFALL1>())    // Starfall, triggered
+                    if (m_spellInfo->IsFitToFamily<SPELLFAMILY_PRIEST, CF_PRIEST_MIND_SEAR1>()) // Mind Sear, triggered
                         if (Unit* unitTarget = m_targets.getUnitTarget())
                             targetUnitMap.remove(unitTarget);
 
@@ -2736,7 +2744,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                         if ( pTarget->IsWithinDistInMap(Target, radius) )
                             targetUnitMap.push_back(Target);
 
-                        if (Pet* pet = Target->GetPet())
+                        if (Target->GetPet())
                         {
                             GroupPetList m_groupPets = Target->GetPets();
                             if (!m_groupPets.empty())
@@ -3705,15 +3713,15 @@ void Spell::handle_immediate()
         SendChannelStart(m_duration);
     }
 
-    for(TargetList::iterator ihit = m_UniqueTargetInfo.begin(); ihit != m_UniqueTargetInfo.end(); ++ihit)
+    for(TargetList::iterator ihit = m_UniqueTargetInfo.begin(); ihit != m_UniqueTargetInfo.end();)
     {
-        TargetInfo buffer = *ihit;
+        TargetInfo buffer = *ihit++;
         DoAllEffectOnTarget(&buffer);
     }
 
-    for(GOTargetList::iterator ihit = m_UniqueGOTargetInfo.begin(); ihit != m_UniqueGOTargetInfo.end(); ++ihit)
+    for(GOTargetList::iterator ihit = m_UniqueGOTargetInfo.begin(); ihit != m_UniqueGOTargetInfo.end();)
     {
-        GOTargetInfo buffer = *ihit;
+        GOTargetInfo buffer = *ihit++;
         DoAllEffectOnTarget(&buffer);
     }
 
@@ -4227,6 +4235,9 @@ void Spell::SendSpellGo()
     }
 
     Unit *caster = m_triggeredByAuraSpell && IsChanneledSpell(m_triggeredByAuraSpell) ? GetAffectiveCaster() : m_caster;
+
+    if (!caster)
+        caster = m_caster;                                  // temporary. TODO - need find source of problem.
 
     WorldPacket data(SMSG_SPELL_GO, 50);                    // guess size
 
@@ -6286,7 +6297,7 @@ SpellCastResult Spell::CheckPetCast(Unit* target)
                 if(!target)
                 {
                     return SPELL_FAILED_BAD_IMPLICIT_TARGETS;
-                    DEBUG_LOG("Charmed creature attempt to cast spell %d, but no required target",m_spellInfo->Id);
+                    DEBUG_LOG("Charmed creature attempt to cast spell %u, but no required target",m_spellInfo->Id);
                 }
                 break;
             }
@@ -6302,13 +6313,13 @@ SpellCastResult Spell::CheckPetCast(Unit* target)
             {
                 if (m_caster->IsHostileTo(_target))
                 {
-                    DEBUG_LOG("Charmed creature attempt to cast positive spell %d, but target (guid %u) is hostile",m_spellInfo->Id, target->GetObjectGuid().GetRawValue());
+                    DEBUG_LOG("Charmed creature attempt to cast positive spell %u, but target (guid %s) is hostile",m_spellInfo->Id, target->GetObjectGuid().GetString().c_str());
                     return SPELL_FAILED_BAD_TARGETS;
                 }
             }
             else if (!_target->isTargetableForAttack() || (!_target->isVisibleForOrDetect(m_caster,m_caster,true) && !m_IsTriggeredSpell))
             {
-                DEBUG_LOG("Charmed creature attempt to cast spell %d, but target (guid %u) is not targetable or not detectable",m_spellInfo->Id,target->GetObjectGuid().GetRawValue());
+                DEBUG_LOG("Charmed creature attempt to cast spell %u, but target (guid %s) is not targetable or not detectable",m_spellInfo->Id,target->GetObjectGuid().GetString().c_str());
                 return SPELL_FAILED_BAD_TARGETS;            // guessed error
             }
             else
@@ -6328,20 +6339,20 @@ SpellCastResult Spell::CheckPetCast(Unit* target)
                 {
                     if (!m_caster->IsHostileTo(_target) && (m_caster->GetCharmerOrOwner() && m_caster->GetCharmerOrOwner()->IsFriendlyTo(_target)))
                     {
-                        DEBUG_LOG("Charmed creature attempt to cast negative spell %d, but target (guid %u) is friendly",m_spellInfo->Id, target->GetObjectGuid().GetRawValue());
+                        DEBUG_LOG("Charmed creature attempt to cast negative spell %u, but target (guid %s) is friendly",m_spellInfo->Id, target->GetObjectGuid().GetString().c_str());
                         return SPELL_FAILED_BAD_TARGETS;
                     }
                 }
                 else if (!m_caster->GetVehicleKit() && m_caster->IsFriendlyTo(_target) && !(!m_caster->GetCharmerOrOwner() || !m_caster->GetCharmerOrOwner()->IsFriendlyTo(_target))
                      && !dualEffect && !IsDispelSpell(m_spellInfo))
                 {
-                    DEBUG_LOG("Charmed creature attempt to cast spell %d, but target (guid %u) is not valid",m_spellInfo->Id,_target->GetObjectGuid().GetRawValue());
+                    DEBUG_LOG("Charmed creature attempt to cast spell %u, but target (guid %s) is not valid",m_spellInfo->Id,_target->GetObjectGuid().GetString().c_str());
                     return SPELL_FAILED_BAD_TARGETS;
                 }
 
                 if (m_caster->GetObjectGuid() == _target->GetObjectGuid() && dualEffect && !IsPositiveSpell(m_spellInfo->Id))
                 {
-                    DEBUG_LOG("Charmed creature %u attempt to cast negative spell %d on self",_target->GetObjectGuid().GetRawValue(),m_spellInfo->Id);
+                    DEBUG_LOG("Charmed creature %s attempt to cast negative spell %u on self",_target->GetObjectGuid().GetString().c_str(), m_spellInfo->Id);
 //                    return SPELL_FAILED_BAD_TARGETS;
                 }
             }
@@ -7455,7 +7466,7 @@ bool Spell::CheckTarget( Unit* target, SpellEffectIndex eff )
             // player far away, maybe his corpse near?
             if (target != m_caster && !(m_spellInfo->AttributesEx2 & SPELL_ATTR_EX2_IGNORE_LOS) && !target->IsWithinLOSInMap(m_caster))
             {
-                if (m_targets.getCorpseTargetGuid())
+                if (!m_targets.getCorpseTargetGuid())
                     return false;
 
                 Corpse *corpse = m_caster->GetMap()->GetCorpse(m_targets.getCorpseTargetGuid());
@@ -7741,7 +7752,7 @@ void Spell::FillRaidOrPartyTargets(UnitList &targetUnitMap, Unit* member, Unit* 
                     targetUnitMap.push_back(Target);
 
                 if (withPets)
-                    if (Pet* pet = Target->GetPet())
+                    if (Target->GetPet())
                     {
                         GroupPetList m_groupPets = Target->GetPets();
                         if (!m_groupPets.empty())
@@ -7937,7 +7948,7 @@ void Spell::DoSummonSnakes(SpellEffectIndex eff_idx)
         if (!pSummon->IsPositionValid())
         {
             sLog.outError("EffectSummonSnakes failed to summon snakes for Unit %s (GUID: %u) bacause of invalid position (x = %f, y = %f, z = %f map = %u)"
-                ,m_caster->GetName(), m_caster->GetObjectGuid().GetCounter(), position_x, position_y, position_z, m_caster->GetMap());
+                ,m_caster->GetName(), m_caster->GetObjectGuid().GetCounter(), position_x, position_y, position_z, m_caster->GetMapId());
             delete pSummon;
             continue;
         }
@@ -8136,7 +8147,7 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
 
                     for (GuardianPetList::const_iterator itr = petList->begin(); itr != petList->end(); ++itr)
                         if (Unit* ghoul = m_caster->GetMap()->GetUnit(*itr))
-                            if (ghoul->GetEntry() == 24207)
+                            if (ghoul->GetEntry() == 24207 || ghoul->GetEntry() == 26125)
                                 targetUnitMap.push_back(ghoul);
 
                     if (targetUnitMap.size() > 1)
@@ -8340,6 +8351,13 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
             FillAreaTargets(targetUnitMap, radius, PUSH_DEST_CENTER, SPELL_TARGETS_HOSTILE);
             if (m_spellInfo->Id == 63025 || m_spellInfo->Id == 64233)
                 targetUnitMap.remove(m_caster);
+            break;
+        }
+        case 62589: // Nature's Fury (10 man)
+        case 63571: // Nature's Fury (25 man)
+        {
+            FillAreaTargets(targetUnitMap, radius, PUSH_DEST_CENTER, SPELL_TARGETS_AOE_DAMAGE);
+            targetUnitMap.remove(m_caster); // exclude caster
             break;
         }
         case 65045: // Flame of demolisher

@@ -247,6 +247,11 @@ bool VehicleKit::AddPassenger(Unit *passenger, int8 seatId)
             data2 << (uint32)(2);
             m_pBase->SendMessageToSet(&data2,false);
         }
+        else if (passenger->m_movementInfo.GetMovementFlags() & MOVEFLAG_WALK_MODE)
+            ((Creature*)m_pBase)->SetWalk(true);
+        else
+            ((Creature*)m_pBase)->SetWalk(false);
+
     }
 
     passenger->SendMonsterMoveTransport(m_pBase, SPLINETYPE_FACINGANGLE, SPLINEFLAG_UNKNOWN5, 0, 0.0f);
@@ -340,6 +345,9 @@ void VehicleKit::RemovePassenger(Unit *passenger)
             ((Creature*)m_pBase)->AI()->PassengerBoarded(passenger, seat->first, false);
     }
 
+    // only for flyable vehicles
+    if (m_pBase->m_movementInfo.HasMovementFlag(MOVEFLAG_FLYING))
+        m_pBase->CastSpell(passenger, 45472, true);    // Parachute
 }
 
 void VehicleKit::Reset()

@@ -176,6 +176,7 @@ void PlayerTaxi::InitTaxiNodesForLevel(uint32 race, uint32 chrClass, uint32 leve
     {
         case ALLIANCE: SetTaximaskNode(100); break;
         case HORDE:    SetTaximaskNode(99);  break;
+        default: break;
     }
     // level dependent taxi hubs
     if (level>=68)
@@ -488,7 +489,7 @@ Player::Player (WorldSession *session): Unit(), m_mover(this), m_camera(this), m
     m_canTitanGrip = false;
     m_ammoDPS = 0.0f;
 
-    m_temporaryUnsummonedPetNumber = 0;
+    m_temporaryUnsummonedPetNumber.clear();
 
     ////////////////////Rest System/////////////////////
     time_inn_enter=0;
@@ -1279,7 +1280,7 @@ void Player::Update( uint32 update_diff, uint32 p_time )
 
             if (isAttackReady(BASE_ATTACK))
             {
-                if (!CanReachWithMeleeAttack(pVictim))
+                if (!CanReachWithMeleeAttack(pVictim, 0.0f))
                 {
                     setAttackTimer(BASE_ATTACK,100);
                     if (m_swingErrorMsg != 1)               // send single time (client auto repeat)
@@ -1316,7 +1317,7 @@ void Player::Update( uint32 update_diff, uint32 p_time )
 
             if (haveOffhandWeapon() && isAttackReady(OFF_ATTACK))
             {
-                if (!CanReachWithMeleeAttack(pVictim))
+                if (!CanReachWithMeleeAttack(pVictim, 0.0f))
                 {
                     setAttackTimer(OFF_ATTACK,100);
                 }
@@ -1637,8 +1638,15 @@ bool Player::BuildEnumData( QueryResult * result, WorldPacket * p_data )
         char_flags |= CHARACTER_FLAG_DECLINED;
 
     *p_data << uint32(char_flags);                          // character flags
-    // character customize flags
-    *p_data << uint32(atLoginFlags & AT_LOGIN_CUSTOMIZE ? CHAR_CUSTOMIZE_FLAG_CUSTOMIZE : CHAR_CUSTOMIZE_FLAG_NONE);
+    // character customize/faction/race change flags
+    if(atLoginFlags & AT_LOGIN_CUSTOMIZE)
+        *p_data << uint32(CHAR_CUSTOMIZE_FLAG_CUSTOMIZE);
+    else if(atLoginFlags & AT_LOGIN_CHANGE_FACTION)
+        *p_data << uint32(CHAR_CUSTOMIZE_FLAG_FACTION);
+    else if(atLoginFlags & AT_LOGIN_CHANGE_RACE)
+        *p_data << uint32(CHAR_CUSTOMIZE_FLAG_RACE);
+    else
+        *p_data << uint32(CHAR_CUSTOMIZE_FLAG_NONE);
     // First login
     *p_data << uint8(atLoginFlags & AT_LOGIN_FIRST ? 1 : 0);
 
@@ -1810,7 +1818,7 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
     // We have to perform this check before the teleport, otherwise the
     // ObjectAccessor won't find the flag.
     if (duel && GetMapId() != mapid)
-        if (GameObject* obj = GetMap()->GetGameObject(GetGuidValue(PLAYER_DUEL_ARBITER)))
+        if (GetMap()->GetGameObject(GetGuidValue(PLAYER_DUEL_ARBITER)))
             DuelComplete(DUEL_FLED);
 
     // reset movement flags at teleport, because player will continue move with these flags after teleport
@@ -1992,6 +2000,9 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
 
 bool Player::TeleportToBGEntryPoint()
 {
+    RemoveSpellsCausingAura(SPELL_AURA_MOUNTED);
+    RemoveSpellsCausingAura(SPELL_AURA_FLY);
+
     ScheduleDelayedOperation(DELAYED_BG_MOUNT_RESTORE);
     ScheduleDelayedOperation(DELAYED_BG_TAXI_RESTORE);
     return TeleportTo(m_bgData.joinPos);
@@ -3503,7 +3514,7 @@ bool Player::IsNeedCastPassiveLikeSpellAtLearn(SpellEntry const* spellInfo) cons
 
     // note: form passives activated with shapeshift spells be implemented by HandleShapeshiftBoosts instead of spell_learn_spell
     // talent dependent passives activated at form apply have proper stance data
-    bool need_cast = (!spellInfo->Stances || !form && (spellInfo->AttributesEx2 & SPELL_ATTR_EX2_NOT_NEED_SHAPESHIFT));
+    bool need_cast = (!spellInfo->Stances || (!form && (spellInfo->AttributesEx2 & SPELL_ATTR_EX2_NOT_NEED_SHAPESHIFT)));
 
     // Check CasterAuraStates
     return need_cast && (!spellInfo->CasterAuraState || HasAuraState(AuraState(spellInfo->CasterAuraState)));
@@ -5808,6 +5819,8 @@ void Player::UpdateWeaponSkill (WeaponAttackType attType)
                 UpdateSkill(tmpitem->GetSkill(),weapon_skill_gain);
             break;
         }
+        default:
+            break;
     }
     UpdateAllCritPercentages();
 }
@@ -7956,7 +7969,7 @@ void Player::ApplyItemOnStoreSpell(Item *item, bool apply)
     }
 }
 
-void Player::DestroyItemWithOnStoreSpell(Item* item)
+void Player::DestroyItemWithOnStoreSpell(Item* item, uint32 spellId)
 {
     if (!item)
         return;
@@ -7969,15 +7982,14 @@ void Player::DestroyItemWithOnStoreSpell(Item* item)
     {
         _Spell const& spellData = proto->Spells[i];
 
-        // no spell
-        if (!spellData.SpellId)
+        if (spellData.SpellId != spellId)
             continue;
 
         // apply/unapply only at-store spells
         if (spellData.SpellTrigger != ITEM_SPELLTRIGGER_ON_STORE)
             continue;
 
-//        DestroyItem(item->GetBagSlot(), item->GetSlot(), true);
+        DestroyItem(item->GetBagSlot(), item->GetSlot(), true);
         break;
     }
 }
@@ -11641,7 +11653,7 @@ Item* Player::StoreNewItem(ItemPosCountVec const& dest, uint32 item, bool update
             for (AllowedLooterSet::iterator itr = allowedLooters->begin(); itr != allowedLooters->end(); ++itr)
                 ss << *itr << " ";
             ss << "');";
-            CharacterDatabase.PExecute(ss.str().c_str());
+            CharacterDatabase.Execute(ss.str().c_str());
         }
     }
     return pItem;
@@ -17187,9 +17199,51 @@ void Player::LoadPet()
     // just not added to the map
     if (IsInWorld())
     {
-        Pet *pet = new Pet;
+        Pet* pet = new Pet;
+        pet->SetPetCounter(0);
         if(!pet->LoadPetFromDB(this, 0, 0, true))
+        {
             delete pet;
+            return;
+        }
+
+        if (sWorld.getConfig(CONFIG_BOOL_PET_SAVE_ALL))
+        {
+            uint32 pet_entry = pet->GetEntry();
+            uint32 pet_num = pet->GetCharmInfo()->GetPetNumber();
+            QueryResult* result = CharacterDatabase.PQuery("SELECT id FROM character_pet WHERE owner = '%u' AND entry = '%u' AND id != '%u'",
+                GetGUIDLow(), pet_entry, pet_num);
+
+            std::vector<uint32> petnumber;
+            if (result)
+            {
+                do
+                {
+                    Field* fields = result->Fetch();
+                    uint32 petnum = fields[0].GetUInt32();
+                    if (petnum && petnum != pet_num)
+                        petnumber.push_back(petnum);
+                }
+                while (result->NextRow());
+                delete result;
+            }
+            else
+                return;
+
+            if (!petnumber.empty())
+            {
+                for(uint8 i = 0; i < petnumber.size(); ++i)
+                {
+                    if (petnumber[i] == 0)
+                        continue;
+
+                    Pet* _pet = new Pet;
+                    _pet->SetPetCounter(i+1);
+                    if (!_pet->LoadPetFromDB(this, pet_entry, petnumber[i], true))
+                        delete _pet;
+                }
+            }
+        }
     }
 }
 
@@ -19259,13 +19313,13 @@ void Player::PetSpellInitialize()
 void Player::SendPetGUIDs()
 {
     GroupPetList m_groupPets = GetPets();
-    if (m_groupPets.empty())
-        return;
-
     WorldPacket data(SMSG_PET_GUIDS, 4+8*m_groupPets.size());
     data << uint32(m_groupPets.size());                      // count
-    for (GroupPetList::const_iterator itr = m_groupPets.begin(); itr != m_groupPets.end(); ++itr)
-        data << (*itr);
+    if (!m_groupPets.empty())
+    {
+        for (GroupPetList::const_iterator itr = m_groupPets.begin(); itr != m_groupPets.end(); ++itr)
+            data << (*itr);
+    }
     GetSession()->SendPacket(&data);
 }
 
@@ -22464,6 +22518,9 @@ void Player::AutoStoreLoot(Loot& loot, bool broadcast, uint8 bag, uint8 slot)
     {
         LootItem* lootItem = loot.LootItemInSlot(i,this);
 
+        if (!lootItem)
+            continue;
+
         ItemPosCountVec dest;
         InventoryResult msg = CanStoreNewItem(bag,slot,dest,lootItem->itemid,lootItem->count);
         if (msg != EQUIP_ERR_OK && slot != NULL_SLOT)
@@ -23083,29 +23140,46 @@ void Player::UpdateFallInformationIfNeed( MovementInfo const& minfo,uint16 opcod
 
 void Player::UnsummonPetTemporaryIfAny(bool full)
 {
-    if (!GetMap())
-        return;
-
     Pet* minipet = GetMiniPet();
 
     if (full && minipet)
         minipet->Unsummon(PET_SAVE_AS_DELETED, this);
 
     Pet* pet = GetPet();
+    if (!pet)
+        return;
 
-    if (pet && !m_temporaryUnsummonedPetNumber && pet->isControlled() && !pet->isTemporarySummoned())
-        m_temporaryUnsummonedPetNumber = pet->GetCharmInfo()->GetPetNumber();
+    Map* petmap = pet->GetMap();
+    if (!petmap)
+        return;
 
     GroupPetList m_groupPetsTmp = GetPets();  // Original list may be modified in this function
+    if (m_groupPetsTmp.empty())
+        return;
+
     for (GroupPetList::const_iterator itr = m_groupPetsTmp.begin(); itr != m_groupPetsTmp.end(); ++itr)
     {
-        if (Pet* _pet = GetMap()->GetPet(*itr))
+        if (Pet* pet = petmap->GetPet(*itr))
         {
-            if (!_pet->isTemporarySummoned())
-                _pet->Unsummon(PET_SAVE_AS_CURRENT, this);
+            if (!sWorld.getConfig(CONFIG_BOOL_PET_SAVE_ALL))
+            {
+                if (!GetTemporaryUnsummonedPetCount() && pet->isControlled() && !pet->isTemporarySummoned() && !pet->GetPetCounter())
+                {
+                    SetTemporaryUnsummonedPetNumber(pet->GetCharmInfo()->GetPetNumber());
+                    pet->Unsummon(PET_SAVE_AS_CURRENT, this);
+                }
+                else
+                    if (full)
+                        pet->Unsummon(PET_SAVE_NOT_IN_SLOT, this);
+            }
             else
-                if (full)
-                    _pet->Unsummon(PET_SAVE_NOT_IN_SLOT, this);
+            {
+                SetTemporaryUnsummonedPetNumber(pet->GetCharmInfo()->GetPetNumber(), pet->GetPetCounter());
+                if (!pet->GetPetCounter() && pet->getPetType() == HUNTER_PET)
+                    pet->Unsummon(PET_SAVE_AS_CURRENT, this);
+                else
+                    pet->Unsummon(PET_SAVE_NOT_IN_SLOT, this);
+            }
         }
     }
 
@@ -23113,23 +23187,36 @@ void Player::UnsummonPetTemporaryIfAny(bool full)
 
 void Player::ResummonPetTemporaryUnSummonedIfAny()
 {
-    if (!m_temporaryUnsummonedPetNumber)
+    if (!GetTemporaryUnsummonedPetCount())
         return;
 
     // not resummon in not appropriate state
     if (IsPetNeedBeTemporaryUnsummoned())
         return;
 
-    if (GetPetGuid())
-        return;
+//    if (GetPetGuid())
+//        return;
 
-    Pet* NewPet = new Pet;
-    NewPet->SetPetCounter(0);
-    if(!NewPet->LoadPetFromDB(this, 0, m_temporaryUnsummonedPetNumber, true))
-        delete NewPet;
-
-    m_temporaryUnsummonedPetNumber = 0;
+    // sort petlist - 0 must be _last_
+    for (uint8 count = GetTemporaryUnsummonedPetCount(); count != 0; --count)
+    {
+        uint32 petnum = GetTemporaryUnsummonedPetNumber(count-1);
+        if (petnum == 0)
+            continue;
+        DEBUG_LOG("Player::ResummonPetTemporaryUnSummonedIfAny summon pet %u count %u",petnum, count-1);
+        Pet* NewPet = new Pet;
+        NewPet->SetPetCounter(count-1);
+        if(!NewPet->LoadPetFromDB(this, 0, petnum))
+            delete NewPet;
+    }
+    ClearTemporaryUnsummonedPetStorage();
 }
+
+uint32 Player::GetTemporaryUnsummonedPetNumber(uint8 count)
+{
+    PetNumberList::const_iterator itr = m_temporaryUnsummonedPetNumber.find(count);
+    return itr != m_temporaryUnsummonedPetNumber.end() ? itr->second : 0;
+};
 
 bool Player::canSeeSpellClickOn(Creature const *c) const
 {
@@ -24043,17 +24130,17 @@ void Player::LoadAccountLinkedState()
     m_referredAccounts = sAccountMgr.GetRAFAccounts(GetSession()->GetAccountId(), true);
 
     if (m_referredAccounts.size() > sWorld.getConfig(CONFIG_UINT32_RAF_MAXREFERERS))
-        sLog.outError("Player:RAF:Warning: loaded %u referred accounts instead of %u for player %u",m_referredAccounts.size(),sWorld.getConfig(CONFIG_UINT32_RAF_MAXREFERERS),GetObjectGuid().GetCounter());
+        sLog.outError("Player:RAF:Warning: loaded " SIZEFMTD " referred accounts instead of %u for player %u",m_referredAccounts.size(),sWorld.getConfig(CONFIG_UINT32_RAF_MAXREFERERS),GetObjectGuid().GetCounter());
     else
-        DEBUG_LOG("Player:RAF: loaded %u referred accounts for player %u",m_referredAccounts.size(),GetObjectGuid().GetCounter());
+        DEBUG_LOG("Player:RAF: loaded " SIZEFMTD " referred accounts for player %u",m_referredAccounts.size(),GetObjectGuid().GetCounter());
 
     m_referalAccounts.clear();
     m_referalAccounts  = sAccountMgr.GetRAFAccounts(GetSession()->GetAccountId(), false);
 
     if (m_referalAccounts.size() > sWorld.getConfig(CONFIG_UINT32_RAF_MAXREFERALS))
-        sLog.outError("Player:RAF:Warning: loaded %u referal accounts instead of %u for player %u",m_referalAccounts.size(),sWorld.getConfig(CONFIG_UINT32_RAF_MAXREFERALS),GetObjectGuid().GetCounter());
+        sLog.outError("Player:RAF:Warning: loaded " SIZEFMTD " referal accounts instead of %u for player %u",m_referalAccounts.size(),sWorld.getConfig(CONFIG_UINT32_RAF_MAXREFERALS),GetObjectGuid().GetCounter());
     else
-        DEBUG_LOG("Player:RAF: loaded %u referal accounts for player %u",m_referalAccounts.size(),GetObjectGuid().GetCounter());
+        DEBUG_LOG("Player:RAF: loaded " SIZEFMTD " referal accounts for player %u",m_referalAccounts.size(),GetObjectGuid().GetCounter());
 }
 
 bool Player::IsReferAFriendLinked(Player* target)

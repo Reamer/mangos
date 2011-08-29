@@ -45,6 +45,7 @@
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
 #include "CellImpl.h"
+#include "TemporarySummon.h"
 #include "movement/MoveSplineInit.h"
 #include "movement/MoveSpline.h"
 
@@ -171,6 +172,8 @@ m_creatureInfo(NULL)
 
     m_CreatureSpellCooldowns.clear();
     m_CreatureCategoryCooldowns.clear();
+
+    SetWalk(true);
 }
 
 Creature::~Creature()
@@ -189,7 +192,13 @@ void Creature::AddToWorld()
     if (!IsInWorld() && GetObjectGuid().IsCreatureOrVehicle())
         GetMap()->GetObjectsStore().insert<Creature>(GetObjectGuid(), (Creature*)this);
 
-    Unit::AddToWorld();
+    if (IsInWorld() && GetObjectGuid().IsPet())
+    {
+        DEBUG_LOG("Creature::AddToWorld called, but creature (guid %u) is pet! Crush possible later.", GetObjectGuid().GetCounter());
+        ((Pet*)this)->AddToWorld();
+    }
+    else
+        Unit::AddToWorld();
 
     if (GetVehicleKit())
         GetVehicleKit()->Reset();
@@ -201,7 +210,13 @@ void Creature::RemoveFromWorld()
     if (IsInWorld() && GetObjectGuid().IsCreatureOrVehicle())
         GetMap()->GetObjectsStore().erase<Creature>(GetObjectGuid(), (Creature*)NULL);
 
-    Unit::RemoveFromWorld();
+    if (IsInWorld() && GetObjectGuid().IsPet())
+    {
+        DEBUG_LOG("Creature::RemoveFromWorld called, but creature (guid %u) is pet! Crush possible later.", GetObjectGuid().GetCounter());
+        ((Pet*)this)->RemoveFromWorld();
+    }
+    else
+        Unit::RemoveFromWorld();
 }
 
 void Creature::RemoveCorpse()
@@ -1162,6 +1177,8 @@ void Creature::SelectLevel(const CreatureInfo *cinfo, float percentHealth, float
             maxPower = uint32(GetCreatePowers(powerType) * cinfo->power_mod);
             break;
         }
+        default:
+            break;
     }
 
     SetMaxPower(powerType, maxPower);
@@ -1493,6 +1510,8 @@ void Creature::SetDeathState(DeathState s)
             // return, since we promote to CORPSE_FALLING. CORPSE_FALLING is promoted to CORPSE at next update.
             if (CanFly() && FallGround())
                 return;
+            else
+                SetLevitate(false);
         }
 
         Unit::SetDeathState(CORPSE);
@@ -1504,6 +1523,7 @@ void Creature::SetDeathState(DeathState s)
 
         SetHealth(GetMaxHealth());
         SetLootRecipient(NULL);
+        SetWalk(true);
 
         if (GetTemporaryFactionFlags() & TEMPFACTION_RESTORE_RESPAWN)
             ClearTemporaryFaction();
@@ -1596,6 +1616,9 @@ void Creature::ForcedDespawn(uint32 timeMSToDespawn)
 
     RemoveCorpse();
     SetHealth(0);                                           // just for nice GM-mode view
+
+    if (IsTemporarySummon())
+         ((TemporarySummon*)this)->UnSummon();
 }
 
 bool Creature::IsImmuneToSpell(SpellEntry const* spellInfo)

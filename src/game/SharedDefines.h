@@ -1091,7 +1091,7 @@ enum Mechanics
     MECHANIC_FEAR             = 5,  // 0x00000010
     MECHANIC_GRIP             = 6,  // 0x00000020
     MECHANIC_ROOT             = 7,  // 0x00000040
-    MECHANIC_SLOWATTACK       = 8,  // 0x00000080           //0 spells use this mechanic, but some SPELL_AURA_MOD_HASTE and SPELL_AURA_MOD_RANGED_HASTE use as effect mechanic 
+    MECHANIC_SLOWATTACK       = 8,  // 0x00000080           //0 spells use this mechanic, but some SPELL_AURA_MOD_HASTE and SPELL_AURA_MOD_RANGED_HASTE use as effect mechanic
     MECHANIC_SILENCE          = 9,  // 0x00000100
     MECHANIC_SLEEP            = 10, // 0x00000200
     MECHANIC_SNARE            = 11, // 0x00000400
@@ -1196,6 +1196,7 @@ enum WeaponAttackType
 };
 
 #define MAX_ATTACK  3
+#define MAX_ATTACK_MOD  (MAX_ATTACK + 3)
 
 enum Targets
 {

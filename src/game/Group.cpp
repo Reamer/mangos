@@ -1421,7 +1421,7 @@ void Group::SetGroupUniqueFlag(ObjectGuid guid, GroupFlagsAssignment assignment,
                 mask = GROUP_ASSISTANT;
             break;
         default:
-                sLog.outError("Group::SetGroupUniqueFlag unknown assignment % on player %u", assignment, guid.GetCounter());
+                sLog.outError("Group::SetGroupUniqueFlag unknown assignment %u on player %u", assignment, guid.GetCounter());
             return;
     };
 
@@ -1733,7 +1733,7 @@ bool Group::InCombatToInstance(uint32 instanceId)
     for(GroupReference *itr = GetFirstMember(); itr != NULL; itr = itr->next())
     {
         Player *pPlayer = itr->getSource();
-        if(pPlayer->getAttackers().size() && pPlayer->GetInstanceId() == instanceId)
+        if(pPlayer->GetMap() && pPlayer->GetInstanceId() == instanceId && pPlayer->IsInCombat())
             return true;
     }
     return false;

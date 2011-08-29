@@ -211,6 +211,8 @@ ChatCommand * ChatHandler::getCommandTable()
         { "customize",      SEC_GAMEMASTER,     true,  &ChatHandler::HandleCharacterCustomizeCommand,  "", NULL },
         { "deleted",        SEC_GAMEMASTER,     true,  NULL,                                           "", characterDeletedCommandTable},
         { "erase",          SEC_CONSOLE,        true,  &ChatHandler::HandleCharacterEraseCommand,      "", NULL },
+        { "changefaction",  SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleCharacterChangeFactionCommand, "", NULL },
+        { "changerace",     SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleCharacterChangeRaceCommand, "", NULL },
         { "level",          SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleCharacterLevelCommand,      "", NULL },
         { "rename",         SEC_GAMEMASTER,     true,  &ChatHandler::HandleCharacterRenameCommand,     "", NULL },
         { "reputation",     SEC_GAMEMASTER,     true,  &ChatHandler::HandleCharacterReputationCommand, "", NULL },
@@ -1540,14 +1542,14 @@ valid examples:
     std::istringstream reader(message);
     char buffer[256];
 
-    uint32 color;
+    uint32 color = 0;
 
-    ItemPrototype const* linkedItem;
-    Quest const* linkedQuest;
-    SpellEntry const *linkedSpell;
-    AchievementEntry const* linkedAchievement;
-    ItemRandomPropertiesEntry const* itemProperty;
-    ItemRandomSuffixEntry const* itemSuffix;
+    ItemPrototype const* linkedItem = NULL;
+    Quest const* linkedQuest = NULL;
+    SpellEntry const *linkedSpell= NULL;
+    AchievementEntry const* linkedAchievement = NULL;
+    ItemRandomPropertiesEntry const* itemProperty = NULL;
+    ItemRandomSuffixEntry const* itemSuffix = NULL;
 
     while(!reader.eof())
     {
