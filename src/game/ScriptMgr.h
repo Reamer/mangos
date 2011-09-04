@@ -479,5 +479,11 @@ MANGOS_DLL_SPEC uint32 GetEventIdScriptId(uint32 eventId);
 MANGOS_DLL_SPEC uint32 GetScriptId(const char *name);
 MANGOS_DLL_SPEC char const* GetScriptName(uint32 id);
 MANGOS_DLL_SPEC uint32 GetScriptIdsCount();
-
+/*
+CUSTUM STUFF BEGIN
+*/
+MANGOS_DLL_SPEC uint32 SetFastDungeon(uint32 dungeon);
+/*
+CUSTUM STUFF END
+*/
 #endif
