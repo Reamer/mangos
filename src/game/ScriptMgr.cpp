@@ -1294,7 +1294,7 @@ uint32 GetScriptIdsCount()
 CUSTUM STUFF BEGIN
 */
 
-enum Instanzen
+enum Integer
 {
     AUCHENAIKRYPTA          = 1,
     MANAGRUFT               = 2,
@@ -1302,7 +1302,7 @@ enum Instanzen
     SETHEKKHALLEN           = 4,
     TIEFENSUMPF             = 5,
     DAMPFKAMMER             = 6,
-    SKLAVENUNTERKÜNFTE      = 7,
+    SKLAVENUNTERKUENFTE     = 7,
     ARKATRAZ                = 8,
     BOTANIKA                = 9,
     MECHANAR                = 10,
@@ -1315,17 +1315,15 @@ enum Instanzen
     AZJOL_NERUB             = 17,
     ALTE_KOENIGREICH        = 18,
     NEXUS                   = 19,
-    DRAKTARON               = 20
-};
-enum InstanzEndbosse
-{
+    DRAKTARON               = 20,
+
     AUCHENAIKRYPTA_BOSS         = 20306,
     MANAGRUFT_BOSS              = 20266,
     SCHATTENLABYRINTH_BOSS      = 20657,
     SETHEKKHALLEN_BOSS          = 20706,
     TIEFENSUMPF_BOSS            = 20184,
     DAMPFKAMMER_BOSS            = 20633,
-    SKLAVENUNTERKÜNFTE_BOSS     = 19894,
+    SKLAVENUNTERKUENFTE_BOSS    = 19894,
     ARKATRAZ_BOSS               = 21601,
     BOTANIKA_BOSS               = 21582,
     MECHANAR_BOSS               = 21537,
@@ -1338,11 +1336,11 @@ enum InstanzEndbosse
     AZJOL_NERUB_BOSS            = 31610,
     ALTE_KOENIGREICH_BOSS       = 31464,
     NEXUS_BOSS                  = 30540,
-    DRAKTARON_BOSS              = 31360
-};
-enum Sonstiges{
+    DRAKTARON_BOSS              = 31360,
+
     ITEM_SCHNELLSTES_DUNGEON    = 17894,
-    RESET                       = 100
+    RESET                       = 100,
+    FERTIG                      = 101
 };
 
 void SendServerMessage(const char *str)
@@ -1382,8 +1380,8 @@ uint32 SetFastDungeon(uint32 dungeon)
             WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", DAMPFKAMMER_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 5, 5);
             sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel Dampfkammer");
             break;
-        case SKLAVENUNTERKÜNFTE:
-            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", SKLAVENUNTERKÜNFTE_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 5, 5);
+        case SKLAVENUNTERKUENFTE:
+            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", SKLAVENUNTERKUENFTE_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 5, 5);
             sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel Sklavenunterkünfte");
             break;
         case ARKATRAZ:
