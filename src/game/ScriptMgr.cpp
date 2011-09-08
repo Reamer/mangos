@@ -1357,83 +1357,83 @@ uint32 SetFastDungeon(uint32 dungeon)
             sWorld.SendWorldText(4,"Schnellstes Dungeon ist beendet.");
             break;
         case AUCHENAIKRYPTA:
-            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", AUCHENAIKRYPTA_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 5, 5);
+            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", AUCHENAIKRYPTA_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 1, 1);
             sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel Auchenaikryta");
             break;
         case MANAGRUFT:
-            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", MANAGRUFT_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 5, 5);
+            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", MANAGRUFT_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 1, 1);
             sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel Managruft");
             break;
         case SCHATTENLABYRINTH:
-            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", SCHATTENLABYRINTH_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 5, 5);
+            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", SCHATTENLABYRINTH_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 1, 1);
             sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel Schattenlabyrinth");
             break;
         case SETHEKKHALLEN:
-            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", SETHEKKHALLEN_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 5, 5);
+            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", SETHEKKHALLEN_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 1, 1);
             sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel Sethekkhallen");
             break;
         case TIEFENSUMPF:
-            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", TIEFENSUMPF_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 5, 5);
+            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", TIEFENSUMPF_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 1, 1);
             sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel Tiefensumpf");
             break;
         case DAMPFKAMMER:
-            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", DAMPFKAMMER_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 5, 5);
+            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", DAMPFKAMMER_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 1, 1);
             sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel Dampfkammer");
             break;
         case SKLAVENUNTERKUENFTE:
-            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", SKLAVENUNTERKUENFTE_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 5, 5);
+            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", SKLAVENUNTERKUENFTE_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 1, 1);
             sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel Sklavenunterkünfte");
             break;
         case ARKATRAZ:
-            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", ARKATRAZ_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 5, 5);
+            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", ARKATRAZ_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 1, 1);
             sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel Arkatraz");
             break;
         case BOTANIKA:
-            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", BOTANIKA_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 5, 5);
+            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", BOTANIKA_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 1, 1);
             sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel Botanika");
             break;
         case MECHANAR:
-            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", MECHANAR_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 5, 5);
+            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", MECHANAR_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 1, 1);
             sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel Mechanar");
             break;
         case ZERSCHMETTERTENHALLEN:
-            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", ZERSCHMETTERTENHALLEN_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 5, 5);
+            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", ZERSCHMETTERTENHALLEN_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 1, 1);
             sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel Zerschmetterte Hellen");
             break;
         case TERRASSEDERMAGISTER:
-            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", TERRASSEDERMAGISTER_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 5, 5);
-            sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel Die T");
+            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", TERRASSEDERMAGISTER_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 1, 1);
+            sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel Die Terrassen der Magister");
             break;
         case MARAUDON:
-            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", MARAUDON_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 5, 5);
-            sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel Schattenlabyrinth");
+            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", MARAUDON_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 1, 1);
+            sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel Maraudon");
             break;
         case SCHOLOMANCE:
-            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", SCHOLOMANCE_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 5, 5);
+            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", SCHOLOMANCE_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 1, 1);
             sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel Scholomance");
             break;
         case STRATHOLME:
-            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", STRATHOLME_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 5, 5);
+            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", STRATHOLME_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 1, 1);
             sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel Stratholme");
             break;
         case BURG_UTGARDE:
-            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", BURG_UTGARDE_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 5, 5);
+            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", BURG_UTGARDE_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 1, 1);
             sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel Burg Utgarde");
             break;
         case AZJOL_NERUB:
-            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", AZJOL_NERUB_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 5, 5);
+            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", AZJOL_NERUB_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 1, 1);
             sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel Azjol Nerub");
             break;
         case ALTE_KOENIGREICH:
-            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", ALTE_KOENIGREICH_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 5, 5);
-            sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel ");
+            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", ALTE_KOENIGREICH_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 1, 1);
+            sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel Das alte Königreich");
             break;
         case NEXUS:
-            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", NEXUS_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 5, 5);
+            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", NEXUS_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 1, 1);
             sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel Nexus");
             break;
          case DRAKTARON:
-            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", DRAKTARON_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 5, 5);
+            WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", DRAKTARON_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 1, 1);
             sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel Draktaron");
             break;
     }
