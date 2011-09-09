@@ -401,6 +401,7 @@
     <ClCompile Include="..\..\src\game\CreatureAISelector.cpp" />
     <ClCompile Include="..\..\src\game\CreatureEventAI.cpp" />
     <ClCompile Include="..\..\src\game\CreatureEventAIMgr.cpp" />
+    <ClCompile Include="..\..\src\game\CreatureLinkingMgr.cpp" />
     <ClCompile Include="..\..\src\game\DBCStores.cpp" />
     <ClCompile Include="..\..\src\game\debugcmds.cpp" />
     <ClCompile Include="..\..\src\game\DuelHandler.cpp" />
@@ -590,6 +591,7 @@
     <ClInclude Include="..\..\src\game\CreatureAISelector.h" />
     <ClInclude Include="..\..\src\game\CreatureEventAI.h" />
     <ClInclude Include="..\..\src\game\CreatureEventAIMgr.h" />
+    <ClInclude Include="..\..\src\game\CreatureLinkingMgr.h" />
     <ClInclude Include="..\..\src\game\DBCEnums.h" />
     <ClInclude Include="..\..\src\game\DBCfmt.h" />
     <ClInclude Include="..\..\src\game\DBCStores.h" />
@@ -651,6 +653,7 @@
     <ClInclude Include="..\..\src\game\ObjectAccessor.h" />
     <ClInclude Include="..\..\src\game\ObjectGuid.h" />
     <ClInclude Include="..\..\src\game\ObjectGridLoader.h" />
+    <ClInclude Include="..\..\src\game\ObjectLock.h" />
     <ClInclude Include="..\..\src\game\ObjectMgr.h" />
     <ClInclude Include="..\..\src\game\ObjectPosSelector.h" />
     <ClInclude Include="..\..\src\game\Opcodes.h" />
@@ -687,7 +690,7 @@
     <ClInclude Include="..\..\src\game\SkillExtraItems.h" />
     <ClInclude Include="..\..\src\game\SocialMgr.h" />
     <ClInclude Include="..\..\src\game\Spell.h" />
-	<ClInclude Include="..\..\src\game\SpellClassMask.h" />
+    <ClInclude Include="..\..\src\game\SpellClassMask.h" />
     <ClInclude Include="..\..\src\game\SpellAuraDefines.h" />
     <ClInclude Include="..\..\src\game\SpellAuras.h" />
     <ClInclude Include="..\..\src\game\SpellMgr.h" />

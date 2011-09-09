@@ -65,6 +65,7 @@
 #include "Util.h"
 #include "AuctionHouseBot/AuctionHouseBot.h"
 #include "CharacterDatabaseCleaner.h"
+#include "CreatureLinkingMgr.h"
 #include "LFGMgr.h"
 #include "WardenDataStorage.h"
 
@@ -618,6 +619,8 @@ void World::LoadConfigSettings(bool reload)
 
     setConfig(CONFIG_BOOL_CHECK_GO_IN_PATH, "CheckGOInPath", false);
 
+    setConfigMinMax(CONFIG_UINT32_GEAR_CALC_BASE, "Player.GSCalculationBase", 190, 1, 384);
+
     setConfigMinMax(CONFIG_UINT32_START_PLAYER_MONEY, "StartPlayerMoney", 0, 0, MAX_MONEY_AMOUNT);
 
     setConfig(CONFIG_UINT32_MAX_HONOR_POINTS, "MaxHonorPoints", 75000);
@@ -1094,9 +1097,6 @@ void World::SetInitialWorldSettings()
     sLog.outString( "Loading SpellsScriptTarget...");
     sSpellMgr.LoadSpellScriptTarget();                      // must be after LoadCreatureTemplates and LoadGameobjectInfo
 
-    sLog.outString("Loading Instance encounters data...");  // must be after creature templates
-    sObjectMgr.LoadInstanceEncounters();
-
     sLog.outString( "Loading ItemRequiredTarget...");
     sObjectMgr.LoadItemRequiredTarget();
 
@@ -1135,6 +1135,9 @@ void World::SetInitialWorldSettings()
 
     sLog.outString( "Loading Gameobject Data..." );
     sObjectMgr.LoadGameobjects();
+
+    sLog.outString( "Loading CreatureLinking Data..." );    // must be after Creatures
+    sCreatureLinkingMgr.LoadFromDB();
 
     sLog.outString( "Loading Objects Pooling Data...");
     sPoolMgr.LoadFromDB();
@@ -1256,6 +1259,9 @@ void World::SetInitialWorldSettings()
     sAchievementMgr.LoadCompletedAchievements();
     sLog.outString( ">>> Achievements loaded" );
     sLog.outString();
+
+    sLog.outString( "Loading Instance encounters data..." );  // must be after Creature loading
+    sObjectMgr.LoadInstanceEncounters();
 
     sLog.outString( "Loading Npc Text Id..." );
     sObjectMgr.LoadNpcGossips();                            // must be after load Creature and LoadGossipText

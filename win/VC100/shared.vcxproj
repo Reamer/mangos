@@ -1,4 +1,5 @@
-﻿<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug_NoPCH|Win32">
       <Configuration>Debug_NoPCH</Configuration>
@@ -444,7 +445,6 @@
     <ClCompile Include="..\..\src\shared\Database\SqlOperations.cpp" />
     <ClCompile Include="..\..\src\shared\Database\SQLStorage.cpp" />
     <ClCompile Include="..\..\src\shared\Log.cpp" />
-    <ClCompile Include="..\..\src\shared\MemoryLeaks.cpp" />
     <ClCompile Include="..\..\src\shared\Database\SqlPreparedStatement.cpp" />
     <ClCompile Include="..\..\src\shared\Database\SQLStorage.cpp" />
     <ClCompile Include="..\..\src\shared\Log.cpp" />
@@ -484,7 +484,6 @@
     <ClInclude Include="..\..\src\shared\Errors.h" />
     <ClInclude Include="..\..\src\shared\LockedQueue.h" />
     <ClInclude Include="..\..\src\shared\Log.h" />
-    <ClInclude Include="..\..\src\shared\MemoryLeaks.h" />
     <ClInclude Include="..\..\src\shared\ProgressBar.h" />
     <ClInclude Include="..\..\src\shared\revision_nr.h" />
     <ClInclude Include="..\..\src\shared\revision_sql.h" />

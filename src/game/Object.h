@@ -25,6 +25,7 @@
 #include "UpdateData.h"
 #include "ObjectGuid.h"
 #include "Camera.h"
+#include "ObjectLock.h"
 
 #include <set>
 #include <string>
@@ -581,9 +582,11 @@ class MANGOS_DLL_SPEC WorldObject : public Object
         virtual bool isVisibleForInState(Player const* u, WorldObject const* viewPoint, bool inVisibleList) const = 0;
 
         void SetMap(Map * map);
-        Map * GetMap() const { MANGOS_ASSERT(m_currMap); return m_currMap; }
+        Map * GetMap() const { return m_currMap; }
         //used to check all object's GetMap() calls when object is not in world!
         void ResetMap() { m_currMap = NULL; }
+
+        ObjectLockType& GetLock(MapLockType _locktype = MAP_LOCK_TYPE_DEFAULT);
 
         //obtain terrain data for map where this object belong...
         TerrainInfo const* GetTerrain() const;
@@ -615,7 +618,6 @@ class MANGOS_DLL_SPEC WorldObject : public Object
         bool isActiveObject() const { return m_isActiveObject || m_viewPoint.hasViewers(); }
 
         ViewPoint& GetViewPoint() { return m_viewPoint; }
-
 
         // ASSERT print helper
         bool PrintCoordinatesError(float x, float y, float z, char const* descr) const;

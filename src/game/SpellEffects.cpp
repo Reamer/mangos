@@ -1686,7 +1686,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     // set loot recipient, prevent re-use same target
                     pCreature->SetLootRecipient(m_caster);
 
-                    pCreature->ForcedDespawn(GetSpellDuration(m_spellInfo));
+                    pCreature->ForcedDespawn(m_duration);
 
                     // EFFECT_INDEX_2 has 0 miscvalue for effect 134, doing the killcredit here instead (only one known case exist where 0)
                     ((Player*)m_caster)->KilledMonster(pCreature->GetCreatureInfo(), pCreature->GetObjectGuid());
@@ -1887,7 +1887,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     if (const SpellEntry *pSpell = sSpellStore.LookupEntry(45991))
                     {
                         unitTarget->CastSpell(unitTarget, pSpell, true);
-                        ((Creature*)unitTarget)->ForcedDespawn(GetSpellDuration(pSpell) + 1);
+                        ((Creature*)unitTarget)->ForcedDespawn(m_duration);
                     }
                     return;
                 }
@@ -2608,6 +2608,31 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     unitTarget->CastSpell(unitTarget, 48275, true);    // Target Summon Banshee
                     return;
                 }
+                case 54245:                                 // Enough - Drakuru Overlord, Kill Trolls
+                {
+                    if (!unitTarget)
+                        return;
+
+                    m_caster->DealDamage(unitTarget, unitTarget->GetMaxHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
+                    return;
+                }
+                case 54250:                                 // Skull Missile - Drakuru Overlord
+                {
+                    if (!unitTarget)
+                        return;
+
+                    unitTarget->CastSpell(unitTarget, 54253, true);    // Summon Skull
+                    return;
+                }
+                case 54209:                                 // Portal Missile - Drakuru Overlord
+                {
+                    if (!unitTarget)
+                        return;
+
+                    unitTarget->CastSpell(unitTarget, 51807, true);    // Cast Portal Visual
+                    return;
+                }
+
                 case 54577:                                 // Throw U.D.E.D.
                 {
                     if (!unitTarget || unitTarget->GetTypeId() != TYPEID_UNIT)
@@ -2707,6 +2732,28 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     m_caster->CastSpell(m_caster, 57561, true);
                     return;
                 }
+                case 57385:                                 // Argent Cannon
+                case 57412:                                 // Reckoning Bomb
+                {
+                    if (!unitTarget || gameObjTarget)
+                        return;
+
+                    SpellEntry const* spellInfo = sSpellStore.LookupEntry(m_spellInfo->CalculateSimpleValue(eff_idx));
+
+                    // Init dest coordinates
+                    float x,y,z;
+                    x = m_targets.m_destX;
+                    y = m_targets.m_destY;
+                    z = m_targets.m_destZ;
+
+                    MaNGOS::NormalizeMapCoord(x);
+                    MaNGOS::NormalizeMapCoord(y);
+                    m_caster->UpdateGroundPositionZ(x,y,z);
+
+                    m_caster->CastSpell(x, y, z, spellInfo, false, NULL, NULL, m_originalCasterGUID);
+
+                    return;
+                }
                 case 57908:                                 // Stain Cloth
                 {
                     // nothing do more
@@ -2732,20 +2779,14 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     m_caster->RemoveSpellsCausingAura(SPELL_AURA_MOD_FLIGHT_SPEED_MOUNTED);
                     return;
                 }
-                case 58689:                                 // Rock Shards
-                {                                           // (Archavon the Stone Watcher: Left Hand)
-                    if (!unitTarget || roll_chance_i(90))   // only 10% of spikes `proc` dmg (about 1 spike per sec)
-                        return;
-
-                    m_caster->CastSpell(unitTarget, m_caster->GetMap()->IsRegularDifficulty() ? 58695 : 60883, true);
+                case 58689:                                 // Rock Shards (Vault of Archavon, Archavon)
+                {
+                    m_caster->CastSpell(m_targets.m_destX, m_targets.m_destY, m_targets.m_destZ, m_caster->GetMap()->IsRegularDifficulty() ? 58696 : 60884, true);
                     return;
                 }
-                case 58692:                                 // Rock Shards
-                {                                           // (Archavon the Stone Watcher: Right Hand)
-                    if (!unitTarget || roll_chance_i(90))   // only 10% of spikes `proc` dmg (about 1 spike per sec)
-                        return;
-
-                    m_caster->CastSpell(unitTarget, m_caster->GetMap()->IsRegularDifficulty() ? 58696 : 60884, true);
+                case 58692:                                 // Rock Shards (Vault of Archavon, Archavon)
+                {
+                    m_caster->CastSpell(m_targets.m_destX, m_targets.m_destY, m_targets.m_destZ, m_caster->GetMap()->IsRegularDifficulty() ? 58695 : 60883, true);
                     return;
                 }
                 case 59640:                                 // Underbelly Elixir
@@ -3054,21 +3095,9 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     unitTarget->CastSpell(unitTarget, 72195, true);
                     break;
                 }
-                default:                                   // DBC encounters main check
-                {
-                    if (unitTarget && unitTarget->GetTypeId() == TYPEID_PLAYER)
-                    {
-                        if (m_caster->GetMap()->IsDungeon())
-                        {
-                            Player* creditedPlayer = unitTarget->GetCharmerOrOwnerPlayerOrPlayerItself();
-                            DungeonMap* dungeon = (DungeonMap*)m_caster->GetMap();;
-                            if (DungeonPersistentState* state = dungeon->GetPersistanceState())
-                                state->UpdateEncounterState(ENCOUNTER_CREDIT_CAST_SPELL, m_spellInfo->Id, creditedPlayer);
-                        }
-                    }
-                }
+                default:
+                    break;
             }
-            break;
         }
         case SPELLFAMILY_MAGE:
         {
@@ -3369,8 +3398,6 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     Item *item = pCaster->GetWeaponForAttack(OFF_ATTACK);
                     if (!item)
                         return;
-
-                    m_caster->AddComboPoints(unitTarget, 1);
 
                     // all poison enchantments is temporary
                     uint32 enchant_id = item->GetEnchantmentId(TEMP_ENCHANTMENT_SLOT);
@@ -4036,6 +4063,16 @@ void Spell::EffectForceCast(SpellEffectIndex eff_idx)
     {
         sLog.outError("EffectForceCast of spell %u: triggering unknown spell id %i", m_spellInfo->Id, triggered_spell_id);
         return;
+    }
+
+    // if triggered spell has SPELL_AURA_CONTROL_VEHICLE, it must be casted on caster
+    for (uint32 i = 0; i < MAX_EFFECT_INDEX; ++i)
+    {
+        if (spellInfo->EffectApplyAuraName[i] == SPELL_AURA_CONTROL_VEHICLE)
+        {
+            unitTarget->CastSpell(m_caster, spellInfo, true, NULL, NULL, NULL, m_spellInfo);
+            return;
+        }
     }
 
     unitTarget->CastSpell(unitTarget, spellInfo, true, NULL, NULL, m_originalCasterGUID, m_spellInfo);
@@ -5720,9 +5757,7 @@ void Spell::EffectDispel(SpellEffectIndex eff_idx)
                 if (unitTarget->HasAura(50536))
                     continue;
 
-            if (holder->GetSpellProto()->AttributesEx7 & SPELL_ATTR_EX7_DISPEL_CHARGES && holder->GetAuraCharges() > 0)
-                dispel_list.push_back(std::pair<SpellAuraHolder* ,uint32>(holder, 1));
-            else if (holder->GetAuraCharges() > 1)
+            if (holder->GetAuraCharges() > 1)
                 dispel_list.push_back(std::pair<SpellAuraHolder* ,uint32>(holder, holder->GetAuraCharges()));
             else
                 dispel_list.push_back(std::pair<SpellAuraHolder* ,uint32>(holder, holder->GetStackAmount()));
@@ -5797,7 +5832,14 @@ void Spell::EffectDispel(SpellEffectIndex eff_idx)
                 SpellAuraHolder* dispelledHolder = j->first;
                 data << uint32(dispelledHolder->GetId());   // Spell Id
                 data << uint8(0);                           // 0 - dispelled !=0 cleansed
-                unitTarget->RemoveAuraHolderDueToSpellByDispel(dispelledHolder->GetId(), j->second, dispelledHolder->GetCasterGuid(), m_caster);
+
+                if (dispelledHolder->GetSpellProto()->AttributesEx7 & SPELL_ATTR_EX7_DISPEL_CHARGES && dispelledHolder->GetAuraCharges() > 1)
+                {
+                    if (dispelledHolder->DropAuraCharge())
+                        unitTarget->RemoveSpellAuraHolder(dispelledHolder, AURA_REMOVE_BY_DISPEL);
+                }
+                else
+                    unitTarget->RemoveAuraHolderDueToSpellByDispel(dispelledHolder->GetId(), j->second, dispelledHolder->GetCasterGuid(), m_caster);
             }
             m_caster->SendMessageToSet(&data, true);
 
@@ -5892,12 +5934,11 @@ void Spell::EffectAddFarsight(SpellEffectIndex eff_idx)
     if (m_caster->GetTypeId() != TYPEID_PLAYER)
         return;
 
-    int32 duration = GetSpellDuration(m_spellInfo);
     DynamicObject* dynObj = new DynamicObject;
 
     // set radius to 0: spell not expected to work as persistent aura
-    if (!dynObj->Create(m_caster->GetMap()->GenerateLocalLowGuid(HIGHGUID_DYNAMICOBJECT), m_caster,
-        m_spellInfo->Id, eff_idx, m_targets.m_destX, m_targets.m_destY, m_targets.m_destZ, duration, 0, DYNAMIC_OBJECT_FARSIGHT_FOCUS))
+    if(!dynObj->Create(m_caster->GetMap()->GenerateLocalLowGuid(HIGHGUID_DYNAMICOBJECT), m_caster,
+        m_spellInfo->Id, eff_idx, m_targets.m_destX, m_targets.m_destY, m_targets.m_destZ, m_duration, 0, DYNAMIC_OBJECT_FARSIGHT_FOCUS))
     {
         delete dynObj;
         return;
@@ -5935,13 +5976,12 @@ void Spell::DoSummonWild(SpellEffectIndex eff_idx, uint32 forceFaction)
     float center_z = m_targets.m_destZ;
 
     float radius = GetSpellRadius(sSpellRadiusStore.LookupEntry(m_spellInfo->EffectRadiusIndex[eff_idx]));
-    int32 duration = GetSpellDuration(m_spellInfo);
     // Special Summon Cases
     switch (m_spellInfo->Id)
     {
         case 62907:
         case 62947:
-            duration = 30000;
+            m_duration = 30000;
             break;
         case 29105:
         case 28864:
@@ -5950,7 +5990,7 @@ void Spell::DoSummonWild(SpellEffectIndex eff_idx, uint32 forceFaction)
         default:
             break;
     }
-    TempSummonType summonType = (duration == 0) ? TEMPSUMMON_DEAD_DESPAWN : TEMPSUMMON_TIMED_OR_DEAD_DESPAWN;
+    TempSummonType summonType = (m_duration == 0) ? TEMPSUMMON_DEAD_DESPAWN : TEMPSUMMON_TIMED_OR_DEAD_DESPAWN;
 
     int32 amount = damage > 0 ? damage : 1;
 
@@ -5988,7 +6028,7 @@ void Spell::DoSummonWild(SpellEffectIndex eff_idx, uint32 forceFaction)
             }
         }
 
-        if (Creature *summon = m_caster->SummonCreature(creature_entry, px, py, pz, m_caster->GetOrientation(), summonType, duration))
+        if (Creature *summon = m_caster->SummonCreature(creature_entry, px, py, pz, m_caster->GetOrientation(), summonType, m_duration))
         {
             summon->SetUInt32Value(UNIT_CREATED_BY_SPELL, m_spellInfo->Id);
 
@@ -7125,9 +7165,7 @@ void Spell::EffectSummonObjectWild(SpellEffectIndex eff_idx)
         return;
     }
 
-    int32 duration = GetSpellDuration(m_spellInfo);
-
-    pGameObj->SetRespawnTime(duration > 0 ? duration/IN_MILLISECONDS : 0);
+    pGameObj->SetRespawnTime(m_duration > 0 ? m_duration/IN_MILLISECONDS : 0);
     pGameObj->SetSpellId(m_spellInfo->Id);
 
     // Wild object not have owner and check clickable by players
@@ -8403,7 +8441,7 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                         m_caster->CastSpell(m_caster, spellId, true);
                     break;
                 }
-                case 53110:									// Devour Humanoid
+                case 53110:                                 // Devour Humanoid
                 {
                     unitTarget->CastSpell(m_caster, m_spellInfo->CalculateSimpleValue(eff_idx),true, NULL, NULL, m_caster->GetObjectGuid());
                     return;
@@ -8423,6 +8461,20 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
 
                     // Remove aura (Mojo of Rhunok) given at quest accept / gossip
                     unitTarget->RemoveAurasDueToSpell(51967);
+                    return;
+                }
+                case 54248:                                 // Drakuru Overlord Death
+                {
+                    if (!unitTarget)
+                        return;
+
+                    unitTarget->CastSpell(unitTarget, 52578, true); // Meat
+                    unitTarget->CastSpell(unitTarget, 52580, true); // Bones
+                    unitTarget->CastSpell(unitTarget, 52575, true); // Bones II
+                    unitTarget->CastSpell(unitTarget, 52578, true); // Meat
+                    unitTarget->CastSpell(unitTarget, 52580, true); // Bones
+                    unitTarget->CastSpell(unitTarget, 52575, true); // Bones II
+                    unitTarget->CastSpell(unitTarget, 54250, true); // Skull Missile
                     return;
                 }
                 case 54581:                                 // Mammoth Explosion Spell Spawner
@@ -8565,13 +8617,16 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                         unitTarget->CastSpell(unitTarget, spellID, true);
                     return;
                 }
-                case 58941:                                 // Rock Shards
+                case 58941:                                 // Rock Shards (Vault of Archavon, Archavon)
                 {
-                    if (!unitTarget)
-                        return;
-
-                    m_originalCaster->CastSpell(unitTarget, 58689, true); // Left hand dummy visual
-                    m_originalCaster->CastSpell(unitTarget, 58692, true); // Right hand dummy visual
+                    if (Unit* pTarget = m_caster->GetMap()->GetUnit(m_caster->GetChannelObjectGuid()))
+                    {
+                        for (uint8 i = 0; i < 3; ++i)   // Trigger three spikes from each hand
+                        {
+                            m_caster->CastSpell(pTarget, 58689, true);
+                            m_caster->CastSpell(pTarget, 58692, true);
+                        }
+                    }
                     return;
                 }
                 case 59317:                                 // Teleporting
@@ -8766,12 +8821,12 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
 
                     switch(entry)
                     {
-                        case 31897: spellID = 7001; break;   // Lightwell Renew	Rank 1
-                        case 31896: spellID = 27873; break;  // Lightwell Renew	Rank 2
-                        case 31895: spellID = 27874; break;  // Lightwell Renew	Rank 3
-                        case 31894: spellID = 28276; break;  // Lightwell Renew	Rank 4
-                        case 31893: spellID = 48084; break;  // Lightwell Renew	Rank 5
-                        case 31883: spellID = 48085; break;  // Lightwell Renew	Rank 6
+                        case 31897: spellID = 7001; break;   // Lightwell Renew Rank 1
+                        case 31896: spellID = 27873; break;  // Lightwell Renew Rank 2
+                        case 31895: spellID = 27874; break;  // Lightwell Renew Rank 3
+                        case 31894: spellID = 28276; break;  // Lightwell Renew Rank 4
+                        case 31893: spellID = 48084; break;  // Lightwell Renew Rank 5
+                        case 31883: spellID = 48085; break;  // Lightwell Renew Rank 6
                         default:
                             sLog.outError("Unknown Lightwell spell caster %u", m_caster->GetEntry());
                             return;
@@ -9836,8 +9891,8 @@ void Spell::EffectDuel(SpellEffectIndex eff_idx)
 
     pGameObj->SetUInt32Value(GAMEOBJECT_FACTION, m_caster->getFaction() );
     pGameObj->SetUInt32Value(GAMEOBJECT_LEVEL, m_caster->getLevel()+1 );
-    int32 duration = GetSpellDuration(m_spellInfo);
-    pGameObj->SetRespawnTime(duration > 0 ? duration/IN_MILLISECONDS : 0);
+
+    pGameObj->SetRespawnTime(m_duration > 0 ? m_duration/IN_MILLISECONDS : 0);
     pGameObj->SetSpellId(m_spellInfo->Id);
 
     m_caster->AddGameObject(pGameObj);
@@ -10062,8 +10117,8 @@ void Spell::EffectEnchantHeldItem(SpellEffectIndex eff_idx)
     if (m_spellInfo->EffectMiscValue[eff_idx])
     {
         uint32 enchant_id = m_spellInfo->EffectMiscValue[eff_idx];
-        int32 duration = GetSpellDuration(m_spellInfo);     // Try duration index first...
-        if (!duration)
+        int32 duration = m_duration;                        // Try duration index first...
+        if(!duration)
             duration = m_currentBasePoints[eff_idx];        // Base points after...
         if (!duration)
             duration = 10;                                  // 10 seconds for enchants which don't have listed duration
@@ -10212,9 +10267,8 @@ void Spell::EffectSummonObject(SpellEffectIndex eff_idx)
         return;
     }
 
-    pGameObj->SetUInt32Value(GAMEOBJECT_LEVEL,m_caster->getLevel());
-    int32 duration = GetSpellDuration(m_spellInfo);
-    pGameObj->SetRespawnTime(duration > 0 ? duration/IN_MILLISECONDS : 0);
+    pGameObj->SetUInt32Value(GAMEOBJECT_LEVEL, m_caster->getLevel());
+    pGameObj->SetRespawnTime(m_duration > 0 ? m_duration/IN_MILLISECONDS : 0);
     pGameObj->SetSpellId(m_spellInfo->Id);
     m_caster->AddGameObject(pGameObj);
 
@@ -10554,7 +10608,7 @@ void Spell::DoSummonCritter(SpellEffectIndex eff_idx, uint32 forceFaction)
     uint32 originalSpellID = (m_IsTriggeredSpell && m_triggeredBySpellInfo) ? m_triggeredBySpellInfo->Id : m_spellInfo->Id;
 
     critter->SetCreateSpellID(originalSpellID);
-    critter->SetDuration(GetSpellDuration(m_spellInfo));
+    critter->SetDuration(m_duration);
 
     if (!critter->Create(0, pos, cInfo, 0, m_caster))
     {
@@ -10835,9 +10889,9 @@ void Spell::EffectTransmitted(SpellEffectIndex eff_idx)
             float max_angle = (max_dis - min_dis)/(max_dis + m_caster->GetObjectBoundingRadius());
             float angle_offset = max_angle * (rand_norm_f() - 0.5f);
             m_caster->GetNearPoint2D(fx, fy, dis, m_caster->GetOrientation() + angle_offset);
-
+            float waterZ = m_caster->GetTerrain()->GetWaterOrGroundLevel(fx, fy, m_caster->GetPositionZ());
             GridMapLiquidData liqData;
-            if (!m_caster->GetTerrain()->IsInWater(fx, fy, m_caster->GetPositionZ() + 1.f, &liqData))
+            if (!m_caster->GetTerrain()->IsInWater(fx, fy, waterZ, &liqData))
             {
                 SendCastResult(SPELL_FAILED_NOT_FISHABLE);
                 SendChannelUpdate(0);
@@ -10873,7 +10927,7 @@ void Spell::EffectTransmitted(SpellEffectIndex eff_idx)
         return;
     }
 
-    int32 duration = GetSpellDuration(m_spellInfo);
+    int32 duration = m_duration;
 
     switch(goinfo->type)
     {

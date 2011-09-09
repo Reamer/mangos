@@ -22,8 +22,6 @@
 #include "Common.h"
 #include "Platform/Define.h"
 #include "Policies/ThreadingModel.h"
-#include "ace/RW_Thread_Mutex.h"
-#include "ace/Thread_Mutex.h"
 
 #include "DBCStructure.h"
 #include "GridDefines.h"
@@ -37,6 +35,8 @@
 #include "MapRefManager.h"
 #include "Utilities/TypeList.h"
 #include "ScriptMgr.h"
+#include "CreatureLinkingMgr.h"
+#include "ObjectLock.h"
 
 #include <bitset>
 #include <list>
@@ -120,7 +120,7 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
         template<class T> void Add(T *);
         template<class T> void Remove(T *, bool);
 
-        static void DeleteFromWorld(Player* player);        // player object will deleted at call
+        void DeleteFromWorld(Player* player);                   // player object will deleted at call
 
         virtual void Update(const uint32&);
 
@@ -272,10 +272,10 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
         void RemoveAttackersStorageFor(ObjectGuid targetGuid);
 
         // multithread locking
-        typedef   ACE_RW_Thread_Mutex          LockType;
-        typedef   ACE_Read_Guard<LockType>     ReadGuard;
-        typedef   ACE_Write_Guard<LockType>    WriteGuard;
-        LockType& GetLock() { return i_lock; }
+        ObjectLockType& GetLock(MapLockType _locktype = MAP_LOCK_TYPE_DEFAULT) { return i_lock[_locktype]; }
+
+        // Get Holder for Creature Linking
+        CreatureLinkingHolder* GetCreatureLinkingHolder() { return &m_creatureLinkingHolder; }
 
     private:
         void LoadMapAndVMap(int gx, int gy);
@@ -366,7 +366,10 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
         template<class T>
             void RemoveFromGrid(T*, NGridType *, Cell const&);
 
-        LockType            i_lock;
+        // Holder for information about linked mobs
+        CreatureLinkingHolder m_creatureLinkingHolder;
+
+        ObjectLockType      i_lock[MAP_LOCK_TYPE_MAX];
         AttackersMap        m_attackersMap;
 
 };
