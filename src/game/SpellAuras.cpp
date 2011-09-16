@@ -6724,6 +6724,7 @@ void Aura::HandleAuraModIncreaseHealthPercent(bool apply, bool /*Real*/)
     switch (GetId())
     {
         case 60430:                                         // Molten Fury
+        case 61254:                                         // Will of Sartharion
         case 64193:                                         // Heartbreak
         case 65737:                                         // Heartbreak
         case 64582:                                         // Emergency Mode (Ulduar - Mimiron)
