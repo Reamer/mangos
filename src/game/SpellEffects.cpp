@@ -4994,6 +4994,11 @@ void Spell::DoCreateItem(SpellEffectIndex eff_idx, uint32 itemtype)
 
 void Spell::EffectCreateItem(SpellEffectIndex eff_idx)
 {
+    if (unitTarget->GetTypeId() == TYPEID_PLAYER && m_spellInfo->Id == 47345)           // Create Dark Brewmaiden's Brew for Brewfest Event (Coren Direbrew) HACK!!!
+    {
+        unitTarget->CastSpell(unitTarget, 47376, true);
+        unitTarget->CastSpell(unitTarget, 47331, true);
+    }
     DoCreateItem(eff_idx,m_spellInfo->EffectItemType[eff_idx]);
 }
 
@@ -8034,6 +8039,14 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
 
                     return;
                 }
+                case 47344:                                 // Request Second Mug for Brewfest Event (Coren Direbrew)
+                {
+                    if (!unitTarget)
+                        return;
+                    unitTarget->CastSpell(m_caster, 47340, true);
+                    unitTarget->CastSpell(m_caster, 47345, true);
+                    return;
+                }
                 case 47393:                                 // The Focus on the Beach: Quest Completion Script
                 {
                     if (!unitTarget)
@@ -10161,6 +10174,12 @@ void Spell::EffectInebriate(SpellEffectIndex /*eff_idx*/)
 {
     if (!unitTarget || unitTarget->GetTypeId() != TYPEID_PLAYER)
         return;
+
+    if (m_spellInfo->Id == 47371)                           // Dark Brewmaiden's Brew (alcohol) for Brewfest Event (Coren Direbrew) HACK!!!
+    {
+        unitTarget->RemoveAurasDueToSpell(47331);
+        unitTarget->RemoveAurasDueToSpell(47376);
+    }
 
     Player *player = (Player*)unitTarget;
     uint16 currentDrunk = player->GetDrunkValue();
