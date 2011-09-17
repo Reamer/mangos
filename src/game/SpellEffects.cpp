@@ -6011,6 +6011,8 @@ void Spell::DoSummonWild(SpellEffectIndex eff_idx, uint32 forceFaction)
                 px = m_targets.m_destX;
                 py = m_targets.m_destY;
                 pz = m_targets.m_destZ;
+                m_caster->GetTerrain()->CheckPathAccurate(m_caster->GetPositionX(), m_caster->GetPositionY(), m_caster->GetPositionZ(), px, py, pz, sWorld.getConfig(CONFIG_BOOL_CHECK_GO_IN_PATH) ? m_caster : NULL);
+                unitTarget->UpdateAllowedPositionZ(px, py, pz);
             }
             // Summon in random point all other units if location present
             else
