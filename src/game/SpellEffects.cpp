@@ -8079,7 +8079,7 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     m_caster->CastSpell(m_caster, 50254, true);
                     return;
                 }
-                case 47722:                                 // Frost Draw for Quest In Service of Frost
+                case 47724:                                 // Frost Draw for Quest In Service of Frost
                 {
                     m_caster->CastSpell(m_caster, 50239, true);
                     return;
