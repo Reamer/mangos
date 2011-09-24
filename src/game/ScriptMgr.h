@@ -484,6 +484,7 @@ CUSTUM STUFF BEGIN
 */
 MANGOS_DLL_SPEC void SendServerMessage(const char *str);
 MANGOS_DLL_SPEC uint32 SetFastDungeon(uint32 dungeon);
+MANGOS_DLL_SPEC uint32 GetCharCountWithAccountId(uint32 accountId);
 /*
 CUSTUM STUFF END
 */

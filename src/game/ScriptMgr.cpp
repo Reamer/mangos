@@ -1443,6 +1443,11 @@ uint32 SetFastDungeon(uint32 dungeon)
     sWorld.SendWorldText(4,"DB table `creature_loot_template` reloaded.");
     return 1;
 }
+uint32 GetCharCountWithAccountId(uint32 accountId)
+{
+    QueryResult* result = CharacterDatabase.PQuery("SELECT * FROM characters WHERE account = '%u'", accountId);
+    return result->GetRowCount();
+}
 /*
 CUSTUM STUFF END
 */
