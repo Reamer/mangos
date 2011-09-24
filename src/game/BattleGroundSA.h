@@ -138,11 +138,7 @@ enum BG_SA_Events
     SA_EVENT_ADD_NPC = 7,
     SA_EVENT_ADD_GO = 8,
     SA_EVENT_ADD_VECH_E = 9,
-    SA_EVENT_ADD_VECH_W = 10,
-    SA_EVENT_ADD_BOMB1 = 11,
-    SA_EVENT_ADD_BOMB2 = 12,
-    SA_EVENT_ADD_BOMB3 = 13,
-    SA_EVENT_OP_DOOR = 254
+    SA_EVENT_ADD_VECH_W = 10
 };
 
 enum BG_SA_Boats
@@ -205,6 +201,9 @@ struct BG_SA_RoundScore
     Team winner;
     uint32 time;
 };
+
+#define BG_SA_EVENT_START_BATTLE_1      23748       // Ally / Horde likely
+#define BG_SA_EVENT_START_BATTLE_2      21702
 
 class BattleGroundSAScore : public BattleGroundScore
 {
