@@ -709,6 +709,8 @@ bool IsPositiveEffect(SpellEntry const *spellproto, SpellEffectIndex effIndex)
         case 39288:                                         // Kargath's Executioner
         case 39289:                                         // Kargath's Executioner
         case 39290:                                         // Kargath's Executioner
+        case 47340:                                         // Dark Brewmaiden's Brew (Brew Fest Event), Stunaura and Bier Aura must negativ)
+        case 47376:
             return false;
         case 552:                                           // Abolish Disease
         case 12042:                                         // Arcane Power
