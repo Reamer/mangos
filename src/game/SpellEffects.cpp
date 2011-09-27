@@ -8511,6 +8511,8 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     if (!unitTarget || m_caster->GetTypeId() != TYPEID_UNIT)
                         return;
 
+                    unitTarget->RemoveAurasDueToSpell(54852);    // make Stun away from Collossus
+
                     ((Creature*)m_caster)->ForcedDespawn(3000);
                     m_caster->CastSpell(unitTarget, 54878, true); // Set Scale 0.1 And Stun
                     return;
