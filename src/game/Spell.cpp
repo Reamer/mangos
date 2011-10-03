@@ -1836,6 +1836,9 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
         {
             switch(m_spellInfo->Id)
             {
+                case 28404:                                 // HACK for Gluth
+                    radius = 14;
+                    break;
                 case 69057:                                 // Bone Spike Graveyard (Icecrown Citadel, Lord Marrowgar encounter, 10N)
                 case 70826:                                 // Bone Spike Graveyard (Icecrown Citadel, Lord Marrowgar encounter, 25N)
                 case 72088:                                 // Bone Spike Graveyard (Icecrown Citadel, Lord Marrowgar encounter, 10H)
@@ -8110,8 +8113,16 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
         }
         case 28374: // Decimate - Gluth encounter
         {
-            FillAreaTargets(targetUnitMap, radius, PUSH_DEST_CENTER, SPELL_TARGETS_ALL);
-            targetUnitMap.remove(m_caster);
+            UnitList tempTargetUnitMap;
+            FillAreaTargets(tempTargetUnitMap, radius, PUSH_DEST_CENTER, SPELL_TARGETS_ALL);
+            if (!tempTargetUnitMap.empty())
+            {
+                for (UnitList::const_iterator iter = tempTargetUnitMap.begin(); iter != tempTargetUnitMap.end(); ++iter)
+                {
+                    if ((*iter) && ((*iter)->GetEntry() == 16360 || (*iter)->GetTypeId() == TYPEID_PLAYER))
+                        targetUnitMap.push_back(*iter);
+                }
+            }
             break;
         }
         case 43263: // Ghoul Taunt (Army of the Dead)

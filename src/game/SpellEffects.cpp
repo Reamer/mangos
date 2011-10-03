@@ -7546,6 +7546,8 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     {
                         if (unitTarget->GetHealthPercent() > 5.0f)
                             m_caster->CastSpell(unitTarget, 28375, true);
+                        if (unitTarget->GetEntry() == 16360) // Zombie is Target
+                            unitTarget->AddThreat(m_caster, 1000000000.0f); // force move toward to Gluth HACK!!!
                     }
                     break;
                 }
