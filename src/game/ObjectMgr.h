@@ -253,6 +253,7 @@ struct AntiCheatConfig
         {
             checkFloatParam[i] = 0.0f;
         }
+        disabledZones.clear();
     }
 
     uint32 checkType;
@@ -264,6 +265,7 @@ struct AntiCheatConfig
     float  checkFloatParam[ANTICHEAT_CHECK_PARAMETERS];
     uint32 actionType[ANTICHEAT_ACTIONS];
     uint32 actionParam[ANTICHEAT_ACTIONS];
+    std::set<uint32> disabledZones;
     std::string description;
 
 };
@@ -751,7 +753,8 @@ class ObjectMgr
         void LoadCreatureSpells();
         void LoadEquipmentTemplates();
         void LoadGameObjectLocales();
-        void LoadGameobjects();
+        void LoadGameObjects();
+        void LoadGameObjectAddon();
         void LoadItemPrototypes();
         void LoadItemConverts();
         void LoadItemExpireConverts();

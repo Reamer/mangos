@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2011 /dev/rsa for MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,22 +16,21 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef MANGOS_SQLSTORAGES_H
-#define MANGOS_SQLSTORAGES_H
+#ifndef MANGOS_OBJECTHANDLER_H
+#define MANGOS_OBJECTHANDLER_H
 
-#include "Common.h"
-#include "Database/SQLStorage.h"
+#include <ace/Refcounted_Auto_Ptr.h>
+#include <ace/Thread_Mutex.h>
 
-extern SQLStorage sCreatureStorage;
-extern SQLStorage sCreatureDataAddonStorage;
-extern SQLStorage sCreatureInfoAddonStorage;
-extern SQLStorage sCreatureModelStorage;
-extern SQLStorage sGameObjectDataAddonStorage;
-extern SQLStorage sEquipmentStorage;
-extern SQLStorage sGOStorage;
-extern SQLStorage sPageTextStore;
-extern SQLStorage sItemStorage;
-extern SQLStorage sInstanceTemplate;
-extern SQLStorage sWorldTemplate;
+#ifndef OBJECT_HANDLER
+#  define OBJECT_HANDLER(TYPE,NAME) typedef ACE_Refcounted_Auto_Ptr<TYPE,ACE_Null_Mutex> NAME;
+#endif
+
+#ifndef OBJECT_SAFE_HANDLER
+#  define OBJECT_SAFE_HANDLER(TYPE,NAME) typedef ACE_Refcounted_Auto_Ptr<TYPE,ACE_Thread_Mutex> NAME;
+#endif
+
+class SpellAuraHolder;
+OBJECT_HANDLER(SpellAuraHolder,SpellAuraHolderPtr);
 
 #endif

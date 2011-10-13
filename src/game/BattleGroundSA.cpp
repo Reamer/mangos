@@ -533,7 +533,7 @@ bool BattleGroundSA::SetupShips()
                 }
 
                 if (GameObject* boat = GetBGObject(i))
-                    boat->SetTransportPathRotation(0.0f, 0.0f, 1.0f, 0.0002f);
+                    boat->SetTransportPathRotation(QuaternionData(0.0f, 0.0f, 1.0f, 0.0002f));
                 break;
             case BG_SA_BOAT_TWO:
                 boatid = GetDefender() == ALLIANCE ? BG_SA_BOAT_TWO_H : BG_SA_BOAT_TWO_A;
@@ -544,7 +544,7 @@ bool BattleGroundSA::SetupShips()
                 }
 
                 if (GameObject* boat = GetBGObject(i))
-                    boat->SetTransportPathRotation(0, 0, 1.0f, 0.00001f);
+                    boat->SetTransportPathRotation(QuaternionData(0, 0, 1.0f, 0.00001f));
                 break;
         }
     }
@@ -724,13 +724,13 @@ void BattleGroundSA::SendMessageSA(Player *player, uint32 type, uint32 name)
         SendMessage2ToAll(entryMSG,CHAT_MSG_BG_SYSTEM_HORDE, player, name);
 }
 
-void BattleGroundSA::EventPlayerDamageGO(Player *player, GameObject* target_obj, uint32 eventId)
+void BattleGroundSA::EventPlayerDamageGO(Player *player, GameObject* target_obj, uint32 eventId, uint32 doneBy)
 {
     BattleGroundTeamIndex teamIndex = GetTeamIndexByTeamId(player->GetTeam());
 
     // Seaforium Charge Explosion
-    //if (doneBy == 52408)
-        //player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, 60937);
+    if (doneBy == 52408)
+        player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, 60937);
 
     uint32 type = NULL;
     switch (target_obj->GetEntry())

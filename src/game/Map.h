@@ -198,7 +198,7 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
         bool IsBattleGroundOrArena() const { return i_mapEntry && i_mapEntry->IsBattleGroundOrArena(); }
 
         // can't be NULL for loaded map
-        MapPersistentState* GetPersistentState() const { return m_persistentState; }
+        MapPersistentState* GetPersistentState() const;
 
         void AddObjectToRemoveList(WorldObject *obj);
 
@@ -261,7 +261,7 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
 
         void MonsterYellToMap(ObjectGuid guid, int32 textId, uint32 language, Unit* target);
         void MonsterYellToMap(CreatureInfo const* cinfo, int32 textId, uint32 language, Unit* target, uint32 senderLowGuid = 0);
-        void PlayDirectSoundToMap(uint32 soundId);
+        void PlayDirectSoundToMap(uint32 soundId, uint32 zoneId = 0);
 
         // Attacker per-map storage operations
         void AddAttackerFor(ObjectGuid targetGuid, ObjectGuid attackerGuid);
@@ -324,7 +324,6 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
         uint32 i_InstanceId;
         uint32 m_unloadTimer;
         float m_VisibleDistance;
-        MapPersistentState* m_persistentState;
 
         MapRefManager m_mapRefManager;
         MapRefManager::iterator m_mapRefIter;
