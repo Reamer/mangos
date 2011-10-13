@@ -687,12 +687,6 @@ void Spell::EffectSchoolDMG(SpellEffectIndex effect_idx)
                         if ((*itr)->GetCasterGuid() == owner->GetObjectGuid())
                             ++counter;
 
-                    // Improved Felhunter
-                    if (owner->HasSpell(54037))
-                        m_caster->SetPower(POWER_MANA,m_caster->GetPower(POWER_MANA)+m_caster->GetMaxPower(POWER_MANA)*4/100);
-                    else if (owner->HasSpell(54038))
-                        m_caster->SetPower(POWER_MANA,m_caster->GetPower(POWER_MANA)+m_caster->GetMaxPower(POWER_MANA)*8/100);
-
                     if (counter)
                         damage += (counter * owner->CalculateSpellDamage(unitTarget, m_spellInfo, EFFECT_INDEX_2) * damage) / 100.0f;
                 }
@@ -2909,7 +2903,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     if (!caster)
                         return;
 
-                    unitTarget->getHostileRefManager().deleteReferences(); // delete all aggro
+                    unitTarget->getHostileRefManager().deleteReferences();
                     return;
                 }
                 case 64172:                                 // Titanic Storm (Ulduar - Yogg Saron)
@@ -3146,6 +3140,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                 default:
                     break;
             }
+            break;
         }
         case SPELLFAMILY_MAGE:
         {

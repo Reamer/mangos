@@ -9618,7 +9618,7 @@ bool Unit::SelectHostileTarget()
             if (oldTarget != target)
                 ((Creature*)this)->AI()->AttackStart(target);
 
-            // check if currently selected target is reachable
+            /*// check if currently selected target is reachable
             // NOTE: path alrteady generated from AttackStart()
             if(!GetMotionMaster()->operator->()->IsReachable())
             {
@@ -9642,7 +9642,7 @@ bool Unit::SelectHostileTarget()
                 }
 
                 return false;
-            }
+            }*/ 
         }
         return true;
     }
@@ -11512,13 +11512,13 @@ void Unit::UpdateModelData()
     if (CreatureModelInfo const* modelInfo = sObjectMgr.GetCreatureModelInfo(GetDisplayId()))
     {
         // we expect values in database to be relative to scale = 1.0
-        SetFloatValue(UNIT_FIELD_BOUNDINGRADIUS, GetObjectScale() * modelInfo->bounding_radius);
+        SetFloatValue(UNIT_FIELD_BOUNDINGRADIUS, GetObjectScale() * modelInfo->bounding_radius < 2.0f ? GetObjectScale() * modelInfo->bounding_radius : 2.0f);
 
         // never actually update combat_reach for player, it's always the same. Below player case is for initialization
         if (GetTypeId() == TYPEID_PLAYER)
             SetFloatValue(UNIT_FIELD_COMBATREACH, 1.5f);
         else
-            SetFloatValue(UNIT_FIELD_COMBATREACH, GetObjectScale() * modelInfo->combat_reach < 2.0f ? GetObjectScale() * modelInfo->combat_reach < 2.0f : 2.0f);
+            SetFloatValue(UNIT_FIELD_COMBATREACH, GetObjectScale() * modelInfo->combat_reach);
     }
 }
 
