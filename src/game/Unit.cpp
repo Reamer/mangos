@@ -9618,31 +9618,34 @@ bool Unit::SelectHostileTarget()
             if (oldTarget != target)
                 ((Creature*)this)->AI()->AttackStart(target);
 
-            /*// check if currently selected target is reachable
-            // NOTE: path alrteady generated from AttackStart()
-            if(!GetMotionMaster()->operator->()->IsReachable())
+            if (sWorld.getConfig(CONFIG_BOOL_USE_REACHABLE))
             {
-                // remove all taunts
-                RemoveSpellsCausingAura(SPELL_AURA_MOD_TAUNT);
-
-                if(m_ThreatManager.getThreatList().size() < 2)
+                // check if currently selected target is reachable
+                // NOTE: path alrteady generated from AttackStart()
+                if(!GetMotionMaster()->operator->()->IsReachable())
                 {
-                    // only one target in list, we have to evade after timer
-                    // TODO: make timer - inside Creature class
-                    ((Creature*)this)->AI()->EnterEvadeMode();
-                }
-                else
-                {
-                    // remove unreachable target from our threat list
-                    // next iteration we will select next possible target
-                    m_HostileRefManager.deleteReference(target);
-                    m_ThreatManager.modifyThreatPercent(target, -101);
+                    // remove all taunts
+                    RemoveSpellsCausingAura(SPELL_AURA_MOD_TAUNT);
 
-                    GetMap()->RemoveAttackerFor(GetObjectGuid(),target->GetObjectGuid());
-                }
+                    if(m_ThreatManager.getThreatList().size() < 2)
+                    {
+                        // only one target in list, we have to evade after timer
+                        // TODO: make timer - inside Creature class
+                        ((Creature*)this)->AI()->EnterEvadeMode();
+                    }
+                    else
+                    {
+                        // remove unreachable target from our threat list
+                        // next iteration we will select next possible target
+                        m_HostileRefManager.deleteReference(target);
+                        m_ThreatManager.modifyThreatPercent(target, -101);
 
-                return false;
-            }*/ 
+                        GetMap()->RemoveAttackerFor(GetObjectGuid(),target->GetObjectGuid());
+                    }
+
+                    return false;
+                }    
+            }
         }
         return true;
     }

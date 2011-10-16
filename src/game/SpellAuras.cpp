@@ -9287,7 +9287,7 @@ void Aura::PeriodicDummyTick()
                         return;
                     }
                     
-                    if (SpellAuraHolder *holder = target->GetSpellAuraHolder(65294))
+                    if (SpellAuraHolderPtr holder = target->GetSpellAuraHolder(65294))
                     {
                         holder->SetStackAmount(stacks);
                     }

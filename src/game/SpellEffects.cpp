@@ -2924,7 +2924,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     if (!caster)
                         return;
 
-                    if (SpellAuraHolder* pHolder = unitTarget->GetSpellAuraHolder(63050))
+                    if (SpellAuraHolderPtr pHolder = unitTarget->GetSpellAuraHolder(63050))
                     {
                         if (pHolder->GetStackAmount() < 5)
                         {
@@ -8889,14 +8889,6 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                         if (holder->ModStackAmount(-1))
                             unitTarget->RemoveSpellAuraHolder(holder);
                     break;
-                }
-                case 69200:                                 // Raging Spirit
-                {
-                    if (!unitTarget)
-                        return;
-
-                    unitTarget->CastSpell(unitTarget, 69201, true);
-                    return;
                 }
                 case 60123: // Lightwell
                 {
