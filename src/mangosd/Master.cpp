@@ -573,7 +573,6 @@ void Master::_OnSignal(int s)
         case SIGSEGV:
         case SIGABRT:
         case SIGFPE:
-        case SIGUSR1:
             if (sWorld.getConfig(CONFIG_BOOL_VMSS_ENABLE))
             {
                 ACE_thread_t const threadId = ACE_OS::thr_self();
@@ -584,7 +583,7 @@ void Master::_OnSignal(int s)
 
                 if (MapID const* mapPair = sMapMgr.GetMapUpdater()->GetMapPairByThreadId(threadId))
                 {
-                    sLog.outError("Signal Handler: Thread "I64FMT" is update map %u instance %u",threadId,mapPair->nMapId, mapPair->nInstanceId);
+                    sLog.outError("Signal Handler: crushed thread is update map %u instance %u",mapPair->nMapId, mapPair->nInstanceId);
                     if (Map* map = sMapMgr.FindMap(mapPair->nMapId, mapPair->nInstanceId))
                         map->SetBroken(true);
                     sMapMgr.GetMapUpdater()->MapBrokenEvent(mapPair);
@@ -637,7 +636,6 @@ void Master::_HookSignals()
     signal(SIGSEGV,  _OnSignal);
     signal(SIGABRT,  _OnSignal);
     signal(SIGFPE ,  _OnSignal);
-    signal(SIGUSR1,  _OnSignal);
 }
 
 /// Unhook the signals before leaving
@@ -651,5 +649,4 @@ void Master::_UnhookSignals()
     signal(SIGSEGV,  SIG_DFL);
     signal(SIGABRT,  SIG_DFL);
     signal(SIGFPE ,  SIG_DFL);
-    signal(SIGUSR1,  SIG_DFL);
 }
