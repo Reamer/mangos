@@ -242,13 +242,13 @@ World::AddSession_ (WorldSession* s)
     if (decrease_session)
         --Sessions;
 
-    /*if (pLimit > 0 && Sessions >= pLimit && s->GetSecurity () == SEC_PLAYER )
+    if (pLimit > 0 && Sessions >= pLimit && s->GetSecurity () == SEC_PLAYER )
     {
         AddQueuedSession(s);
         UpdateMaxSessionCounters();
         DETAIL_LOG("PlayerQueue: Account id %u is in Queue Position (%u).", s->GetAccountId (), ++QueueSize);
         return;
-    }*/
+    }
 
     WorldPacket packet(SMSG_AUTH_RESPONSE, 1 + 4 + 1 + 4 + 1);
     packet << uint8(AUTH_OK);
