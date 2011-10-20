@@ -2567,11 +2567,11 @@ void Player::GiveXP(uint32 xp, Unit* victim)
     if (level >= sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
         return;
     // custom item Stuff BEGIN
-    if (Item* pRing = GetItemByEntry(27257))
+    /*if (Item* pRing = GetItemByEntry(27257))
     {
         if (pRing->IsEquipped())
             xp = xp* 3;
-    }
+    }*/
     // custom item Stuff END
 
     if (victim)

@@ -8331,7 +8331,10 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
                  if (!*itr) continue;
 
                  if ((*itr)->GetTypeId() == TYPEID_PLAYER)
+                 {
                      targetUnitMap.push_back(*itr);
+                     return true;
+                 }
             }
 
             break;
