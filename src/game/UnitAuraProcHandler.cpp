@@ -432,25 +432,7 @@ bool Unit::IsTriggeredAtSpellProcEvent(Unit *pVictim, SpellAuraHolderPtr holder,
         modOwner->ApplySpellMod(spellProto->Id,SPELLMOD_CHANCE_OF_SUCCESS,chance);
         modOwner->ApplySpellMod(spellProto->Id,SPELLMOD_FREQUENCY_OF_SUCCESS,chance);
     }
-    //Hack for Fingers of Frost
-    if (holder->GetSpellProto()->EffectTriggerSpell[EFFECT_INDEX_0] == 44544)
-    {
-        Unit::AuraList const &aury = GetAurasByType(SPELL_AURA_PROC_TRIGGER_SPELL);
-        for (Unit::AuraList::const_iterator i = aury.begin(); i != aury.end(); i++)
-        {
-            SpellEntry const *spellInfo = (*i)->GetSpellProto();
-            if (!spellInfo)
-                continue;
-            if (spellInfo->EffectTriggerSpell[0] == 44544)
-            {
-                if (roll_chance_i(spellInfo->CalculateSimpleValue(EFFECT_INDEX_0)) )
-                {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
+
     return roll_chance_f(chance);
 }
 
