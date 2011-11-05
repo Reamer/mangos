@@ -810,6 +810,9 @@ void Aura::AreaAuraUpdate(uint32 diff)
                         break;
                 }
 
+                if ((*tIter)->IsImmuneToSpell(GetSpellProto()))
+                    apply = false;
+
                 if(!apply)
                     continue;
 
