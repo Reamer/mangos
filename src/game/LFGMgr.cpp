@@ -2890,6 +2890,15 @@ LFGDungeonEntry const* LFGMgr::SelectRandomDungeonFromList(LFGDungeonSet dungeon
             LFGDungeonEntry const* dungeon = *itr;
             if (!dungeon)
                 continue;
+            if (dungeon->map == 595
+                || dungeon->map == 599
+                || dungeon->map == 632
+                || dungeon->map == 650
+                || dungeon->map == 658
+                || dungeon->map == 668)
+            {
+                continue;
+            }
             if (_key == rand)
                 return dungeon;
             else ++_key;
