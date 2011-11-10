@@ -1917,6 +1917,23 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
             targetUnitMap.push_back(m_caster);
             break;
         }
+        case TARGET_74:
+        case TARGET_75:
+        {
+            if (m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION)
+            {
+                float angle = 2.0f * M_PI_F * rand_norm_f();
+                m_caster->GetClosePoint(m_targets.m_destX, m_targets.m_destY, m_targets.m_destZ, 0.0f, radius, angle);
+            }
+            else
+            {
+                float angle = 2.0f * M_PI_F * rand_norm_f();
+                float dest_x, dest_y, dest_z;
+                m_caster->GetClosePoint(dest_x, dest_y, dest_z, 0.0f, radius, angle);
+                m_targets.setDestination(dest_x, dest_y, dest_z);
+            }
+            break;
+        }
         case TARGET_91:
         case TARGET_RANDOM_NEARBY_DEST:
         {
