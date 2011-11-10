@@ -2119,7 +2119,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                 }
                 case 48386:                                 // Ymiron Summon Fountain
                 {
-                    m_caster->CastSpell(m_caster, 48385, true);
+                    m_caster->CastSpell(m_caster, 48385, false);
                     return;
                 }
                 case 48593:                                 // Summon Avenging Spirit
