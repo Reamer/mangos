@@ -1138,7 +1138,7 @@ bool Aura::IsEffectStacking()
                 return true;
             // Icy Talons
             if (spellProto->IsFitToFamily<SPELLFAMILY_DEATHKNIGHT, CF_DEATHKNIGHT_ICY_TOUCH_TALONS>())
-                return true;
+                return false;
 
             break;
         case SPELL_AURA_MOD_RESISTANCE_EXCLUSIVE:
