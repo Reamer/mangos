@@ -165,18 +165,18 @@ bool GameObject::Create(uint32 guidlow, uint32 name_id, Map *map, uint32 phaseMa
         SetGoAnimProgress(255);
     }
 
-    //Notify the map's instance data.
-    //Only works if you create the object in it, not if it is moves to that map.
-    //Normally non-players do not teleport to other maps.
-    if (InstanceData* iData = map->GetInstanceData())
-        iData->OnObjectCreate(this);
-
     if (goinfo->type == GAMEOBJECT_TYPE_TRANSPORT)
     {
         SetUInt32Value(GAMEOBJECT_LEVEL, goinfo->transport.pause);
         if (goinfo->transport.startOpen)
             SetGoState(GO_STATE_ACTIVE);
     }
+
+    //Notify the map's instance data.
+    //Only works if you create the object in it, not if it is moves to that map.
+    //Normally non-players do not teleport to other maps.
+    if (InstanceData* iData = map->GetInstanceData())
+        iData->OnObjectCreate(this);
 
     return true;
 }
@@ -292,7 +292,9 @@ void GameObject::Update(uint32 update_diff, uint32 diff)
                     // Arming Time for GAMEOBJECT_TYPE_TRAP (6)
                     Unit* owner = GetOwner();
                     if ((owner && ((Player*)owner)->isInCombat())
-                        || GetEntry() == 190752) // SoTA Seaforium Charges
+                        || GetEntry() == 190752 // SoTA Seaforium Charges
+                        || GetEntry() == 195331 // IoC Huge Seaforium Charges
+                        || GetEntry() == 195235) // IoC Seaforium Charges
                         m_cooldownTime = time(NULL) + GetGOInfo()->trap.startDelay;
                     m_lootState = GO_READY;
                     break;
@@ -402,8 +404,8 @@ void GameObject::Update(uint32 update_diff, uint32 diff)
                         }
                     }
 
-                    // SoTA Seaforium Charge
-                    if (GetEntry() == 190752)
+                    // SoTA Seaforium Charge || IoC Seaforium Charge
+                    if (GetEntry() == 190752 || GetEntry() == 195331 || GetEntry() == 195235)
                     {
                         ok = owner;
                     }
@@ -873,7 +875,7 @@ bool GameObject::isVisibleForInState(Player const* u, WorldObject const* viewPoi
     }
 
     // check distance
-    return IsWithinDistInMap(viewPoint, GetMap()->GetVisibilityDistance() +
+    return IsWithinDistInMap(viewPoint, GetMap()->GetVisibilityDistance(const_cast<GameObject*>(this)) +
         (inVisibleList ? World::GetVisibleObjectGreyDistance() : 0.0f), false);
 }
 
@@ -1169,6 +1171,10 @@ void GameObject::Use(Unit* user)
 
             // TODO: all traps can be activated, also those without spell.
             // Some may have have animation and/or are expected to despawn.
+
+            // TODO: Improve this when more information is available, currently these traps are known that must send the anim (Onyxia/ Heigan Fissures)
+            if (GetDisplayId() == 4392 || GetDisplayId() == 4472 || GetDisplayId() == 6785)
+                SendGameObjectCustomAnim(GetObjectGuid(),0);
 
             return;
         }
@@ -2289,4 +2295,21 @@ bool GameObject::IsWildSummoned() const
 
     // Also possible add MANGOS_ASSERT(false) or weaker bug-report to note this unexpected case.
     return false;
+}
+
+float GameObject::GetDeterminativeSize() const
+{
+    if (!IsInWorld())
+        return 0.0f;
+
+    GameObjectDisplayInfoEntry const *info = sGameObjectDisplayInfoStore.LookupEntry(GetUInt32Value(GAMEOBJECT_DISPLAYID));
+    if (!info)
+        return 0.0f;
+
+    float dx = info->maxX - info->minX;
+    float dy = info->maxY - info->minY;
+    float dz = info->maxZ - info->minZ;
+    float _size = sqrt(dx*dx + dy*dy +dz*dz);
+
+    return _size;
 }
