@@ -37,28 +37,12 @@ UPDATE creature_template SET vehicle_id = 452, iconName = 'vehichleCursor', fact
 UPDATE creature_template SET vehicle_id = 453, iconName = 'vehichleCursor', faction_A = 6, faction_H = 6, ScriptName = '' WHERE entry = 34935;
 -- Keep Cannon
 UPDATE creature_template SET vehicle_id = 160, iconName = 'vehichleCursor', faction_A = 35, faction_H = 35, unit_flags = unit_flags | 4, ScriptName = 'npc_ic_cannon' WHERE entry = 34944;
-UPDATE creature_template SET unit_flags = unit_flags | 4 WHERE entry = 34944;
+UPDATE creature_template SET unit_flags = unit_flags | 4 WHERE entry = 35429;
 -- Catapult
 UPDATE creature_template SET powertype = 3, vehicle_id = 438, iconName = 'vehichleCursor', faction_A = 35, faction_H = 35, speed_walk = 2.4, speed_run = 2.8, ScriptName = 'npc_ic_vehicle' WHERE entry = 34793;
-UPDATE creature_template SET speed_walk = 2.4, speed_run = 2.8 WHERE entry = 35413;
+UPDATE creature_template SET powertype = 3, speed_walk = 2.4, speed_run = 2.8 WHERE entry = 35413;
 -- Demolisher
 UPDATE creature_template SET vehicle_id = 509, iconName = 'vehichleCursor', faction_A = 35, faction_H = 35, ScriptName = 'npc_ic_vehicle' WHERE entry = 34775;
--- Alli Siege Engine
-UPDATE creature_template SET powertype = 3, vehicle_id = 447, iconName = 'vehichleCursor', faction_A = 3, faction_H = 3 WHERE entry = 34776;
--- Horde Siege Engine
-UPDATE creature_template SET powertype = 3, vehicle_id = 436, iconName = 'vehichleCursor', faction_A = 6, faction_H = 6 WHERE entry = 35069;
--- Alli Glaive Thrower
-UPDATE creature_template SET vehicle_id = 447, iconName = 'vehichleCursor', faction_A = 3, faction_H = 3, ScriptName = 'npc_ic_vehicle' WHERE entry = 34802;
--- Horde Glaive Thrower
-UPDATE creature_template SET vehicle_id = 447, iconName = 'vehichleCursor', faction_A = 6, faction_H = 6, ScriptName = 'npc_ic_vehicle' WHERE entry = 35273;
--- Flame Turret
-UPDATE creature_template SET iconName = 'vehichleCursor' WHERE entry = 34778;
--- Flame Turret
-UPDATE creature_template SET iconName = 'vehichleCursor' WHERE entry = 36356;
--- Siege Turret
-UPDATE creature_template SET iconName = 'vehichleCursor' WHERE entry = 34777;
--- Siege Turret
-UPDATE creature_template SET iconName = 'vehichleCursor' WHERE entry = 36355;
 
 UPDATE creature_template SET mechanic_immune_mask = mechanic_immune_mask|1|2|8|16|32|64|128|1024|2048|4096|8192|131072|262144|8388608|16777216|67108864 WHERE entry IN (34944, 35429, 34793, 35413, 34775, 35415, 34776, 35431, 35069, 35433, 34802, 35419, 35273, 35421);
 
@@ -68,20 +52,20 @@ INSERT INTO npc_spellclick_spells (npc_entry, spell_id, quest_start, quest_start
 (34935, 60968, 0, 0, 0, 1),
 (34944, 60968, 0, 0, 0, 1),
 (34793, 60968, 0, 0, 0, 1),
+(34793, 68362, 0, 0, 0, 3),
 (34775, 60968, 0, 0, 0, 1),
+(34775, 68365, 0, 0, 0, 3),
 (34776, 60968, 0, 0, 0, 1),
+(34776, 68364, 0, 0, 0, 3),
 (35069, 60968, 0, 0, 0, 1),
 (34802, 60968, 0, 0, 0, 1),
+(34802, 68363, 0, 0, 0, 3),
 (35273, 60968, 0, 0, 0, 1),
+(35273, 68363, 0, 0, 0, 3),
 (34778, 60968, 0, 0, 0, 1),
 (36356, 60968, 0, 0, 0, 1),
 (34777, 60968, 0, 0, 0, 1),
 (36355, 60968, 0, 0, 0, 1);
-
-DELETE FROM vehicle_accessory WHERE entry IN (35069, 34776);
-INSERT INTO vehicle_accessory (entry, accessory_entry, seat_id, minion, description) VALUES
-(35069, 36355, 7, 1, 'Isle of Conquest Siege Engine'),
-(34776, 34777, 7, 1, 'Isle of Conquest Siege Engine');
 
 DELETE FROM creature_spell WHERE guid IN (34929, 35410, 34935, 34944, 35429, 34793, 34775, 34776, 35069, 34802, 35273, 34778, 36356, 34777, 36355);
 INSERT INTO creature_spell (guid, spell, `index`) VALUES
@@ -97,16 +81,52 @@ INSERT INTO creature_spell (guid, spell, `index`) VALUES
 (34776, 69502, 1),
 (35069, 67816, 0),
 (35069, 69502, 1),
-(34802, 68827, 0),
-(34802, 69515, 1),
-(35273, 68827, 0),
-(35273, 69515, 1),
-(34778, 68832, 0),
-(36356, 68832, 0),
+(34802, 66456, 0),
+(34802, 67195, 1),
+(35273, 66456, 0),
+(35273, 67195, 1),
 (34777, 67462, 0),
 (34777, 69505, 1),
 (36355, 67462, 0),
 (36355, 69505, 1);
+
+-- IOC vehicles
+
+-- Alli Glaive Thrower
+UPDATE creature_template SET vehicle_id = 447, iconName = 'vehichleCursor', faction_A = 3, faction_H = 3, ScriptName = 'npc_ic_vehicle' WHERE entry = 34802;
+UPDATE creature_template SET vehicle_id = 447, iconName = 'vehichleCursor', faction_A = 3, faction_H = 3, ScriptName = 'npc_ic_vehicle' WHERE entry = 35419;
+-- Horde Glaive Thrower
+UPDATE creature_template SET vehicle_id = 447, iconName = 'vehichleCursor', faction_A = 6, faction_H = 6, ScriptName = 'npc_ic_vehicle' WHERE entry = 35273;
+UPDATE creature_template SET vehicle_id = 447, iconName = 'vehichleCursor', faction_A = 6, faction_H = 6, ScriptName = 'npc_ic_vehicle' WHERE entry = 35421;
+
+-- Horde Siege Engine
+UPDATE creature_template SET powertype = 3, vehicle_id = 435, iconName = 'vehichleCursor', faction_A = 6, faction_H = 6, AIName = 'NullAI' WHERE entry = 35069;
+UPDATE creature_template SET powertype = 3, vehicle_id = 435, iconName = 'vehichleCursor', faction_A = 6, faction_H = 6, AIName = 'NullAI' WHERE entry = 35433;
+-- Ally Siege Engine
+UPDATE creature_template SET powertype = 3, vehicle_id = 435, iconName = 'vehichleCursor', faction_A = 3, faction_H = 3, AIName = 'NullAI' WHERE entry = 34776;
+UPDATE creature_template SET powertype = 3, vehicle_id = 435, iconName = 'vehichleCursor', faction_A = 3, faction_H = 3, AIName = 'NullAI' WHERE entry = 35431;
+
+-- Ally Siege Turret
+UPDATE creature_template SET powertype = 3, iconName = 'Gunner', `vehicle_id` = 436, AIName = 'NullAI' WHERE entry = 34777;
+UPDATE creature_template SET powertype = 3, iconName = 'Gunner', `vehicle_id` = 436, AIName = 'NullAI' WHERE entry = 35436;
+-- Horde Siege Turret
+UPDATE creature_template SET powertype = 3, iconName = 'Gunner', `vehicle_id` = 436, AIName = 'NullAI' WHERE entry = 36355;
+UPDATE creature_template SET powertype = 3, iconName = 'Gunner', `vehicle_id` = 436, AIName = 'NullAI' WHERE entry = 36357;
+-- Horde Flame Turret
+UPDATE creature_template SET powertype = 3, iconName = 'Gunner', `vehicle_id` = 437, AIName = 'NullAI' WHERE entry = 34778;
+UPDATE creature_template SET powertype = 3, iconName = 'Gunner', `vehicle_id` = 437, AIName = 'NullAI' WHERE entry = 35417;
+-- Ally Flame Turret
+UPDATE creature_template SET powertype = 3, iconName = 'Gunner', `vehicle_id` = 437, AIName = 'NullAI' WHERE entry = 36356;
+UPDATE creature_template SET powertype = 3, iconName = 'Gunner', `vehicle_id` = 437, AIName = 'NullAI' WHERE entry = 36358;
+
+DELETE FROM `creature_spell` WHERE guid IN (34778, 36356);
+INSERT INTO `creature_spell` (`guid`, `spell`, `index`) VALUES
+(34778, 66183, 0),
+(34778, 66186, 1),
+(36356, 66183, 0),
+(36356, 66186, 1);
+
+-- /IOC vehicles by /dev/rsa
 
 -- alliance boss faction
 UPDATE creature_template SET faction_A = 84, faction_H = 84 WHERE entry = 34924;
@@ -136,10 +156,10 @@ UPDATE gameobject_template SET faction = 1997, flags = 0, data5 = 0 WHERE entry 
 UPDATE gameobject_template SET faction = 1995, flags = 0, data5 = 0 WHERE entry IN (195332, 195237);
 
 -- horde teleporters
-UPDATE gameobject_template SET faction = 1995, flags = 16 WHERE entry IN (195313, 195314);
+UPDATE gameobject_template SET faction = 1995, flags = 0 WHERE entry IN (195313, 195314);
 UPDATE gameobject_template SET faction = 1995 WHERE entry = 195326;
 -- alliance teleporters
-UPDATE gameobject_template SET faction = 1997, flags = 16 WHERE entry IN (195315, 195316);
+UPDATE gameobject_template SET faction = 1997, flags = 0 WHERE entry IN (195315, 195316);
 UPDATE gameobject_template SET faction = 1997 WHERE entry = 195320;
 
 -- scriptnames
@@ -164,6 +184,19 @@ INSERT INTO creature_template_addon (entry, auras) VALUES
 (36356, 52455),
 (34777, 52455),
 (36355, 52455);
+
+-- Achievements
+DELETE FROM achievement_criteria_requirement WHERE criteria_id IN (11492, 11493, 11494, 11495, 12059, 12066, 12067, 12132, 12163);
+INSERT INTO achievement_criteria_requirement VALUES
+(11492, 6, 4710, 0),  -- Four Car Garage (x4)
+(11493, 6, 4710, 0),
+(11494, 6, 4710, 0),
+(11495, 6, 4710, 0),
+(12059, 6, 4710, 0),  -- Isle of Conquest All-Star
+(12066, 6, 4710, 0),  -- A-bomb-inable
+(12067, 6, 4710, 0),  -- A-bomb-ination
+(12132, 6, 4710, 0),  -- Cut the Blue Wire... No the Red Wire!
+(12163, 6, 4710, 0);  -- Back Door Job
 
 ###############################
 -- SPAWNING STATIC OBJECTS
@@ -661,3 +694,9 @@ INSERT INTO creature_battleground (guid, event1, event2) VALUES
 (300066 , 8 , 0),
 (300067 , 8 , 0),
 (300068 , 8 , 0);
+
+DELETE FROM achievement_criteria_requirement WHERE criteria_id IN (12066, 12067, 12163);
+INSERT INTO achievement_criteria_requirement VALUES
+(12066, 0, 0, 0),  -- A-bomb-inable
+(12067, 0, 0, 0),  -- A-bomb-ination
+(12163, 0, 0, 0);  -- Back Door Job

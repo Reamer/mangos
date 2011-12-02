@@ -99,7 +99,7 @@ void BattleGroundIC::Reset()
     m_Nodes[BG_IC_NODE_H_KEEP] = BG_IC_NODE_STATUS_HORDE_OCCUPIED;
 
     SpawnEvent(IC_EVENT_ADD_TELEPORT, 0, true);
-    SpawnEvent(IC_EVENT_ADD_VEH, 0, false);
+    SpawnEvent(IC_EVENT_ADD_VEH, 0, true);
     SpawnEvent(IC_EVENT_BOSS_H, 0, true);
     SpawnEvent(IC_EVENT_BOSS_A, 0, true);
 
@@ -247,15 +247,9 @@ void BattleGroundIC::StartingEventOpenDoors()
     OpenDoorEvent(BG_EVENT_DOOR);                        // used for activating teleport effects + opening tower gates
     for (int i = BG_IC_GO_T_ALLIANCE_WEST; i <= BG_IC_GO_T_HORDE_FRONT; ++i)
         DoorOpen(m_BgObjects[i]);
-    SpawnEvent(IC_EVENT_ADD_VEH, 0, true);
 
     // make teleporters clickable
-    uint32 objEvent = MAKE_PAIR32(IC_EVENT_ADD_TELEPORT, 0);
-    for (std::vector<ObjectGuid>::iterator itr = m_EventObjects[objEvent].gameobjects.begin(); itr != m_EventObjects[objEvent].gameobjects.end(); ++itr)
-        if (GameObject * pEventGameObject = GetBgMap()->GetGameObject((*itr)))
-            if ((pEventGameObject->GetEntry() == 195313) || (pEventGameObject->GetEntry() == 195314) || (pEventGameObject->GetEntry() == 195315) || (pEventGameObject->GetEntry() == 195316))
-                if (pEventGameObject->HasFlag(GAMEOBJECT_FLAGS, GO_FLAG_NO_INTERACT))
-                    pEventGameObject->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NO_INTERACT);
+    MakeInteractive(IC_EVENT_ADD_TELEPORT, 0, true);
 }
 
 void BattleGroundIC::AddPlayer(Player *plr)
@@ -268,15 +262,11 @@ void BattleGroundIC::AddPlayer(Player *plr)
 
     SendTransportInit(plr);
 
-    if (GetStatus() == STATUS_IN_PROGRESS)
-    {
-        uint32 objEvent = MAKE_PAIR32(IC_EVENT_ADD_TELEPORT, 0);
-        for (std::vector<ObjectGuid>::iterator itr = m_EventObjects[objEvent].gameobjects.begin(); itr != m_EventObjects[objEvent].gameobjects.end(); ++itr)
-            if (GameObject * pEventGameObject = GetBgMap()->GetGameObject((*itr)))
-                if ((pEventGameObject->GetEntry() == 195313) || (pEventGameObject->GetEntry() == 195314) || (pEventGameObject->GetEntry() == 195315) || (pEventGameObject->GetEntry() == 195316))
-                    if (pEventGameObject->HasFlag(GAMEOBJECT_FLAGS, GO_FLAG_NO_INTERACT))
-                        pEventGameObject->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NO_INTERACT);
-    }
+    if (GetStatus() != STATUS_IN_PROGRESS)
+        MakeInteractive(IC_EVENT_ADD_TELEPORT, 0, false);
+    else
+        // default behaviour of teleports is "clickable", so this could be also skipped
+        MakeInteractive(IC_EVENT_ADD_TELEPORT, 0, true);
 }
 
 void BattleGroundIC::RemovePlayer(Player* plr)
@@ -288,11 +278,29 @@ void BattleGroundIC::RemovePlayer(Player* plr)
     }
 }
 
-void BattleGroundIC::HandleAreaTrigger(Player * /*Source*/, uint32 /*Trigger*/)
+void BattleGroundIC::HandleAreaTrigger(Player * Source, uint32 Trigger)
 {
     // this is wrong way to implement these things. On official it done by gameobject spell cast.
     if (GetStatus() != STATUS_IN_PROGRESS)
         return;
+
+    switch (Trigger)
+    {
+        case 5535:
+            if (Source->GetTeam() == ALLIANCE && hOpen == false)
+                Source->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, 68502);
+            break;
+        case 5555:
+            if (Source->GetTeam() == HORDE && aOpen == false)
+                Source->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, 68502);
+            break;
+        case 5536:
+            break;
+        default:
+            sLog.outError("WARNING: Unhandled AreaTrigger in Battleground: %u", Trigger);
+            Source->GetSession()->SendAreaTriggerMessage("Warning: Unhandled AreaTrigger in Battleground: %u", Trigger);
+            break;
+    }
 }
 
 /*  type: 0-neutral, 1-contested, 3-occupied
@@ -436,6 +444,10 @@ void BattleGroundIC::HandleKillUnit(Creature *creature, Player *killer)
             EndBattleGround(ALLIANCE);
             break;
     }
+
+    if (creature->IsVehicle())
+        // must be killing blow
+        killer->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, 68357);
 }
 
 void BattleGroundIC::HandleKillPlayer(Player* player, Player* killer)
@@ -507,6 +519,7 @@ void BattleGroundIC::EventPlayerClickedOnFlag(Player *source, GameObject* target
     if (m_Nodes[node] == BG_IC_NODE_TYPE_NEUTRAL)
     {
         UpdatePlayerScore(source, SCORE_BASES_ASSAULTED, 1);
+        source->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE,1,245);
         m_prevNodes[node] = m_Nodes[node];
         m_Nodes[node] = teamIndex + 1;
         // create new contested banner
@@ -544,6 +557,7 @@ void BattleGroundIC::EventPlayerClickedOnFlag(Player *source, GameObject* target
         else
         {
             UpdatePlayerScore(source, SCORE_BASES_DEFENDED, 1);
+            source->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE,1,246);
             m_prevNodes[node] = m_Nodes[node];
             m_Nodes[node] = teamIndex + BG_IC_NODE_TYPE_OCCUPIED;
             // create new occupied banner
@@ -563,6 +577,7 @@ void BattleGroundIC::EventPlayerClickedOnFlag(Player *source, GameObject* target
     else
     {
         UpdatePlayerScore(source, SCORE_BASES_ASSAULTED, 1);
+        source->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BG_OBJECTIVE_CAPTURE,1,245);
         m_prevNodes[node] = m_Nodes[node];
         m_Nodes[node] = teamIndex + BG_IC_NODE_TYPE_CONTESTED;
         // create new contested banner
@@ -586,6 +601,14 @@ void BattleGroundIC::EventPlayerClickedOnFlag(Player *source, GameObject* target
 void BattleGroundIC::EventPlayerDamageGO(Player *player, GameObject* target_obj, uint32 eventId, uint32 doneBy)
 {
     BattleGroundTeamIndex teamIndex = GetTeamIndexByTeamId(player->GetTeam());
+
+    // Seaforium Charge Explosion (A-bomb-inable)
+    if (doneBy == 66676)
+        player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_CAST_SPELL, 68366);
+
+    // Huge Seaforium Charge Explosion (A-bomb-ination)
+    if (doneBy == 66672)
+        player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_CAST_SPELL, 68367);
 
     uint32 type = NULL;
     switch (target_obj->GetEntry())
@@ -839,29 +862,44 @@ void BattleGroundIC::HandleBuffs()
 
 uint32 BattleGroundIC::GetCorrectFactionIC(uint8 vehicleType) const
 {
-    if (GetStatus() != STATUS_WAIT_JOIN)
+    switch (vehicleType)
     {
-        switch (vehicleType)
+        case VEHICLE_BG_DEMOLISHER:
         {
-            case VEHICLE_BG_DEMOLISHER:
-            {
-                if (m_Nodes[BG_IC_NODE_WORKSHOP] == BG_IC_NODE_STATUS_ALLY_OCCUPIED)
-                    return VEHICLE_FACTION_ALLIANCE;
+            if (m_Nodes[BG_IC_NODE_WORKSHOP] == BG_IC_NODE_STATUS_ALLY_OCCUPIED)
+                return VEHICLE_FACTION_ALLIANCE;
 
-                else if (m_Nodes[BG_IC_NODE_WORKSHOP] == BG_IC_NODE_STATUS_HORDE_OCCUPIED)
-                    return VEHICLE_FACTION_HORDE;
-            }
-            case VEHICLE_IC_CATAPULT:
-            {
-                if (m_Nodes[BG_IC_NODE_DOCKS] == BG_IC_NODE_STATUS_ALLY_OCCUPIED)
-                    return VEHICLE_FACTION_ALLIANCE;
-
-                else if (m_Nodes[BG_IC_NODE_DOCKS] == BG_IC_NODE_STATUS_HORDE_OCCUPIED)
-                    return VEHICLE_FACTION_HORDE;
-            }
-            default:
-                return VEHICLE_FACTION_NEUTRAL;
+            else if (m_Nodes[BG_IC_NODE_WORKSHOP] == BG_IC_NODE_STATUS_HORDE_OCCUPIED)
+                return VEHICLE_FACTION_HORDE;
         }
+        case VEHICLE_IC_CATAPULT:
+        {
+            if (m_Nodes[BG_IC_NODE_DOCKS] == BG_IC_NODE_STATUS_ALLY_OCCUPIED)
+                return VEHICLE_FACTION_ALLIANCE;
+
+            else if (m_Nodes[BG_IC_NODE_DOCKS] == BG_IC_NODE_STATUS_HORDE_OCCUPIED)
+                return VEHICLE_FACTION_HORDE;
+        }
+        default:
+            return VEHICLE_FACTION_NEUTRAL;
     }
     return VEHICLE_FACTION_NEUTRAL;
+}
+
+bool BattleGroundIC::hasAllNodes(int8 team)
+{
+    for (int i = BG_IC_NODE_DOCKS; i <= BG_IC_NODE_REFINERY; ++i)
+        if (m_Nodes[i] != BG_IC_NODE_TYPE_OCCUPIED + team)
+            return false;
+
+    return true;
+}
+
+bool BattleGroundIC::hasAllResNodes(int8 team)
+{
+    for (int i = BG_IC_NODE_QUARRY; i <= BG_IC_NODE_REFINERY; ++i)
+        if (m_Nodes[i] != BG_IC_NODE_TYPE_OCCUPIED + team)
+            return false;
+
+    return true;
 }

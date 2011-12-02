@@ -124,7 +124,7 @@ void BattleGroundWS::Update(uint32 diff)
             else
             {
                 // if 0 => tie
-                EndBattleGround(m_FirstCapturedFlagTeam);
+                EndBattleGround(m_LastCapturedFlagTeam);
             }
         }
         else
@@ -376,16 +376,13 @@ void BattleGroundWS::PickOrReturnFlag(Player* pPlayer, Team forTeam, bool picked
 
     bool A = forTeam == ALLIANCE;
 
-    // Flag picked up from base
+    // Flag picked up from base or ground.
     if (pickedUp)
     {
         message_id = A ? LANG_BG_WS_PICKEDUP_HF : LANG_BG_WS_PICKEDUP_AF;
         PlaySoundToAll(A ? BG_WS_SOUND_HORDE_FLAG_PICKED_UP : BG_WS_SOUND_ALLIANCE_FLAG_PICKED_UP);
         SpawnEvent(A ? WS_EVENT_FLAG_H : WS_EVENT_FLAG_A, 0, false);
-        if (A)
-            SetHordeFlagPicker(pPlayer->GetObjectGuid());
-        else
-            SetAllianceFlagPicker(pPlayer->GetObjectGuid());
+        A ? SetHordeFlagPicker(pPlayer->GetObjectGuid()) : SetAllianceFlagPicker(pPlayer->GetObjectGuid());
         m_FlagState[A ? BG_TEAM_HORDE : BG_TEAM_ALLIANCE] = BG_WS_FLAG_STATE_ON_PLAYER;
         // update world state to show correct flag carrier
         UpdateFlagState(A ? ALLIANCE : HORDE, BG_WS_FLAG_STATE_ON_PLAYER);
@@ -395,7 +392,7 @@ void BattleGroundWS::PickOrReturnFlag(Player* pPlayer, Team forTeam, bool picked
         if (!fromGround)
             pPlayer->GetAchievementMgr().StartTimedAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_CAST_SPELL, A ? BG_WS_SPELL_WARSONG_FLAG_PICKED : BG_WS_SPELL_SILVERWING_FLAG_PICKED);
     }
-    // Flag on ground (not in base). Return flag
+    // Flag on ground (not in base), return flag to base.
     else
     {
         message_id = A ? LANG_BG_WS_RETURNED_AF : LANG_BG_WS_RETURNED_HF;
@@ -418,18 +415,18 @@ void BattleGroundWS::EventPlayerClickedOnFlag(Player* Source, GameObject* target
 
     bool A = Source->GetTeam() == ALLIANCE;
 
-    // Flag picked up from base
+    // Flag picked up from base.
     if (GetFlagState(A ? HORDE : ALLIANCE) == BG_WS_FLAG_STATE_ON_BASE && event == (A ? WS_EVENT_FLAG_H : WS_EVENT_FLAG_A))
         PickOrReturnFlag(Source, A ? ALLIANCE : HORDE, true);
-
-    // Flag on ground (not in base) (returned or picked up again)
-    if (GetFlagState(ALLIANCE) == BG_WS_FLAG_STATE_ON_GROUND || GetFlagState(HORDE) == BG_WS_FLAG_STATE_ON_GROUND &&
-        Source->IsWithinDistInMap(target_obj, 10.0f))
+    else
     {
-        if (GetFlagState(A ? ALLIANCE : HORDE) == BG_WS_FLAG_STATE_ON_GROUND)
-            PickOrReturnFlag(Source, A ? ALLIANCE : HORDE, false, true);
-        else
-            PickOrReturnFlag(Source, A ? HORDE : ALLIANCE, true, true);
+        // Flag on ground (not in base). Return or picked up again.
+        if (GetFlagState(ALLIANCE) == BG_WS_FLAG_STATE_ON_GROUND || GetFlagState(HORDE) == BG_WS_FLAG_STATE_ON_GROUND &&
+            Source->IsWithinDistInMap(target_obj, 10.0f))
+        {
+            Team team = A ? ALLIANCE : HORDE;
+            PickOrReturnFlag(Source, team, !(GetFlagState(team) == BG_WS_FLAG_STATE_ON_GROUND), true);
+        }
     }
 }
 
