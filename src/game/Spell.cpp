@@ -8339,6 +8339,9 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
         }
         case 28374: // Decimate - Gluth encounter
         {
+            if (i != EFFECT_INDEX_0)
+                return false;
+
             UnitList tempTargetUnitMap;
             FillAreaTargets(tempTargetUnitMap, radius, PUSH_DEST_CENTER, SPELL_TARGETS_ALL);
             if (!tempTargetUnitMap.empty())
