@@ -909,6 +909,16 @@ void Spell::AddUnitTarget(Unit* pVictim, SpellEffectIndex effIndex)
     else
         target.timeDelay = UI64LIT(0);
 
+    // special spell handling with speed but no delay
+    switch(m_spellInfo->Id)
+    {
+        case 63036:
+            target.timeDelay = UI64LIT(0);
+            break;
+        default:
+            break;
+    }
+
     // Calculate minimum incoming time
     if (m_delayMoment == 0 || m_delayMoment > target.timeDelay)
         m_delayMoment = target.timeDelay;
