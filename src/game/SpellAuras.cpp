@@ -9177,14 +9177,6 @@ void Aura::PeriodicDummyTick()
                     }
                     return;
                 }
-                case 63276:                                 // Mark of the Faceless (General Vezax - Ulduar)
-                {
-                    Unit *caster = GetCaster();
-
-                    if (caster && target)
-                        caster->CastCustomSpell(target, 63278, 0, &(spell->EffectBasePoints[0]), 0, false, 0, 0, caster->GetObjectGuid() , spell);
-                    return;
-                }
                 case 63802:                                 // Brain Link (Ulduar - Yogg Saron)
                 {
                     Unit* caster = GetCaster();
