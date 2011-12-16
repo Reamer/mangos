@@ -6068,14 +6068,6 @@ void Aura::HandleAuraPeriodicDummy(bool apply, bool Real)
                         GetHolder()->ModStackAmount(20);
                     return;
                 }
-                case 63276:                                   // Mark of the Faceless (General Vezax - Ulduar)
-                {
-                    Unit *caster = GetCaster();
-
-                    if (caster && target)
-                        caster->CastCustomSpell(target, 63278, 0, &(spell->EffectBasePoints[0]), 0, false, 0, 0, caster->GetObjectGuid() , spell);
-                    return;
-                }
                 case 64217:                                 // Overcharged (spell from Emalon adds)
                 {
                     if (GetHolder()->GetStackAmount() > 11)
@@ -9175,6 +9167,15 @@ void Aura::PeriodicDummyTick()
                     {
                         GetHolder()->ModStackAmount(20);
                     }
+                    return;
+                }
+                case 63276:                                   // Mark of the Faceless (General Vezax - Ulduar)
+                {
+
+                    Unit *caster = GetCaster();
+
+                    if (caster && target)
+                        caster->CastCustomSpell(target, 63278, 0, &(spell->EffectBasePoints[0]), 0, false, 0, 0, caster->GetObjectGuid() , spell);
                     return;
                 }
                 case 63802:                                 // Brain Link (Ulduar - Yogg Saron)
