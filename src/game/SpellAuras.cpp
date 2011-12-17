@@ -634,6 +634,16 @@ void Aura::Update(uint32 diff)
             PeriodicTick();
         }
     }
+    else
+    {
+        if (m_periodicTimer <= 0)
+        {
+            m_periodicTimer = SPELL_SPELL_CHANNEL_UPDATE_INTERVAL;
+            PeriodicCheck();
+        }
+        else
+            m_periodicTimer -= diff;
+    }
 }
 
 void Aura::AreaAuraUpdate(uint32 diff)
@@ -643,12 +653,17 @@ void Aura::AreaAuraUpdate(uint32 diff)
     {
         Unit* caster = GetTarget();
 
+        if (!caster || !caster->GetMap())
+            return;
+
         if ( !caster->hasUnitState(UNIT_STAT_ISOLATED) )
         {
             Unit* owner = caster->GetCharmerOrOwner();
             if (!owner)
                 owner = caster;
-            Spell::UnitList targets;
+
+            ObjectGuidSet targets;
+            Spell::UnitList _targets;
 
             switch(m_areaAuraType)
             {
@@ -668,7 +683,7 @@ void Aura::AreaAuraUpdate(uint32 diff)
                             if (Target && Target->IsInWorld() && Target->isAlive() && Target->GetSubGroup()==subgroup && caster->IsInWorld() && caster->IsFriendlyTo(Target))
                             {
                                 if (caster->IsWithinDistInMap(Target, m_radius))
-                                    targets.push_back(Target);
+                                    targets.insert(Target->GetObjectGuid());
                                 if (Target->GetPet())
                                 {
                                     GroupPetList m_groupPets = Target->GetPets();
@@ -677,7 +692,7 @@ void Aura::AreaAuraUpdate(uint32 diff)
                                         for (GroupPetList::const_iterator itr = m_groupPets.begin(); itr != m_groupPets.end(); ++itr)
                                             if (Pet* _pet = Target->GetMap()->GetPet(*itr))
                                                 if (_pet && _pet->IsInWorld() && _pet->isAlive() && caster->IsWithinDistInMap(_pet, m_radius))
-                                                    targets.push_back(_pet);
+                                                    targets.insert(_pet->GetObjectGuid());
                                     }
                                 }
                             }
@@ -687,7 +702,7 @@ void Aura::AreaAuraUpdate(uint32 diff)
                     {
                         // add owner
                         if ( owner != caster && caster->IsWithinDistInMap(owner, m_radius) )
-                            targets.push_back(owner);
+                            targets.insert(owner->GetObjectGuid());
                         // add caster's pet
                         if (caster->GetPet())
                         {
@@ -697,7 +712,7 @@ void Aura::AreaAuraUpdate(uint32 diff)
                                 for (GroupPetList::const_iterator itr = m_groupPets.begin(); itr != m_groupPets.end(); ++itr)
                                     if (Pet* _pet = caster->GetMap()->GetPet(*itr))
                                         if (_pet && _pet->IsInWorld() && caster->IsWithinDistInMap(_pet, m_radius))
-                                            targets.push_back(_pet);
+                                            targets.insert(_pet->GetObjectGuid());
                             }
                         }
                     }
@@ -718,7 +733,7 @@ void Aura::AreaAuraUpdate(uint32 diff)
                             if (Target && Target->IsInWorld() && Target->isAlive() && caster->IsInWorld() && caster->IsFriendlyTo(Target))
                             {
                                 if (caster->IsWithinDistInMap(Target, m_radius))
-                                    targets.push_back(Target);
+                                    targets.insert(Target->GetObjectGuid());
                                 if (Target->GetPet())
                                 {
                                     GroupPetList m_groupPets = Target->GetPets();
@@ -727,7 +742,7 @@ void Aura::AreaAuraUpdate(uint32 diff)
                                         for (GroupPetList::const_iterator itr = m_groupPets.begin(); itr != m_groupPets.end(); ++itr)
                                             if (Pet* _pet = caster->GetMap()->GetPet(*itr))
                                                 if (_pet && _pet->IsInWorld() && caster->IsWithinDistInMap(_pet, m_radius))
-                                                    targets.push_back(_pet);
+                                                    targets.insert(_pet->GetObjectGuid());
                                     }
                                 }
                             }
@@ -737,7 +752,7 @@ void Aura::AreaAuraUpdate(uint32 diff)
                     {
                         // add owner
                         if ( owner != caster && caster->IsWithinDistInMap(owner, m_radius) )
-                            targets.push_back(owner);
+                            targets.insert(owner->GetObjectGuid());
                         // add caster's pet
                         if (caster->GetPet())
                         {
@@ -747,7 +762,7 @@ void Aura::AreaAuraUpdate(uint32 diff)
                                 for (GroupPetList::const_iterator itr = m_groupPets.begin(); itr != m_groupPets.end(); ++itr)
                                     if (Pet* _pet = caster->GetMap()->GetPet(*itr))
                                         if (_pet && _pet->IsInWorld() && caster->IsWithinDistInMap(_pet, m_radius))
-                                            targets.push_back(_pet);
+                                            targets.insert(_pet->GetObjectGuid());
                             }
                         }
                     }
@@ -756,14 +771,14 @@ void Aura::AreaAuraUpdate(uint32 diff)
                 case AREA_AURA_FRIEND:
                 {
                     MaNGOS::AnyFriendlyUnitInObjectRangeCheck u_check(caster, m_radius);
-                    MaNGOS::UnitListSearcher<MaNGOS::AnyFriendlyUnitInObjectRangeCheck> searcher(targets, u_check);
+                    MaNGOS::UnitListSearcher<MaNGOS::AnyFriendlyUnitInObjectRangeCheck> searcher(_targets, u_check);
                     Cell::VisitAllObjects(caster, searcher, m_radius);
                     break;
                 }
                 case AREA_AURA_ENEMY:
                 {
                     MaNGOS::AnyAoETargetUnitInObjectRangeCheck u_check(caster, m_radius); // No GetCharmer in searcher
-                    MaNGOS::UnitListSearcher<MaNGOS::AnyAoETargetUnitInObjectRangeCheck> searcher(targets, u_check);
+                    MaNGOS::UnitListSearcher<MaNGOS::AnyAoETargetUnitInObjectRangeCheck> searcher(_targets, u_check);
                     Cell::VisitAllObjects(caster, searcher, m_radius);
                     break;
                 }
@@ -771,20 +786,30 @@ void Aura::AreaAuraUpdate(uint32 diff)
                 case AREA_AURA_PET:
                 {
                     if (owner != caster && caster->IsInWorld() && caster->IsWithinDistInMap(owner, m_radius))
-                        targets.push_back(owner);
+                        targets.insert(owner->GetObjectGuid());
                     break;
                 }
+                default:
+                    break;
             }
 
-            for(Spell::UnitList::iterator tIter = targets.begin(); tIter != targets.end(); tIter++)
+            if (!_targets.empty())
+                for (Spell::UnitList::iterator itr = _targets.begin(); itr != _targets.end(); ++itr)
+                    if (*itr)
+                        targets.insert((*itr)->GetObjectGuid());
+
+            for (ObjectGuidSet::const_iterator tIter = targets.begin(); tIter != targets.end(); tIter++)
             {
                 // flag for selection is need apply aura to current iteration target
                 bool apply = true;
 
                 // we need ignore present caster self applied are auras sometime
                 // in cases if this only auras applied for spell effect
-                Unit* i_target = *tIter;
+                Unit* i_target = caster->GetMap()->GetUnit(*tIter);
                 if (!i_target)
+                    continue;
+
+                if (i_target->GetTypeId() == TYPEID_PLAYER && ((Player*)i_target)->IsBeingTeleportedFar())
                     continue;
 
                 if (i_target->IsImmuneToSpell(GetSpellProto()))
@@ -795,11 +820,10 @@ void Aura::AreaAuraUpdate(uint32 diff)
                     Unit::SpellAuraHolderBounds spair = i_target->GetSpellAuraHolderBounds(GetId());
                     for(Unit::SpellAuraHolderMap::const_iterator i = spair.first; i != spair.second; ++i)
                     {
-                        SpellAuraHolderPtr holder = i->second;
-                        if (!holder || holder->IsDeleted())
+                        if (!i->second || i->second->IsDeleted())
                             continue;
 
-                        Aura *aur = holder->GetAuraByEffectIndex(m_effIndex);
+                        Aura* aur = i->second->GetAuraByEffectIndex(m_effIndex);
 
                         if (!aur)
                             continue;
@@ -830,7 +854,7 @@ void Aura::AreaAuraUpdate(uint32 diff)
                 if(!apply)
                     continue;
 
-                if (SpellEntry const *actualSpellInfo = sSpellMgr.SelectAuraRankForLevel(GetSpellProto(), (*tIter)->getLevel()))
+                if (SpellEntry const *actualSpellInfo = sSpellMgr.SelectAuraRankForLevel(GetSpellProto(), i_target->getLevel()))
                 {
                     int32 actualBasePoints = m_currentBasePoints;
                     // recalculate basepoints for lower rank (all AreaAura spell not use custom basepoints?)
@@ -2993,11 +3017,11 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
             }
             case 43681:                                     // Inactive
             {
-                if (!target || target->GetTypeId() != TYPEID_PLAYER || m_removeMode != AURA_REMOVE_BY_EXPIRE)
+                if (!target || target->GetTypeId() != TYPEID_PLAYER)
                     return;
 
-                if (target->GetMap()->IsBattleGround())
-                    ((Player*)target)->LeaveBattleground();
+                if (m_removeMode == AURA_REMOVE_BY_EXPIRE && target->GetTypeId() == TYPEID_PLAYER)
+                    ((Player*)target)->ToggleAFK();
                 return;
             }
             case 43969:                                     // Feathered Charm
@@ -3708,6 +3732,10 @@ void Aura::HandleAuraWaterWalk(bool apply, bool Real)
     if(!Real)
         return;
 
+    // do not remove unit flag if there are more than this auraEffect of that kind on unit on unit
+    if (!apply && GetTarget()->HasAuraType(SPELL_AURA_WATER_WALK))
+        return;
+
     WorldPacket data;
     if (apply)
         data.Initialize(SMSG_MOVE_WATER_WALK, 8+4);
@@ -3723,7 +3751,13 @@ void Aura::HandleAuraFeatherFall(bool apply, bool Real)
     // only at real add/remove aura
     if(!Real)
         return;
+
     Unit *target = GetTarget();
+
+    // do not remove unit flag if there are more than this auraEffect of that kind on unit on unit
+    if (!apply && target->HasAuraType(SPELL_AURA_FEATHER_FALL))
+        return;
+
     WorldPacket data;
     if (apply)
         data.Initialize(SMSG_MOVE_FEATHER_FALL, 8+4);
@@ -3761,6 +3795,10 @@ void Aura::HandleAuraHover(bool apply, bool Real)
 {
     // only at real add/remove aura
     if(!Real)
+        return;
+
+    // do not remove unit flag if there are more than this auraEffect of that kind on unit on unit
+    if (!apply && GetTarget()->HasAuraType(SPELL_AURA_HOVER))
         return;
 
     WorldPacket data;
@@ -5722,18 +5760,17 @@ void Aura::HandleAuraModSchoolImmunity(bool apply, bool Real)
         Unit::SpellAuraHolderMap& Auras = target->GetSpellAuraHolderMap();
         for(Unit::SpellAuraHolderMap::iterator iter = Auras.begin(); iter != Auras.end(); ++iter)
         {
-            SpellAuraHolderPtr holder = iter->second;
-            if (!holder || holder->IsDeleted())
+            if (!iter->second || iter->second->IsDeleted())
                 continue;
 
-            SpellEntry const *spell = holder->GetSpellProto();
+            SpellEntry const* spell = iter->second->GetSpellProto();
 
             if((GetSpellSchoolMask(spell) & school_mask)//Check for school mask
                 && !( spell->Attributes & SPELL_ATTR_UNAFFECTED_BY_INVULNERABILITY)   //Spells unaffected by invulnerability
-                && !holder->IsPositive()                //Don't remove positive spells
+                && !iter->second->IsPositive()                //Don't remove positive spells
                 && spell->Id != GetId() )               //Don't remove self
             {
-                toRemoveSpellList.insert(holder->GetId());
+                toRemoveSpellList.insert(iter->second->GetId());
             }
         }
         for (std::set<uint32>::iterator i = toRemoveSpellList.begin(); i != toRemoveSpellList.end(); ++i)
@@ -9333,9 +9370,6 @@ void Aura::PeriodicDummyTick()
             // Prey on the Weak
             if (spell->SpellIconID == 2983)
             {
-                if (target->GetTypeId() != TYPEID_PLAYER)
-                    return;
-
                 Unit *victim = target->getVictim();
                 if (victim && (target->GetHealth() * 100 / target->GetMaxHealth() > victim->GetHealth() * 100 / victim->GetMaxHealth()))
                 {
@@ -9557,6 +9591,44 @@ void Aura::PeriodicDummyTick()
     }
 }
 
+void Aura::PeriodicCheck()
+{
+
+    SpellAuraHolderPtr holder = GetHolder();
+    SpellEntry const* spellProto = GetSpellProto();
+
+    if (!holder || !spellProto)
+        return;
+
+    Unit* target = GetTarget();
+    Unit* caster = GetCaster();
+
+    if (!caster || !target)
+        return;
+
+    switch(m_modifier.m_auraname)
+    {
+        case SPELL_AURA_MOD_CONFUSE:
+        case SPELL_AURA_MOD_FEAR:
+        case SPELL_AURA_MOD_STUN:
+        case SPELL_AURA_MOD_ROOT:
+        case SPELL_AURA_TRANSFORM:
+        {
+            if (caster->GetObjectGuid().IsPlayer() && target->GetObjectGuid().IsCreatureOrVehicle())
+            {
+                if (caster->MagicSpellHitResult(target, spellProto) != SPELL_MISS_NONE)
+                {
+                    caster->SendSpellDamageResist(target, spellProto->Id);
+                    target->RemoveAurasDueToSpell(GetId());
+                }
+            }
+            break;
+        }
+        default:
+            break;
+    }
+}
+
 void Aura::HandlePreventFleeing(bool apply, bool Real)
 {
     if (!Real)
@@ -9635,9 +9707,6 @@ void Aura::HandleAuraControlVehicle(bool apply, bool Real)
 
     if (apply)
     {
-        if (caster->GetTypeId() == TYPEID_PLAYER)
-            ((Player*)caster)->RemovePet(PET_SAVE_AS_CURRENT);
-
         // TODO: find a way to make this work properly
         // some spells seem like store vehicle seat info in basepoints, but not true for all of them, so... ;/
         int32 seat = -1;
@@ -9667,9 +9736,6 @@ void Aura::HandleAuraControlVehicle(bool apply, bool Real)
 
         if (caster->GetVehicle() == target->GetVehicleKit())
             caster->ExitVehicle();
-
-        if (caster->GetTypeId() == TYPEID_PLAYER)
-            ((Player*)caster)->ResummonPetTemporaryUnSummonedIfAny();
     }
 }
 
@@ -10057,9 +10123,12 @@ void SpellAuraHolder::AddAura(Aura aura, SpellEffectIndex index)
         DEBUG_LOG("SpellAuraHolder::AddAura attempt to add aura (effect %u) to holder of spell %u, but holder already have active aura!", index, GetId());
         RemoveAura(index);
     }
-    AuraStorage::iterator itr = m_aurasStorage.find(index);
-    if (itr != m_aurasStorage.end())
-        m_aurasStorage.erase(index);
+    if (!m_aurasStorage.empty())
+    {
+        AuraStorage::iterator itr = m_aurasStorage.find(index);
+        if (itr != m_aurasStorage.end())
+            m_aurasStorage.erase(itr);
+    }
 
     m_aurasStorage.insert(std::make_pair(index,aura));
     m_auraFlags |= (1 << index);
@@ -10074,12 +10143,14 @@ void SpellAuraHolder::CleanupsBeforeDelete()
 {
     for (int32 i = 0; i < MAX_EFFECT_INDEX; ++i)
         RemoveAura(SpellEffectIndex(i));
-    m_aurasStorage.clear();
+
+    if (!m_aurasStorage.empty())
+        m_aurasStorage.clear();
 }
 
 Aura* SpellAuraHolder::GetAuraByEffectIndex(SpellEffectIndex index)
 {
-    if (m_auraFlags & (1 << index))
+    if (m_auraFlags & (1 << index) && !m_aurasStorage.empty())
     {
         AuraStorage::iterator itr = m_aurasStorage.find(index);
         if (itr != m_aurasStorage.end())
@@ -10090,7 +10161,7 @@ Aura* SpellAuraHolder::GetAuraByEffectIndex(SpellEffectIndex index)
 
 Aura const* SpellAuraHolder::GetAura(SpellEffectIndex index) const
 {
-    if (m_auraFlags & (1 << index))
+    if (m_auraFlags & (1 << index) && !m_aurasStorage.empty())
     {
         AuraStorage::const_iterator itr = m_aurasStorage.find(index);
         if (itr != m_aurasStorage.end())
@@ -11552,6 +11623,9 @@ void SpellAuraHolder::HandleSpellSpecificBoostsForward(bool apply)
     Unit* pCaster = GetCaster();
     if (!pCaster)
         pCaster = m_target;
+
+    if (!pCaster)
+        return;
 
     uint32 procFlag = apply ? PROC_FLAG_ON_AURA_APPLY : PROC_FLAG_ON_AURA_FADE;
     uint32 procEx   = 0;

@@ -1701,6 +1701,29 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
         return false;
     }
 
+    if (GetMapId() != mapid)
+    {
+        if (!(options & TELE_TO_CHECKED))
+        {
+            if (!CheckTransferPossibility(mapid))
+            {
+                if (GetTransport())
+                    TeleportToHomebind();
+
+                DEBUG_LOG("Player::TeleportTo %s is NOT teleported to map %u (requirements check failed)", GetName(), mapid);
+
+                return false;                                       // normal client can't teleport to this map...
+            }
+            else
+                options |= TELE_TO_CHECKED;
+        }
+        DEBUG_LOG("Player::TeleportTo %s is being far teleported to map %u", GetName(), mapid);
+    }
+    else
+    {
+        DEBUG_LOG("Player::TeleportTo %s is being near teleported to map %u", GetName(), mapid);
+    }
+
     // preparing unsummon pet if lost (we must get pet before teleportation or will not find it later)
     Pet* pet = GetPet();
 
@@ -1717,22 +1740,6 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
         return false;
 
     // client without expansion support
-    if (GetSession()->Expansion() < mEntry->Expansion())
-    {
-        DEBUG_LOG("Player %s using client without required expansion tried teleport to non accessible map %u", GetName(), mapid);
-
-        if (GetTransport())
-//            RepopAtGraveyard();                             // teleport to near graveyard if on transport, looks blizz like :)
-            TeleportToHomebind();                             // teleport to homebind instead of graveyard if on transport, not fully blizzlike, but not may cause teleport cycle.
-
-        SendTransferAborted(mapid, TRANSFER_ABORT_INSUF_EXPAN_LVL, mEntry->Expansion());
-
-        return false;                                       // normal client can't teleport to this map...
-    }
-    else
-    {
-        DEBUG_LOG("Player %s is being teleported to map %u", GetName(), mapid);
-    }
 
     // if we were on a transport, leave
     if (!(options & TELE_TO_NOT_LEAVE_TRANSPORT) && m_transport)
@@ -2063,7 +2070,7 @@ void Player::RegenerateAll(uint32 diff)
 {
     // Not in combat or they have regeneration
     if (!isInCombat() || HasAuraType(SPELL_AURA_MOD_REGEN_DURING_COMBAT) ||
-        HasAuraType(SPELL_AURA_MOD_HEALTH_REGEN_IN_COMBAT) || IsPolymorphed() )
+        HasAuraType(SPELL_AURA_MOD_HEALTH_REGEN_IN_COMBAT) || IsPolymorphed() || m_baseHealthRegen )
     {
         RegenerateHealth(diff);
         if (!isInCombat() && !HasAuraType(SPELL_AURA_INTERRUPT_REGEN))
@@ -4192,7 +4199,7 @@ bool Player::HasActiveSpell(uint32 spell) const
         itr->second.active && !itr->second.disabled);
 }
 
-TrainerSpellState Player::GetTrainerSpellState(TrainerSpell const* trainer_spell) const
+TrainerSpellState Player::GetTrainerSpellState(TrainerSpell const* trainer_spell, uint32 reqLevel) const
 {
     if (!trainer_spell)
         return TRAINER_SPELL_RED;
@@ -4212,7 +4219,7 @@ TrainerSpellState Player::GetTrainerSpellState(TrainerSpell const* trainer_spell
 
     // check level requirement
     if (!prof || GetSession()->GetSecurity() < AccountTypes(sWorld.getConfig(CONFIG_UINT32_TRADE_SKILL_GMIGNORE_LEVEL)))
-        if (getLevel() < trainer_spell->reqLevel)
+        if (getLevel() < reqLevel)
             return TRAINER_SPELL_RED;
 
     if (SpellChainNode const* spell_chain = sSpellMgr.GetSpellChainNode(trainer_spell->learnedSpell))
@@ -13432,6 +13439,10 @@ void Player::ApplyEnchantment(Item *item, EnchantmentSlot slot, bool apply, bool
                             ((Player*)this)->ApplySpellPowerBonus(enchant_amount, apply);
                             DEBUG_LOG("+ %u SPELL_POWER", enchant_amount);
                             break;
+                        case ITEM_MOD_HEALTH_REGEN:
+                            ((Player*)this)->ApplyHealthRegenBonus(enchant_amount, apply);
+                            DEBUG_LOG("+ %u HEALTH_REGENERATION", enchant_amount);
+                            break;
                         case ITEM_MOD_BLOCK_VALUE:
                             HandleBaseModValue(SHIELD_BLOCK_VALUE, FLAT_MOD, float(enchant_amount), apply);
                             break;
@@ -16207,7 +16218,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
             // We are not in BG anymore
             SetBattleGroundId(0, BATTLEGROUND_TYPE_NONE);
             // remove outdated DB data in DB
-            _SaveBGData();
+            _SaveBGData(true);
         }
     }
     else
@@ -16224,8 +16235,11 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
             // We are not in BG anymore
             SetBattleGroundId(0, BATTLEGROUND_TYPE_NONE);
             // remove outdated DB data in DB
-            _SaveBGData();
+            _SaveBGData(true);
         }
+        // Cleanup LFG BG data, if char not in dungeon.
+        else if (!mapEntry->IsDungeon())
+            _SaveBGData(true);
     }
 
     if (transGUID != 0)
@@ -18253,10 +18267,9 @@ void Player::_SaveAuras()
 
     for(SpellAuraHolderMap::const_iterator itr = auraHolders.begin(); itr != auraHolders.end(); ++itr)
     {
-        SpellAuraHolderPtr holder = itr->second;
         //skip all holders from spells that are passive or channeled
         //do not save single target holders (unless they were cast by the player)
-        if (!holder->IsPassive() && !IsChanneledSpell(holder->GetSpellProto()) && (holder->GetCasterGuid() == GetObjectGuid() || !holder->IsSingleTarget()) && !IsChanneledSpell(holder->GetSpellProto()))
+        if (itr->second && !itr->second->IsDeleted() && !itr->second->IsPassive() && !IsChanneledSpell(itr->second->GetSpellProto()) && (itr->second->GetCasterGuid() == GetObjectGuid() || !itr->second->IsSingleTarget()) && !IsChanneledSpell(itr->second->GetSpellProto()))
         {
             int32  damage[MAX_EFFECT_INDEX];
             uint32 periodicTime[MAX_EFFECT_INDEX];
@@ -18267,10 +18280,10 @@ void Player::_SaveAuras()
                 damage[i] = 0;
                 periodicTime[i] = 0;
 
-                if (Aura *aur = holder->GetAuraByEffectIndex(SpellEffectIndex(i)))
+                if (Aura *aur = itr->second->GetAuraByEffectIndex(SpellEffectIndex(i)))
                 {
                     // don't save not own area auras
-                    if (aur->IsAreaAura() && holder->GetCasterGuid() != GetObjectGuid())
+                    if (aur->IsAreaAura() && itr->second->GetCasterGuid() != GetObjectGuid())
                         continue;
 
                     damage[i] = aur->GetModifier()->m_amount;
@@ -18283,11 +18296,11 @@ void Player::_SaveAuras()
                 continue;
 
             stmt.addUInt32(GetGUIDLow());
-            stmt.addUInt64(holder->GetCasterGuid().GetRawValue());
-            stmt.addUInt32(holder->GetCastItemGuid().GetCounter());
-            stmt.addUInt32(holder->GetId());
-            stmt.addUInt32(holder->GetStackAmount());
-            stmt.addUInt8(holder->GetAuraCharges());
+            stmt.addUInt64(itr->second->GetCasterGuid().GetRawValue());
+            stmt.addUInt32(itr->second->GetCastItemGuid().GetCounter());
+            stmt.addUInt32(itr->second->GetId());
+            stmt.addUInt32(itr->second->GetStackAmount());
+            stmt.addUInt8(itr->second->GetAuraCharges());
 
             for (uint32 i = 0; i < MAX_EFFECT_INDEX; ++i)
                 stmt.addInt32(damage[i]);
@@ -18295,8 +18308,8 @@ void Player::_SaveAuras()
             for (uint32 i = 0; i < MAX_EFFECT_INDEX; ++i)
                 stmt.addUInt32(periodicTime[i]);
 
-            stmt.addInt32(holder->GetAuraMaxDuration());
-            stmt.addInt32(holder->GetAuraDuration());
+            stmt.addInt32(itr->second->GetAuraMaxDuration());
+            stmt.addInt32(itr->second->GetAuraDuration());
             stmt.addUInt32(effIndexMask);
             stmt.Execute();
         }
@@ -19156,9 +19169,6 @@ void Player::RemovePet(PetSaveMode mode)
              if (Pet* _pet = GetMap()->GetPet(*itr))
                  _pet->Unsummon(mode, this);
     }
-    else
-        if (Pet* pet = GetPet())
-            pet->Unsummon(mode, this);
 }
 
 void Player::BuildPlayerChat(WorldPacket *data, uint8 msgtype, const std::string& text, uint32 language) const
@@ -21754,11 +21764,9 @@ void Player::RemoveItemDependentAurasAndCasts( Item * pItem )
     SpellAuraHolderMap& auras = GetSpellAuraHolderMap();
     for(SpellAuraHolderMap::const_iterator itr = auras.begin(); itr != auras.end(); )
     {
-        SpellAuraHolderPtr holder = itr->second;
-
         // skip passive (passive item dependent spells work in another way) and not self applied auras
-        SpellEntry const* spellInfo = holder->GetSpellProto();
-        if (holder->IsPassive() ||  holder->GetCasterGuid() != GetObjectGuid())
+        SpellEntry const* spellInfo = itr->second->GetSpellProto();
+        if (itr->second->IsPassive() ||  itr->second->GetCasterGuid() != GetObjectGuid())
         {
             ++itr;
             continue;
@@ -21767,7 +21775,7 @@ void Player::RemoveItemDependentAurasAndCasts( Item * pItem )
         // Remove spells triggered by equipped item auras
         if (pItem->HasTriggeredByAuraSpell(spellInfo))
         {
-            RemoveAurasDueToSpell(holder->GetId());
+            RemoveAurasDueToSpell(itr->second->GetId());
             itr = auras.begin();
             continue;
         }
@@ -21780,7 +21788,7 @@ void Player::RemoveItemDependentAurasAndCasts( Item * pItem )
         }
 
         // no alt item, remove aura, restart check
-        RemoveAurasDueToSpell(holder->GetId());
+        RemoveAurasDueToSpell(itr->second->GetId());
         itr = auras.begin();
     }
 
@@ -21995,7 +22003,8 @@ void Player::SetClientControl(Unit* target, uint8 allowMove)
     WorldPacket data(SMSG_CLIENT_CONTROL_UPDATE, target->GetPackGUID().size()+1);
     data << target->GetPackGUID();
     data << uint8(allowMove);
-    GetSession()->SendPacket(&data);
+    if (GetSession())
+        GetSession()->SendPacket(&data);
 }
 
 void Player::UpdateZoneDependentAuras()
@@ -22904,6 +22913,7 @@ void Player::HandleFall(MovementInfo const& movementInfo)
             DEBUG_LOG("FALLDAMAGE z=%f sz=%f pZ=%f FallTime=%d mZ=%f damage=%d SF=%d" , movementInfo.GetPos()->z, height, GetPositionZ(), movementInfo.GetFallTime(), height, damage, safe_fall);
         }
     }
+    RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_LANDING);     // Remove auras that should be removed at landing
 }
 
 void Player::UpdateAchievementCriteria( AchievementCriteriaTypes type, uint32 miscvalue1/*=0*/, uint32 miscvalue2/*=0*/, Unit *unit/*=NULL*/, uint32 time/*=0*/ )
@@ -23211,6 +23221,7 @@ void Player::UnsummonPetTemporaryIfAny(bool full)
                 else
                     pet->Unsummon(PET_SAVE_NOT_IN_SLOT, this);
             }
+            DEBUG_LOG("Player::UnsummonPetTemporaryIfAny tempusummon pet %s ",(*itr).GetString().c_str());
         }
     }
 
@@ -23576,10 +23587,12 @@ void Player::_SaveEquipmentSets()
     }
 }
 
-void Player::_SaveBGData()
+void Player::_SaveBGData(bool forceClean)
 {
+    if (forceClean)
+        m_bgData = BGData();
     // nothing save
-    if (!m_bgData.m_needSave)
+    else if (!m_bgData.m_needSave)
         return;
 
     static SqlStatementID delBGData ;
@@ -24198,7 +24211,6 @@ bool Player::IsReferAFriendLinked(Player* target)
 
 AreaLockStatus Player::GetAreaTriggerLockStatus(AreaTrigger const* at, Difficulty difficulty)
 {
-
     if (!at)
         return AREA_LOCKSTATUS_UNKNOWN_ERROR;
 
@@ -24269,7 +24281,7 @@ AreaLockStatus Player::GetAreaTriggerLockStatus(AreaTrigger const* at, Difficult
     if (achievCheck)
     {
         bool bHasAchiev = false;
-        if (GetAchievementMgr().HasAchievement(at->achiev0))
+        if (GetAchievementMgr().HasAchievement(achievCheck))
             bHasAchiev = true;
         else if (Group* group = GetGroup())
         {
@@ -24277,7 +24289,7 @@ AreaLockStatus Player::GetAreaTriggerLockStatus(AreaTrigger const* at, Difficult
             {
                 Player* member = itr->getSource();
                 if (member && member->IsInWorld())
-                    if (member->GetAchievementMgr().HasAchievement(at->achiev0))
+                    if (member->GetAchievementMgr().HasAchievement(achievCheck))
                         bHasAchiev = true;
             }
         }
@@ -24297,6 +24309,12 @@ AreaLockStatus Player::GetAreaTriggerLockStatus(AreaTrigger const* at, Difficult
             return AREA_LOCKSTATUS_ZONE_IN_COMBAT;
         }
     }
+    if (map && map->IsDungeon())
+    {
+        // cannot enter if the instance is full (player cap), GMs don't count
+        if (((DungeonMap*)map)->GetPlayersCountExceptGMs() >= ((DungeonMap*)map)->GetMaxPlayers())
+            return AREA_LOCKSTATUS_INSTANCE_IS_FULL;
+    }
 
     return AREA_LOCKSTATUS_OK;
 };
@@ -24304,6 +24322,169 @@ AreaLockStatus Player::GetAreaTriggerLockStatus(AreaTrigger const* at, Difficult
 AreaLockStatus Player::GetAreaLockStatus(uint32 mapId, Difficulty difficulty)
 {
     return GetAreaTriggerLockStatus(sObjectMgr.GetMapEntranceTrigger(mapId), difficulty);
+};
+
+bool Player::CheckTransferPossibility(uint32 mapId)
+{
+    if (mapId == GetMapId())
+        return true;
+
+    MapEntry const* targetMapEntry = sMapStore.LookupEntry(mapId);
+    if (!targetMapEntry)
+        return false;
+
+    // Battleground requirements checked in another place
+    if(InBattleGround() && targetMapEntry->IsBattleGroundOrArena())
+        return true;
+
+    AreaTrigger const* at = sObjectMgr.GetMapEntranceTrigger(mapId);
+    if (!at)
+    {
+        if (targetMapEntry->IsContinent())
+        {
+            if (isGameMaster())
+                return true;
+            if (GetSession()->Expansion() < targetMapEntry->Expansion())
+                return false;
+            return true;
+        }
+        return false;
+    }
+
+    return CheckTransferPossibility(at, targetMapEntry->IsContinent());
+}
+
+bool Player::CheckTransferPossibility(AreaTrigger const*& at, bool b_onlyMainReq)
+{
+    if (!at)
+        return false;
+
+    if (at->target_mapId == GetMapId())
+        return true;
+
+    MapEntry const* targetMapEntry = sMapStore.LookupEntry(at->target_mapId);
+
+    if (!targetMapEntry)
+        return false;
+
+    if (!isGameMaster())
+    {
+        // ghost resurrected at enter attempt to dungeon with corpse (including fail enter cases)
+        if (!isAlive() && targetMapEntry->IsDungeon())
+        {
+            int32 corpseMapId = 0;
+            if (Corpse *corpse = GetCorpse())
+                corpseMapId = corpse->GetMapId();
+
+            // check back way from corpse to entrance
+            uint32 instance_map = corpseMapId;
+            do
+            {
+                // most often fast case
+                if (instance_map == targetMapEntry->MapID)
+                    break;
+
+                InstanceTemplate const* instance = ObjectMgr::GetInstanceTemplate(instance_map);
+                instance_map = instance ? instance->parent : 0;
+            }
+            while (instance_map);
+
+            // corpse not in dungeon or some linked deep dungeons
+            if (!instance_map)
+            {
+                WorldPacket data(SMSG_AREA_TRIGGER_NO_CORPSE);
+                GetSession()->SendPacket(&data);
+                return false;
+            }
+
+            // need find areatrigger to inner dungeon for landing point
+            if (at->target_mapId != corpseMapId)
+            {
+                if (AreaTrigger const* corpseAt = sObjectMgr.GetMapEntranceTrigger(corpseMapId))
+                {
+                    targetMapEntry = sMapStore.LookupEntry(corpseAt->target_mapId);
+                    at = corpseAt;
+                }
+            }
+
+            // now we can resurrect player, and then check teleport requirements
+            ResurrectPlayer(0.5f);
+            SpawnCorpseBones();
+        }
+    }
+
+    AreaLockStatus status = GetAreaTriggerLockStatus(at, GetDifficulty(targetMapEntry->IsRaid()));
+
+    DEBUG_LOG("Player::CheckTransferPossibility %s check lock status of map %u (difficulty %u), result is %u", GetObjectGuid().GetString().c_str(), at->target_mapId, GetDifficulty(targetMapEntry->IsRaid()), status);
+
+    if (b_onlyMainReq)
+    {
+        switch (status)
+        {
+            case AREA_LOCKSTATUS_MISSING_ITEM:
+            case AREA_LOCKSTATUS_QUEST_NOT_COMPLETED:
+            case AREA_LOCKSTATUS_INSTANCE_IS_FULL:
+            case AREA_LOCKSTATUS_ZONE_IN_COMBAT:
+            case AREA_LOCKSTATUS_TOO_LOW_LEVEL:
+                return true;
+            default:
+                break;
+        }
+    }
+
+    switch (status)
+    {
+        case AREA_LOCKSTATUS_OK:
+            return true;
+        case AREA_LOCKSTATUS_TOO_LOW_LEVEL:
+            GetSession()->SendAreaTriggerMessage(GetSession()->GetMangosString(LANG_LEVEL_MINREQUIRED), at->requiredLevel);
+            return false;
+        case AREA_LOCKSTATUS_ZONE_IN_COMBAT:
+            SendTransferAborted(at->target_mapId, TRANSFER_ABORT_ZONE_IN_COMBAT);
+            return false;
+        case AREA_LOCKSTATUS_INSTANCE_IS_FULL:
+            SendTransferAborted(at->target_mapId, TRANSFER_ABORT_MAX_PLAYERS);
+            return false;
+        case AREA_LOCKSTATUS_QUEST_NOT_COMPLETED:
+            if(at->target_mapId == 269)
+            {
+                GetSession()->SendAreaTriggerMessage("%s", at->requiredFailedText.c_str());
+                return false;
+            }
+            // No break here!
+        case AREA_LOCKSTATUS_MISSING_ITEM:
+            {
+                MapDifficultyEntry const* mapDiff = GetMapDifficultyData(targetMapEntry->MapID,GetDifficulty(targetMapEntry->IsRaid()));
+                if (mapDiff && mapDiff->mapDifficultyFlags & MAP_DIFFICULTY_FLAG_CONDITION)
+                {
+                    GetSession()->SendAreaTriggerMessage("%s", mapDiff->areaTriggerText[GetSession()->GetSessionDbcLocale()]);
+                }
+                // do not report anything for quest areatriggers
+                DEBUG_LOG("HandleAreaTriggerOpcode:  LockAreaStatus %u, do action", uint8(GetAreaTriggerLockStatus(at, GetDifficulty(targetMapEntry->IsRaid()))));
+                return false;
+            }
+        case AREA_LOCKSTATUS_MISSING_DIFFICULTY:
+            {
+                Difficulty difficulty = GetDifficulty(targetMapEntry->IsRaid());
+                SendTransferAborted(at->target_mapId, TRANSFER_ABORT_DIFFICULTY, difficulty > RAID_DIFFICULTY_10MAN_HEROIC ? RAID_DIFFICULTY_10MAN_HEROIC : difficulty);
+                return false;
+            }
+        case AREA_LOCKSTATUS_INSUFFICIENT_EXPANSION:
+            SendTransferAborted(at->target_mapId, TRANSFER_ABORT_INSUF_EXPAN_LVL, targetMapEntry->Expansion());
+            return false;
+        case AREA_LOCKSTATUS_NOT_ALLOWED:
+            SendTransferAborted(at->target_mapId, TRANSFER_ABORT_MAP_NOT_ALLOWED);
+            return false;
+        // TODO: messages for other cases
+        case AREA_LOCKSTATUS_RAID_LOCKED:
+        case AREA_LOCKSTATUS_UNKNOWN_ERROR:
+        default:
+            SendTransferAborted(at->target_mapId, TRANSFER_ABORT_ERROR);
+            sLog.outError("Player::CheckTransferPossibility player %s has unhandled AreaLockStatus %u in map %u (difficulty %u), do nothing", GetObjectGuid().GetString().c_str(), status, at->target_mapId, GetDifficulty(targetMapEntry->IsRaid()));
+            return false;
+    }
+
+    return false;
 };
 
 uint32 Player::GetEquipGearScore(bool withBags, bool withBank)
@@ -24605,4 +24786,37 @@ uint32 Player::GetModelForForm(SpellShapeshiftFormEntry const* ssEntry) const
     if (!modelid)
         modelid = ssEntry->modelID_A;
     return modelid;
+}
+
+float Player::GetCollisionHeight(bool mounted)
+{
+    if (mounted)
+    {
+        CreatureDisplayInfoEntry const* mountDisplayInfo = sCreatureDisplayInfoStore.LookupEntry(GetUInt32Value(UNIT_FIELD_MOUNTDISPLAYID));
+        if (!mountDisplayInfo)
+            return GetCollisionHeight(false);
+
+        CreatureModelDataEntry const* mountModelData = sCreatureModelDataStore.LookupEntry(mountDisplayInfo->ModelId);
+        if (!mountModelData)
+            return GetCollisionHeight(false);
+
+        CreatureDisplayInfoEntry const* displayInfo = sCreatureDisplayInfoStore.LookupEntry(GetNativeDisplayId());
+        MANGOS_ASSERT(displayInfo);
+        CreatureModelDataEntry const* modelData = sCreatureModelDataStore.LookupEntry(displayInfo->ModelId);
+        MANGOS_ASSERT(modelData);
+
+        float scaleMod = GetFloatValue(OBJECT_FIELD_SCALE_X); // 99% sure about this
+
+        return scaleMod * mountModelData->MountHeight + modelData->CollisionHeight * 0.5f;
+    }
+    else
+    {
+        //! Dismounting case - use basic default model data
+        CreatureDisplayInfoEntry const* displayInfo = sCreatureDisplayInfoStore.LookupEntry(GetNativeDisplayId());
+        MANGOS_ASSERT(displayInfo);
+        CreatureModelDataEntry const* modelData = sCreatureModelDataStore.LookupEntry(displayInfo->ModelId);
+        MANGOS_ASSERT(modelData);
+
+        return modelData->CollisionHeight;
+    }
 }
