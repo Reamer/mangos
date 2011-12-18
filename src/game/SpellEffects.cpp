@@ -9007,7 +9007,7 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                         }
                         case POWER_MANA:
                         {
-                            int32 manapool = unitTarget->GetMaxPower(POWER_MANA);
+                            int32 manapool = unitTarget->GetMaxPower(POWER_MANA) * 0.05;
                             unitTarget->CastCustomSpell(unitTarget, 59813, &manapool, 0, 0, true);
                             break;
                         }
