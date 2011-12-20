@@ -10891,6 +10891,13 @@ void SpellAuraHolder::HandleSpellSpecificBoosts(bool apply)
                     return;
                 break;
             }
+            else if (m_spellProto->SpellFamilyFlags.test<CF_MAGE_FIREBALL>() && GetSpellProto()->SpellVisual[0] == 67)
+            {
+                // Glyph of Fireball
+                if (Unit * caster = GetCaster())
+                    if (caster->HasAura(56368))
+                        m_target->RemoveAurasByCasterSpell(GetId(), caster->GetObjectGuid());
+            }
             else if (m_spellProto->SpellFamilyFlags.test<CF_MAGE_FROSTBOLT>() && GetSpellProto()->SpellVisual[0] == 13)
             {
                 // Glyph of Frostbolt
@@ -11997,16 +12004,15 @@ uint32 Aura::CalculateCrowdControlBreakDamage()
     if (!IsCrowdControlAura(m_modifier.m_auraname))
         return 0;
 
+    // auras with this attribute not have damage cap
+    if (GetSpellProto()->AttributesEx & SPELL_ATTR_EX_BREAKABLE_BY_ANY_DAMAGE)
+        return 0;
+
     // Damage cap for CC effects
     uint32 damageCap = (int32)((float)GetTarget()->GetMaxHealth() * sWorld.getConfig(CONFIG_FLOAT_CROWDCONTROL_HP_BASE));
 
     if (damageCap < 50)
         damageCap = 50;
-
-    // some specific values
-    // Hungering Cold - any damage
-    if (GetSpellProto()->SpellIconID == 2797)
-        damageCap = 1;
 
     Unit* caster = GetCaster();
 
