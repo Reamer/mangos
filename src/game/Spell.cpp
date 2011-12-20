@@ -2528,14 +2528,6 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
 
                     break;
             }
-            if (m_spellInfo->Id == 63278)           // Mark of the Faceless
-            {
-                Unit* currentTarget = m_targets.getUnitTarget();
-                if(currentTarget)
-                {
-                    targetUnitMap.remove(currentTarget);
-                }
-            }
             break;
         }
         case TARGET_DUELVSPLAYER_COORDINATES:
@@ -8661,6 +8653,20 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
             FillAreaTargets(targetUnitMap, radius, PUSH_DEST_CENTER, SPELL_TARGETS_HOSTILE);
             if (m_spellInfo->Id == 63025 || m_spellInfo->Id == 64233)
                 targetUnitMap.remove(m_caster);
+            break;
+        }
+        case 63278: // Mark of Faceless
+        {
+            if (i != EFFECT_INDEX_1)
+                return false;
+
+            Unit* currentTarget = m_targets.getUnitTarget();
+            if (currentTarget)
+            {
+                m_targets.setDestination(currentTarget->GetPositionX(), currentTarget->GetPositionY(), currentTarget->GetPositionZ());
+                FillAreaTargets(targetUnitMap, radius, PUSH_DEST_CENTER, SPELL_TARGETS_AOE_DAMAGE);
+                targetUnitMap.remove(currentTarget);
+            }
             break;
         }
         case 65044: // Flames
