@@ -1338,7 +1338,7 @@ void ObjectMgr::LoadCreatures()
         }
         else if(data.movementType == RANDOM_MOTION_TYPE)
         {
-            if(data.spawndist == 0.0f)
+            if(fabs(data.spawndist) < M_NULL_F)
             {
                 sLog.outErrorDb("Table `creature` have creature (GUID: %u Entry: %u) with `MovementType`=1 (random movement) but with `spawndist`=0, replace by idle movement type (0).",guid,data.id );
                 data.movementType = IDLE_MOTION_TYPE;
@@ -1346,7 +1346,7 @@ void ObjectMgr::LoadCreatures()
         }
         else if(data.movementType == IDLE_MOTION_TYPE)
         {
-            if(data.spawndist != 0.0f)
+            if(fabs(data.spawndist) > M_NULL_F)
             {
                 sLog.outErrorDb("Table `creature` have creature (GUID: %u Entry: %u) with `MovementType`=0 (idle) have `spawndist`<>0, set to 0.",guid,data.id );
                 data.spawndist = 0.0f;
@@ -1410,7 +1410,12 @@ void ObjectMgr::LoadVehicleAccessories()
 
     uint32 count = 0;
 
-    QueryResult* result = WorldDatabase.Query("SELECT `entry`,`accessory_entry`,`seat_id`,`minion` FROM `vehicle_accessory`");
+    //                                                     0                 1         2        3
+    QueryResult* result = WorldDatabase.Query("SELECT `entry`,`accessory_entry`,`seat_id`,`minion`,"
+    //                                                 4          5          6          7
+                                              "`offset_x`,`offset_y`,`offset_z`,`offset_o` "
+    //
+                                              "FROM `vehicle_accessory`");
 
     if (!result)
     {
@@ -1432,8 +1437,13 @@ void ObjectMgr::LoadVehicleAccessories()
 
         uint32 uiEntry       = fields[0].GetUInt32();
         uint32 uiAccessory   = fields[1].GetUInt32();
-        int8   uiSeat        = int8(fields[2].GetInt16());
+        int32   uiSeat       = fields[2].GetInt32();
         bool   bMinion       = fields[3].GetBool();
+
+        float  x             = fields[4].GetFloat();
+        float  y             = fields[5].GetFloat();
+        float  z             = fields[6].GetFloat();
+        float  o             = fields[7].GetFloat();
 
         if (!sCreatureStorage.LookupEntry<CreatureInfo>(uiEntry))
         {
@@ -1447,7 +1457,10 @@ void ObjectMgr::LoadVehicleAccessories()
             continue;
         }
 
-        m_VehicleAccessoryMap[uiEntry].push_back(VehicleAccessory(uiAccessory, uiSeat, bMinion));
+        VehicleAccessory accessory = VehicleAccessory(uiAccessory, uiSeat, bMinion);
+        accessory.Offset(x,y,z,o);
+
+        m_VehicleAccessoryMap[uiEntry].push_back(accessory);
 
         ++count;
     } while (result->NextRow());
@@ -4154,17 +4167,6 @@ void ObjectMgr::LoadQuests()
                 sLog.outErrorDb("Quest %u has `ZoneOrSort` = %i (sort case) but quest sort with this id does not exist.",
                     qinfo->GetQuestId(),qinfo->ZoneOrSort);
                 // no changes, quest not dependent from this value but can have problems at client (note some may be 0, we must allow this so no check)
-            }
-
-            //check for proper RequiredSkill value (skill case)
-            if (uint32 skill_id = SkillByQuestSort(-int32(qinfo->ZoneOrSort)))
-            {
-                if (qinfo->RequiredSkill != skill_id)
-                {
-                    sLog.outErrorDb("Quest %u has `ZoneOrSort` = %i but `RequiredSkill` does not have a corresponding value (%u).",
-                        qinfo->GetQuestId(),qinfo->ZoneOrSort,skill_id);
-                    //override, and force proper value here?
-                }
             }
         }
 
@@ -9210,12 +9212,6 @@ void ObjectMgr::LoadGossipMenuItems(std::set<uint32>& gossipScriptSet)
 
         if (gMenuItem.action_script_id)
         {
-            if (gMenuItem.option_id != GOSSIP_OPTION_GOSSIP && gMenuItem.option_id != GOSSIP_OPTION_AUTOSCRIPT)
-            {
-                sLog.outErrorDb("Table gossip_menu_option for menu %u, id %u have action_script_id %u but option_id is not GOSSIP_OPTION_GOSSIP and is not GOSSIP_OPTION_AUTOSCRIPT, ignoring", gMenuItem.menu_id, gMenuItem.id, gMenuItem.action_script_id);
-                continue;
-            }
-
             if (sGossipScripts.find(gMenuItem.action_script_id) == sGossipScripts.end())
             {
                 sLog.outErrorDb("Table gossip_menu_option for menu %u, id %u have action_script_id %u that does not exist in `gossip_scripts`, ignoring", gMenuItem.menu_id, gMenuItem.id, gMenuItem.action_script_id);

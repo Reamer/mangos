@@ -1130,9 +1130,9 @@ void Player::HandleDrowning(uint32 time_diff)
                 uint32 damage = urand(600, 700);
                 if (m_MirrorTimerFlags&UNDERWATER_INLAVA)
                     EnvironmentalDamage(DAMAGE_LAVA, damage);
-                // need to skip Slime damage in Undercity,
+                // need to skip Slime damage in Undercity and Ruins of Lordaeron arena
                 // maybe someone can find better way to handle environmental damage
-                else if (m_zoneUpdateId != 1497)
+                else if (m_zoneUpdateId != 1497 && m_zoneUpdateId != 3968)
                     EnvironmentalDamage(DAMAGE_SLIME, damage);
             }
         }
@@ -1442,10 +1442,13 @@ void Player::Update( uint32 update_diff, uint32 p_time )
         TeleportTo(m_teleport_dest, m_teleport_options);
 
         // Playerbot mod
-    if (m_playerbotAI)
-        m_playerbotAI->UpdateAI(p_time);
-    else if (m_playerbotMgr)
-        m_playerbotMgr->UpdateAI(p_time);
+    if (!sWorld.getConfig(CONFIG_BOOL_PLAYERBOT_DISABLE))
+    {
+        if (m_playerbotAI)
+            m_playerbotAI->UpdateAI(p_time);
+        else if (m_playerbotMgr)
+            m_playerbotMgr->UpdateAI(p_time);
+    }
 }
 
 void Player::SetDeathState(DeathState s)
@@ -1733,6 +1736,12 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
         GetPlayerbotMgr()->Stay();
 
     MapEntry const* mEntry = sMapStore.LookupEntry(mapid);
+
+    if(!mEntry)
+    {
+        sLog.outError("TeleportTo: invalid map entry (id %d). possible disk or memory error.", mapid);
+        return false;
+    }
 
     // don't let enter battlegrounds without assigned battleground id (for example through areatrigger)...
     // don't let gm level > 1 either
@@ -13602,9 +13611,6 @@ void Player::PrepareGossipMenu(WorldObject *pSource, uint32 menuId)
                     canSeeQuests = false;
                 continue;
             }
-
-            if (itr->second.option_id == GOSSIP_OPTION_AUTOSCRIPT)
-                GetMap()->ScriptsStart(sGossipScripts, itr->second.action_script_id, this, pSource);
         }
 
         if (pSource->GetTypeId() == TYPEID_UNIT)
@@ -13836,7 +13842,7 @@ void Player::OnGossipSelect(WorldObject* pSource, uint32 gossipListId, uint32 me
 
     GossipMenuItemData pMenuData = gossipmenu.GetItemData(gossipListId);
 
-    switch(gossipOptionId)
+    switch (gossipOptionId)
     {
         case GOSSIP_OPTION_GOSSIP:
         {
@@ -13854,15 +13860,6 @@ void Player::OnGossipSelect(WorldObject* pSource, uint32 gossipListId, uint32 me
                 PlayerTalkClass->CloseGossip();
                 TalkedToCreature(pSource->GetEntry(), pSource->GetObjectGuid());
             }
-
-            if (pMenuData.m_gAction_script)
-            {
-                if (pSource->GetTypeId() == TYPEID_GAMEOBJECT)
-                    GetMap()->ScriptsStart(sGossipScripts, pMenuData.m_gAction_script, this, pSource);
-                else if (pSource->GetTypeId() == TYPEID_UNIT)
-                    GetMap()->ScriptsStart(sGossipScripts, pMenuData.m_gAction_script, pSource, this);
-            }
-
             break;
         }
         case GOSSIP_OPTION_SPIRITHEALER:
@@ -13933,6 +13930,14 @@ void Player::OnGossipSelect(WorldObject* pSource, uint32 gossipListId, uint32 me
             GetSession()->SendBattlegGroundList(guid, bgTypeId);
             break;
         }
+    }
+
+    if (pMenuData.m_gAction_script)
+    {
+        if (pSource->GetTypeId() == TYPEID_UNIT)
+            GetMap()->ScriptsStart(sGossipScripts, pMenuData.m_gAction_script, pSource, this);
+        else if (pSource->GetTypeId() == TYPEID_GAMEOBJECT)
+            GetMap()->ScriptsStart(sGossipScripts, pMenuData.m_gAction_script, this, pSource);
     }
 }
 
@@ -14243,6 +14248,19 @@ bool Player::CanCompleteQuest(uint32 quest_id) const
             return true;
 
         return false;
+    }
+
+    // Anti WPE for client command /script CompleteQuest() on quests with AutoComplete flag
+    if (status == QUEST_STATUS_NONE)
+    {
+        for (uint32 i = 0; i < QUEST_ITEM_OBJECTIVES_COUNT; ++i)
+        {
+            if (qInfo->ReqItemCount[i] != 0 &&
+                GetItemCount(qInfo->ReqItemId[i]) < qInfo->ReqItemCount[i])
+            {
+                return false;
+            }
+        }
     }
 
     // auto complete quest
@@ -16316,7 +16334,10 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
     DungeonPersistentState* state = GetBoundInstanceSaveForSelfOrGroup(GetMapId());
 
     // load the player's map here if it's not already loaded
-    SetMap(sMapMgr.CreateMap(GetMapId(), this));
+    if (Map* map = sMapMgr.CreateMap(GetMapId(), this))
+        SetMap(map);
+    else
+        RelocateToHomebind();
 
     // if the player not at BG and is in an instance and it has been reset in the meantime teleport him to the entrance
     if (!player_at_bg && GetInstanceId() && !state)
@@ -16531,7 +16552,11 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
 
         //we can be relocated from taxi and still have an outdated Map pointer!
         //so we need to get a new Map pointer!
-        SetMap(sMapMgr.CreateMap(GetMapId(), this));
+        if (Map* map = sMapMgr.CreateMap(GetMapId(), this))
+            SetMap(map);
+        else
+            RelocateToHomebind();
+
         SaveRecallPosition();                           // save as recall also to prevent recall and fall from sky
 
         m_taxi.ClearTaxiDestinations();
@@ -19771,7 +19796,7 @@ bool Player::ActivateTaxiPathTo(std::vector<uint32> const& nodes, Creature* npc 
     }
 
     // check node starting pos data set case if provided
-    if (node->x != 0.0f || node->y != 0.0f || node->z != 0.0f)
+    if (fabs(node->x) > M_NULL_F || fabs(node->y) > M_NULL_F || fabs(node->z) > M_NULL_F)
     {
         if (node->map_id != GetMapId() ||
             (node->x - GetPositionX())*(node->x - GetPositionX())+
@@ -24320,6 +24345,13 @@ AreaLockStatus Player::GetAreaTriggerLockStatus(AreaTrigger const* at, Difficult
         // cannot enter if the instance is full (player cap), GMs don't count
         if (((DungeonMap*)map)->GetPlayersCountExceptGMs() >= ((DungeonMap*)map)->GetMaxPlayers())
             return AREA_LOCKSTATUS_INSTANCE_IS_FULL;
+
+        InstancePlayerBind* pBind = GetBoundInstance(at->target_mapId, GetDifficulty(mapEntry->IsRaid()));
+        if (pBind && pBind->perm && pBind->state != state)
+            return AREA_LOCKSTATUS_HAS_BIND;
+
+        if (pBind && pBind->perm && pBind->state != map->GetPersistentState())
+            return AREA_LOCKSTATUS_HAS_BIND;
     }
 
     return AREA_LOCKSTATUS_OK;
@@ -24479,6 +24511,7 @@ bool Player::CheckTransferPossibility(AreaTrigger const*& at, bool b_onlyMainReq
             SendTransferAborted(at->target_mapId, TRANSFER_ABORT_INSUF_EXPAN_LVL, targetMapEntry->Expansion());
             return false;
         case AREA_LOCKSTATUS_NOT_ALLOWED:
+        case AREA_LOCKSTATUS_HAS_BIND:
             SendTransferAborted(at->target_mapId, TRANSFER_ABORT_MAP_NOT_ALLOWED);
             return false;
         // TODO: messages for other cases
