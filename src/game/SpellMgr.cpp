@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -705,6 +705,7 @@ bool IsPositiveEffect(SpellEntry const *spellproto, SpellEffectIndex effIndex)
         case 72551:                                         // Gastric Bloat 10 H
         case 72552:                                         // Gastric Bloat 25 N
         case 72553:                                         // Gastric Bloat 25 H
+        case 72546:                                         // Harvest Soul (Lich King)
         case 57508:                                         // Volazj Insanity Phase 1
         case 57509:                                         // Volazj Insanity Phase 2
         case 57510:                                         // Volazj Insanity Phase 3
@@ -737,6 +738,7 @@ bool IsPositiveEffect(SpellEntry const *spellproto, SpellEffectIndex effIndex)
         case 64904:                                         // Hymn of Hope
         case 67369:                                         // Grunty Focus
         case 67398:                                         // Zergling Periodic Effect
+        case 72771:                                         // Scent of Blood (Saurfang)
             return true;
         default:
             break;
@@ -2384,6 +2386,14 @@ bool SpellMgr::IsStackableSpellAuraHolder(SpellEntry const* spellInfo)
             case SPELL_AURA_MOD_STUN:
                 return true;
         }
+    }
+
+    // some direct ID checks (hacks!)
+    switch(spellInfo->Id)
+    {
+        case 70602: // Corruption (Valithria Dreamwalker)
+        case 70588: // Suppression (Valithria Dreamwalker)
+            return true;
     }
 
     return false;
@@ -4503,4 +4513,30 @@ uint32 GetProcFlag(SpellEntry const* spellInfo)
         EventProcFlag = spellInfo->procFlags;       // else get from spell proto
 
     return EventProcFlag;
+}
+
+ClassFamilyMask const ClassFamilyMask::Null = ClassFamilyMask();
+
+bool IsEffectCauseDamage(SpellEntry const *spellInfo, SpellEffectIndex effecIdx)
+{
+    if (!spellInfo)
+        return false;
+
+    switch (spellInfo->Effect[effecIdx])
+    {
+        // need much more correct effect definition in this check
+        case SPELL_EFFECT_DISPEL:
+        case SPELL_EFFECT_TRIGGER_SPELL:
+            return false;
+
+        case SPELL_EFFECT_SCHOOL_DAMAGE:
+        case SPELL_EFFECT_WEAPON_DAMAGE_NOSCHOOL:
+        case SPELL_EFFECT_WEAPON_PERCENT_DAMAGE:
+        case SPELL_EFFECT_WEAPON_DAMAGE:
+        case SPELL_EFFECT_NORMALIZED_WEAPON_DMG:
+
+        // also all undefined (default mangos way)
+        default:
+            return true;
+    }
 }

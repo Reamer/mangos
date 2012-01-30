@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -516,8 +516,10 @@ Player::Player (WorldSession *session): Unit(), m_mover(this), m_camera(this), m
 
     m_HomebindTimer = 0;
     m_InstanceValid = true;
-    m_dungeonDifficulty = DUNGEON_DIFFICULTY_NORMAL;
-    m_raidDifficulty = RAID_DIFFICULTY_10MAN_NORMAL;
+
+    m_Difficulty = 0;
+    SetDungeonDifficulty(DUNGEON_DIFFICULTY_NORMAL);
+    SetRaidDifficulty(RAID_DIFFICULTY_10MAN_NORMAL);
 
     m_lastPotionId = 0;
 
@@ -3948,7 +3950,14 @@ bool Player::resetTalents(bool no_cost, bool all_specs)
 
         for (int j = 0; j < MAX_TALENT_RANK; ++j)
             if (talentInfo->RankID[j])
+            {
                 removeSpell(talentInfo->RankID[j],!IsPassiveSpell(talentInfo->RankID[j]),false);
+
+                SpellEntry const *spellInfo = sSpellStore.LookupEntry(talentInfo->RankID[j]);
+                for (int k = 0; k < MAX_EFFECT_INDEX; ++k)
+                    if (spellInfo->EffectTriggerSpell[k])
+                        removeSpell(spellInfo->EffectTriggerSpell[k]);
+            }
 
         iter = m_talents[m_activeSpec].begin();
     }
@@ -8379,7 +8388,7 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
     if (ObjectGuid lootGuid = GetLootGuid())
         m_session->DoLootRelease(lootGuid);
 
-    Loot    *loot = 0;
+    Loot* loot = NULL;
     PermissionTypes permission = ALL_PERMISSION;
 
     DEBUG_LOG("Player::SendLoot");
@@ -8399,6 +8408,13 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
             }
 
             loot = &go->loot;
+
+            Player* recipient = go->GetLootRecipient();
+            if (!recipient)
+            {
+                go->SetLootRecipient(this);
+                recipient = this;
+            }
 
             // generate loot only if ready for open and spawned in world
             if (go->getLootState() == GO_READY && go->isSpawned())
@@ -8454,46 +8470,66 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
                     loot->clear();
                     loot->FillLoot(lootid, LootTemplates_Gameobject, this, false);
                     loot->generateMoneyLoot(go->GetGOInfo()->MinMoneyLoot, go->GetGOInfo()->MaxMoneyLoot);
+
+                    if (go->GetGoType() == GAMEOBJECT_TYPE_CHEST && go->GetGOInfo()->chest.groupLootRules)
+                    {
+                        if (Group* group = go->GetGroupLootRecipient())
+                        {
+                            group->UpdateLooterGuid(go, true);
+
+                            switch (group->GetLootMethod())
+                            {
+                                case GROUP_LOOT:
+                                    // GroupLoot delete items over threshold (threshold even not implemented), and roll them. Items with quality<threshold, round robin
+                                    group->GroupLoot(go, loot);
+                                    permission = GROUP_PERMISSION;
+                                    break;
+                                case NEED_BEFORE_GREED:
+                                    group->NeedBeforeGreed(go, loot);
+                                    permission = GROUP_PERMISSION;
+                                    break;
+                                case MASTER_LOOT:
+                                    group->MasterLoot(go, loot);
+                                    permission = MASTER_PERMISSION;
+                                    break;
+                                default:
+                                    break;
+                            }
+                        }
+                    }
                 }
                 else if (loot_type == LOOT_FISHING)
                     go->getFishLoot(loot,this);
 
                 go->SetLootState(GO_ACTIVATED);
             }
-
-            if ((go->getLootState() == GO_ACTIVATED) && (go->GetGoType() == GAMEOBJECT_TYPE_CHEST))
+            if (go->getLootState() == GO_ACTIVATED && 
+            go->GetGoType() == GAMEOBJECT_TYPE_CHEST && 
+            (go->GetGOInfo()->chest.groupLootRules || sWorld.getConfig(CONFIG_BOOL_LOOT_CHESTS_IGNORE_DB)))
             {
-                if (go->GetGOInfo()->chest.groupLootRules == 1 || sWorld.getConfig(CONFIG_BOOL_LOOT_CHESTS_IGNORE_DB))
+                if (Group* group = go->GetGroupLootRecipient())
                 {
-                    if (Group* group = GetGroup())
+                    if (group == GetGroup())
                     {
-                        if (group == go->GetGroupLootRecipient())
+                        if (group->GetLootMethod() == FREE_FOR_ALL)
+                            permission = ALL_PERMISSION;
+                        else if (group->GetLooterGuid() == GetObjectGuid())
                         {
-                            if (group->GetLootMethod() == FREE_FOR_ALL)
-                                permission = ALL_PERMISSION;
-                            else if (group->GetLooterGuid() == GetObjectGuid())
-                            {
-                                if (group->GetLootMethod() == MASTER_LOOT)
-                                    permission = MASTER_PERMISSION;
-                                else
-                                    permission = ALL_PERMISSION;
-                            }
+                            if (group->GetLootMethod() == MASTER_LOOT)
+                                permission = MASTER_PERMISSION;
                             else
-                                permission = GROUP_PERMISSION;
+                                permission = ALL_PERMISSION;
                         }
                         else
-                            permission = NONE_PERMISSION;
+                            permission = GROUP_PERMISSION;
                     }
-               }
-               else
-                   permission = ALL_PERMISSION;
-            }
-            // the player whose group may loot the corpse
-            Player* recipient = go->GetLootRecipient();
-            if (!recipient)
-            {
-                go->SetLootRecipient(this);
-                recipient = this;
+                    else
+                        permission = NONE_PERMISSION;
+                }
+                else if (recipient == this)
+                    permission = ALL_PERMISSION;
+                else
+                    permission = NONE_PERMISSION;
             }
             break;
         }
@@ -16147,13 +16183,18 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
 
     // init saved position, and fix it later if problematic
     uint32 transGUID = fields[30].GetUInt32();
-    Relocate(fields[12].GetFloat(),fields[13].GetFloat(),fields[14].GetFloat(),fields[16].GetFloat());
-    SetLocationMapId(fields[15].GetUInt32());
+    // Relocate(fields[12].GetFloat(),fields[13].GetFloat(),fields[14].GetFloat(),fields[16].GetFloat());
+    // SetLocationMapId(fields[15].GetUInt32());
 
-    uint32 difficulty = fields[38].GetUInt32();
-    if (difficulty >= MAX_DUNGEON_DIFFICULTY)
-        difficulty = DUNGEON_DIFFICULTY_NORMAL;
-    SetDungeonDifficulty(Difficulty(difficulty));           // may be changed in _LoadGroup
+    WorldLocation savedLocation = WorldLocation(fields[15].GetUInt32(),fields[12].GetFloat(),fields[13].GetFloat(),fields[14].GetFloat(),fields[16].GetFloat());
+
+    m_Difficulty = fields[38].GetUInt32();                  // may be changed in _LoadGroup
+
+    if (GetDungeonDifficulty() >= MAX_DUNGEON_DIFFICULTY)
+        SetDungeonDifficulty(DUNGEON_DIFFICULTY_NORMAL);
+
+    if (GetRaidDifficulty() >= MAX_RAID_DIFFICULTY)
+        SetRaidDifficulty(RAID_DIFFICULTY_10MAN_NORMAL);
 
     _LoadGroup(holder->GetResult(PLAYER_LOGIN_QUERY_LOADGROUP));
 
@@ -16187,14 +16228,24 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
 
     _LoadBoundInstances(holder->GetResult(PLAYER_LOGIN_QUERY_LOADBOUNDINSTANCES));
 
-    if (!IsPositionValid())
+    MapEntry const* mapEntry = sMapStore.LookupEntry(savedLocation.mapid);
+
+    if (!mapEntry || !MapManager::IsValidMapCoord(savedLocation) ||
+        // client without expansion support
+        GetSession()->Expansion() < mapEntry->Expansion())
     {
-        sLog.outError("%s have invalid coordinates (X: %f Y: %f Z: %f O: %f). Teleport to default race/class locations.",
-            guid.GetString().c_str(), GetPositionX(), GetPositionY(), GetPositionZ(), GetOrientation());
+        sLog.outError("Player::LoadFromDB player %s have invalid coordinates (map: %u X: %f Y: %f Z: %f O: %f). Teleport to default race/class locations.",
+            guid.GetString().c_str(), 
+            savedLocation.mapid,
+            savedLocation.coord_x,
+            savedLocation.coord_y,
+            savedLocation.coord_z,
+            savedLocation.orientation);
         RelocateToHomebind();
 
-        transGUID = 0;
+        GetPosition(savedLocation);                          // reset saved position to homebind
 
+        transGUID = 0;
         m_movementInfo.ClearTransportData();
     }
 
@@ -16202,9 +16253,13 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
 
     bool player_at_bg = false;
 
+    // player bounded instance saves loaded in _LoadBoundInstances, group versions at group loading
+    DungeonPersistentState* state = GetBoundInstanceSaveForSelfOrGroup(savedLocation.mapid);
+    Map* targetMap = sMapMgr.FindMap(savedLocation.mapid, state ? state->GetInstanceId() : 0);
+
     if (m_bgData.bgInstanceID)                              //saved in BattleGround
     {
-        BattleGround *currentBg = sBattleGroundMgr.GetBattleGround(m_bgData.bgInstanceID, BATTLEGROUND_TYPE_NONE);
+        BattleGround* currentBg = sBattleGroundMgr.GetBattleGround(m_bgData.bgInstanceID, BATTLEGROUND_TYPE_NONE);
 
         player_at_bg = currentBg && currentBg->IsPlayerInBattleGround(GetObjectGuid());
 
@@ -16243,14 +16298,23 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
     }
     else
     {
-        MapEntry const* mapEntry = sMapStore.LookupEntry(GetMapId());
+        mapEntry = sMapStore.LookupEntry(savedLocation.mapid);
         // if server restart after player save in BG or area
         // player can have current coordinates in to BG/Arena map, fix this
-        if(!mapEntry || mapEntry->IsBattleGroundOrArena())
+        if(mapEntry->IsBattleGroundOrArena())
         {
             const WorldLocation& _loc = GetBattleGroundEntryPoint();
-            SetLocationMapId(_loc.mapid);
-            Relocate(_loc.coord_x, _loc.coord_y, _loc.coord_z, _loc.orientation);
+            if (!MapManager::IsValidMapCoord(_loc))
+            {
+                RelocateToHomebind();
+                transGUID = 0;
+                m_movementInfo.ClearTransportData();
+            }
+            else
+            {
+                SetLocationMapId(_loc.mapid);
+                Relocate(_loc.coord_x, _loc.coord_y, _loc.coord_z, _loc.orientation);
+            }
 
             // We are not in BG anymore
             SetBattleGroundId(0, BATTLEGROUND_TYPE_NONE);
@@ -16259,7 +16323,53 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
         }
         // Cleanup LFG BG data, if char not in dungeon.
         else if (!mapEntry->IsDungeon())
+        {
             _SaveBGData(true);
+            // Saved location checked before
+            SetLocationMapId(savedLocation.mapid);
+            Relocate(savedLocation.coord_x, savedLocation.coord_y, savedLocation.coord_z, savedLocation.orientation);
+        }
+        else if (mapEntry->IsDungeon())
+        {
+            AreaTrigger const* gt = sObjectMgr.GetGoBackTrigger(savedLocation.mapid);
+
+            if (gt)
+            {
+                // always put player at goback trigger before porting to instance
+
+                SetLocationMapId(gt->target_mapId);
+                Relocate(gt->target_X, gt->target_Y, gt->target_Z, gt->target_Orientation);
+
+                AreaTrigger const* at = sObjectMgr.GetMapEntranceTrigger(savedLocation.mapid);
+
+                if (at)
+                {
+                    if (CheckTransferPossibility(at))
+                    {
+                        if (!state)
+                        {
+                            SetLocationMapId(at->target_mapId);
+                            Relocate(at->target_X, at->target_Y, at->target_Z, at->target_Orientation);
+                        }
+                        else
+                        {
+                            SetLocationMapId(savedLocation.mapid);
+                            Relocate(savedLocation.coord_x, savedLocation.coord_y, savedLocation.coord_z, savedLocation.orientation);
+                        }
+                    }
+                    else
+                        sLog.outError("Player::LoadFromDB %s try logged to instance (map: %u, difficulty %u), but transfer to map impossible. This _might_ be an exploit attempt.", GetObjectGuid().GetString().c_str(), savedLocation.mapid, GetDifficulty());
+                }
+                else
+                    sLog.outError("Player::LoadFromDB %s logged in to a reset instance (map: %u, difficulty %u) and there is no area-trigger leading to this map. Thus he can't be ported back to the entrance. This _might_ be an exploit attempt.", GetObjectGuid().GetString().c_str(), savedLocation.mapid, GetDifficulty());
+            }
+            else
+            {
+                transGUID = 0;
+                m_movementInfo.ClearTransportData();
+                RelocateToHomebind();
+            }
+        }
     }
 
     if (transGUID != 0)
@@ -16319,34 +16429,14 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
             transGUID = 0;
         }
     }
-    else                                                    // not transport case
-    {
-        MapEntry const* mapEntry = sMapStore.LookupEntry(GetMapId());
-        // client without expansion support
-        if (GetSession()->Expansion() < mapEntry->Expansion())
-        {
-            DEBUG_LOG("Player %s using client without required expansion tried login at non accessible map %u", GetName(), GetMapId());
-            RelocateToHomebind();
-        }
-    }
-
-    // player bounded instance saves loaded in _LoadBoundInstances, group versions at group loading
-    DungeonPersistentState* state = GetBoundInstanceSaveForSelfOrGroup(GetMapId());
 
     // load the player's map here if it's not already loaded
-    if (Map* map = sMapMgr.CreateMap(GetMapId(), this))
-        SetMap(map);
-    else
-        RelocateToHomebind();
-
-    // if the player not at BG and is in an instance and it has been reset in the meantime teleport him to the entrance
-    if (!player_at_bg && GetInstanceId() && !state)
+    if (!GetMap())
     {
-        AreaTrigger const* at = sObjectMgr.GetMapEntranceTrigger(GetMapId());
-        if (at)
-            Relocate(at->target_X, at->target_Y, at->target_Z, at->target_Orientation);
+        if (Map* map = sMapMgr.CreateMap(GetMapId(), this))
+            SetMap(map);
         else
-            sLog.outError("Player %s(GUID: %u) logged in to a reset instance (map: %u) and there is no area-trigger leading to this map. Thus he can't be ported back to the entrance. This _might_ be an exploit attempt.", GetName(), GetGUIDLow(), GetMapId());
+            RelocateToHomebind();
     }
 
     SaveRecallPosition();
@@ -18055,7 +18145,7 @@ void Player::SaveToDB()
     if(!IsBeingTeleported())
     {
         uberInsert.addUInt32(GetMapId());
-        uberInsert.addUInt32(uint32(GetDungeonDifficulty()));
+        uberInsert.addUInt32(GetDifficulty());
         uberInsert.addFloat(finiteAlways(GetPositionX()));
         uberInsert.addFloat(finiteAlways(GetPositionY()));
         uberInsert.addFloat(finiteAlways(GetPositionZ()));
@@ -18064,7 +18154,7 @@ void Player::SaveToDB()
     else
     {
         uberInsert.addUInt32(GetTeleportDest().mapid);
-        uberInsert.addUInt32(uint32(GetDungeonDifficulty()));
+        uberInsert.addUInt32(GetDifficulty());
         uberInsert.addFloat(finiteAlways(GetTeleportDest().coord_x));
         uberInsert.addFloat(finiteAlways(GetTeleportDest().coord_y));
         uberInsert.addFloat(finiteAlways(GetTeleportDest().coord_z));
@@ -22047,17 +22137,21 @@ void Player::UpdateZoneDependentAuras()
 void Player::UpdateAreaDependentAuras()
 {
     // remove auras from spells with area limitations
-    for(SpellAuraHolderMap::iterator iter = m_spellAuraHolders.begin(); iter != m_spellAuraHolders.end();)
+    SpellIdSet toRemoveSpellList;
     {
-        // use m_zoneUpdateId for speed: UpdateArea called from UpdateZone or instead UpdateZone in both cases m_zoneUpdateId up-to-date
-        if (iter->second && (sSpellMgr.GetSpellAllowedInLocationError(iter->second->GetSpellProto(), GetMapId(), m_zoneUpdateId, m_areaUpdateId, this) != SPELL_CAST_OK))
+        MAPLOCK_READ(this,MAP_LOCK_TYPE_AURAS);
+        SpellAuraHolderMap const& holdersMap = GetSpellAuraHolderMap();
+        for(SpellAuraHolderMap::const_iterator iter = holdersMap.begin(); iter != holdersMap.end(); ++iter)
         {
-            RemoveSpellAuraHolder(iter->second);
-            iter = m_spellAuraHolders.begin();
+            // use m_zoneUpdateId for speed: UpdateArea called from UpdateZone or instead UpdateZone in both cases m_zoneUpdateId up-to-date
+            if (iter->second && (sSpellMgr.GetSpellAllowedInLocationError(iter->second->GetSpellProto(), GetMapId(), m_zoneUpdateId, m_areaUpdateId, this) != SPELL_CAST_OK))
+                toRemoveSpellList.insert(iter->first);
         }
-        else
-            ++iter;
     }
+
+    if (!toRemoveSpellList.empty())
+        for (SpellIdSet::iterator i = toRemoveSpellList.begin(); i != toRemoveSpellList.end(); ++i)
+            RemoveAurasDueToSpell(*i);
 
     // some auras applied at subzone enter
     SpellAreaForAreaMapBounds saBounds = sSpellMgr.GetSpellAreaForAreaMapBounds(m_areaUpdateId);
@@ -23714,6 +23808,11 @@ void Player::ActivateSpec(uint8 specNum)
                 if (talentInfo->RankID[r])
                 {
                     removeSpell(talentInfo->RankID[r],!IsPassiveSpell(talentInfo->RankID[r]),false);
+
+                    SpellEntry const *spellInfo = sSpellStore.LookupEntry(talentInfo->RankID[r]);
+                    for (int k = 0; k < MAX_EFFECT_INDEX; ++k)
+                        if (spellInfo->EffectTriggerSpell[k])
+                            removeSpell(spellInfo->EffectTriggerSpell[k]);
 
                     // if spell is a buff, remove it from group members
                     // TODO: this should affect all players, not only group members?

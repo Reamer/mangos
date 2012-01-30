@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -256,6 +256,16 @@ inline bool IsDeathOnlySpell(SpellEntry const *spellInfo)
         || spellInfo->Id == 2584;
 }
 
+bool IsEffectCauseDamage(SpellEntry const* spellInfo, SpellEffectIndex effecIdx);
+
+inline bool IsSpellCauseDamage(SpellEntry const* spellInfo)
+{
+    for (int i = 0; i < MAX_EFFECT_INDEX; ++i)
+        if (IsEffectCauseDamage(spellInfo, SpellEffectIndex(i)))
+            return true;
+    return false;
+}
+
 inline bool IsCrowdControlAura(AuraType aura)
 {
     return (aura == SPELL_AURA_MOD_CONFUSE ||
@@ -271,7 +281,6 @@ inline bool IsDeathPersistentSpell(SpellEntry const *spellInfo)
 {
     return spellInfo->AttributesEx3 & SPELL_ATTR_EX3_DEATH_PERSISTENT;
 }
-
 inline bool IsNonCombatSpell(SpellEntry const *spellInfo)
 {
     return (spellInfo->Attributes & SPELL_ATTR_CANT_USED_IN_COMBAT) != 0;

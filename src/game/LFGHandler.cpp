@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -325,7 +325,7 @@ void WorldSession::HandleLfgPartyLockInfoRequestOpcode(WorldPacket & /*recv_data
     }
     else
     {
-        std::map<ObjectGuid,LFGLockStatusMap const*> lockMap;
+        std::map<ObjectGuid,LFGLockStatusMap const> lockMap;
         lockMap.clear();
         uint8 membersCount = 0;
 
@@ -333,12 +333,12 @@ void WorldSession::HandleLfgPartyLockInfoRequestOpcode(WorldPacket & /*recv_data
         {
             Player* player = itr->getSource();
 
-            if (!player->IsInWorld())
+            if (!player || !player->IsInWorld())
                 continue;
 
-            LFGLockStatusMap const* lockSet = player->GetLFGState()->GetLockMap();
+            LFGLockStatusMap const lockSet = *player->GetLFGState()->GetLockMap();
 
-            size += 8 + 4 + lockSet->size() * (4 + 4);
+            size += 8 + 4 + lockSet.size() * (4 + 4);
 
             lockMap.insert(std::make_pair(player->GetObjectGuid(), lockSet));
             membersCount++;
@@ -348,14 +348,14 @@ void WorldSession::HandleLfgPartyLockInfoRequestOpcode(WorldPacket & /*recv_data
 
         data << membersCount;
 
-        for (std::map<ObjectGuid,LFGLockStatusMap const*>::const_iterator  itr1 = lockMap.begin(); itr1 != lockMap.end(); ++itr1)
+        for (std::map<ObjectGuid,LFGLockStatusMap const>::const_iterator  itr1 = lockMap.begin(); itr1 != lockMap.end(); ++itr1)
         {
 
             data << itr1->first;
-            for (LFGLockStatusMap::const_iterator itr2 = itr1->second->begin(); itr2 != itr1->second->end(); ++itr2)
+            for (LFGLockStatusMap::const_iterator itr2 = itr1->second.begin(); itr2 != itr1->second.end(); ++itr2)
             {
-                data << uint32((*itr2->first).Entry());                   // Dungeon entry + type
-                data << uint32(itr2->second);                             // Lock status
+                data << uint32(itr2->first->Entry());                   // Dungeon entry + type
+                data << uint32(itr2->second);                          // Lock status
             }
         }
 

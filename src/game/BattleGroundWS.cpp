@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -421,7 +421,7 @@ void BattleGroundWS::EventPlayerClickedOnFlag(Player* Source, GameObject* target
     else
     {
         // Flag on ground (not in base). Return or picked up again.
-        if (GetFlagState(ALLIANCE) == BG_WS_FLAG_STATE_ON_GROUND || GetFlagState(HORDE) == BG_WS_FLAG_STATE_ON_GROUND &&
+        if ((GetFlagState(ALLIANCE) == BG_WS_FLAG_STATE_ON_GROUND || GetFlagState(HORDE) == BG_WS_FLAG_STATE_ON_GROUND) &&
             Source->IsWithinDistInMap(target_obj, 10.0f))
         {
             Team team = A ? ALLIANCE : HORDE;

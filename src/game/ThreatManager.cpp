@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -298,8 +298,8 @@ bool ThreatContainer::IsSecondChoiceTarget(Creature* pAttacker, Unit* pTarget, b
     return
         pTarget->IsImmunedToDamage(pAttacker->GetMeleeDamageSchoolMask()) ||
         pTarget->hasNegativeAuraWithInterruptFlag(AURA_INTERRUPT_FLAG_DAMAGE) ||
-        bCheckThreatArea && pAttacker->IsOutOfThreatArea(pTarget) ||
-        bCheckMeleeRange && !pAttacker->CanReachWithMeleeAttack(pTarget);
+        (bCheckThreatArea && pAttacker->IsOutOfThreatArea(pTarget)) ||
+        (bCheckMeleeRange && !pAttacker->CanReachWithMeleeAttack(pTarget));
 }
 
 //============================================================
@@ -321,7 +321,11 @@ HostileReference* ThreatContainer::selectNextVictim(Creature* pAttacker, Hostile
         pCurrentRef = (*iter);
 
         Unit* pTarget = pCurrentRef->getTarget();
-        MANGOS_ASSERT(pTarget);                             // if the ref has status online the target must be there!
+
+//        MANGOS_ASSERT(pTarget);                             // if the ref has status online the target must be there!
+
+        if (!pTarget)
+            continue;
 
         MAPLOCK_READ(pTarget, MAP_LOCK_TYPE_DEFAULT);
         // some units are prefered in comparison to others
@@ -588,7 +592,10 @@ void ThreatManager::processThreatEvent(ThreatRefStatusChangeEvent* threatRefStat
                     setCurrentVictim(NULL);
                     setDirty(true);
                 }
-                iOwner->SendThreatRemove(hostileReference);
+                if (getOwner() && getOwner()->IsInWorld())
+                    if (Unit* target = ObjectAccessor::GetUnit(*getOwner(), hostileReference->getUnitGuid()))
+                        if (getOwner()->IsInMap(target))
+                            getOwner()->SendThreatRemove(hostileReference);
                 iThreatContainer.remove(hostileReference);
                 iUpdateNeed = true;
                 iThreatOfflineContainer.addReference(hostileReference);
@@ -610,7 +617,10 @@ void ThreatManager::processThreatEvent(ThreatRefStatusChangeEvent* threatRefStat
             }
             if(hostileReference->isOnline())
             {
-                iOwner->SendThreatRemove(hostileReference);
+                if (getOwner() && getOwner()->IsInWorld())
+                    if (Unit* target = ObjectAccessor::GetUnit(*getOwner(), hostileReference->getUnitGuid()))
+                        if (getOwner()->IsInMap(target))
+                            getOwner()->SendThreatRemove(hostileReference);
                 iThreatContainer.remove(hostileReference);
                 iUpdateNeed = true;
             }

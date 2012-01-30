@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -98,7 +98,7 @@ pAuraProcHandler AuraProcHandler[TOTAL_AURAS]=
     &Unit::HandleNULLProc,                                  // 63 unused (3.0.8a-3.2.2a) old SPELL_AURA_PERIODIC_MANA_FUNNEL
     &Unit::HandleNULLProc,                                  // 64 SPELL_AURA_PERIODIC_MANA_LEECH
     &Unit::HandleModCastingSpeedNotStackAuraProc,           // 65 SPELL_AURA_MOD_CASTING_SPEED_NOT_STACK
-    &Unit::HandleNULLProc,                                  // 66 SPELL_AURA_FEIGN_DEATH
+    &Unit::HandleRemoveByDamageProc,                        // 66 SPELL_AURA_FEIGN_DEATH
     &Unit::HandleNULLProc,                                  // 67 SPELL_AURA_MOD_DISARM
     &Unit::HandleNULLProc,                                  // 68 SPELL_AURA_MOD_STALKED
     &Unit::HandleNULLProc,                                  // 69 SPELL_AURA_SCHOOL_ABSORB
@@ -1034,6 +1034,12 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                 case 68160:
                     triggered_spell_id = 66809;
                     break;
+                // Dark Hunger (Lich King)
+                case 69383:
+                    basepoints[0] = 0.5f * damage;
+                    target = this;
+                    triggered_spell_id = 69384;
+                    break;
                 // Shiny Shard of the Scale - Equip Effect
                 case 69739:
                     // Cauterizing Heal or Searing Flame
@@ -1055,11 +1061,12 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                     target = this;
                     break;
                 }
+                // Essence of the Blood Queen
                 case 70871:
                 {
-                    // Soul of Blood qween
                     triggered_spell_id = 70872;
-                    basepoints[0] = int32(triggerAmount* damage /100);
+                    target = this;
+                    basepoints[0] = int32((damage * triggerAmount) / 100.0f);
                     if (basepoints[0] < 0)
                         return SPELL_AURA_PROC_FAILED;
                     break;
@@ -2538,14 +2545,22 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                 // Sacred Shield (buff)
                 case 58597:
                 {
-                    triggered_spell_id = 66922;
                     basepoints[0] = int32(damage / GetSpellAuraMaxTicks(triggered_spell_id));
+
                     target = this;
                     break;
                 }
                 // Sacred Shield (talent rank)
                 case 53601:
                 {
+                    if (procSpell && IsFriendlyTo(pVictim))
+                    {
+                        if (procSpell->SpellFamilyFlags.test<CF_PALADIN_FLASH_OF_LIGHT>() && (pVictim->HasAura(53569, EFFECT_INDEX_0) || pVictim->HasAura(53576, EFFECT_INDEX_0)))
+                            triggered_spell_id = 66922;
+                        else
+                            return SPELL_AURA_PROC_FAILED;
+                    }
+
                     // triggered_spell_id in spell data
                     target = this;
                     break;
@@ -3675,10 +3690,24 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(Unit *pVictim, uint32 d
 
                     return SPELL_AURA_PROC_OK;
                 }
+                case 71494:                                 // Vengeful Blast
+                {
+                    // despawn Vengeful Shade after proc
+                    if  (GetTypeId() == TYPEID_UNIT)
+                        ((Creature*)this)->ForcedDespawn(1000);
+                    break;
+                }
                 case 72178:                                 // Blood link Saurfang aura
                 {
                     target = this;
                     trigger_spell_id = 72195;
+                    break;
+                }
+                case 72408:                                 // Rune of Blood (Saurfang)
+                {
+                    // Proc on targets with dummy aura (debuff cast by Saurfang)
+                    if (pVictim && !pVictim->HasAura(72410))
+                        return SPELL_AURA_PROC_FAILED;
                     break;
                 }
             }
@@ -4316,7 +4345,7 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(Unit *pVictim, uint32 d
         // Enlightenment (trigger only from mana cost spells)
         case 35095:
         {
-            if(!procSpell || procSpell->powerType!=POWER_MANA || procSpell->manaCost==0 && procSpell->ManaCostPercentage==0 && procSpell->manaCostPerlevel==0)
+            if(!procSpell || procSpell->powerType!=POWER_MANA || (procSpell->manaCost==0 && procSpell->ManaCostPercentage==0 && procSpell->manaCostPerlevel==0))
                 return SPELL_AURA_PROC_FAILED;
             break;
         }
@@ -4427,8 +4456,14 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(Unit *pVictim, uint32 d
             // Proc only from trap activation (from periodic proc another aura of this spell)
             // because some spells have both flags (ON_TRAP_ACTIVATION and ON_PERIODIC), but should only proc ON_PERIODIC!!
             if (!(procFlags & PROC_FLAG_ON_TRAP_ACTIVATION) || !procSpell ||
-                !(procSpell->SchoolMask & SPELL_SCHOOL_MASK_FROST) || !roll_chance_i(triggerAmount))
+                !(procSpell->SchoolMask & (SPELL_SCHOOL_MASK_FROST | SPELL_SCHOOL_MASK_NATURE)) || !roll_chance_i(triggerAmount))
+            {
                 return SPELL_AURA_PROC_FAILED;
+            }
+            // don't proc Explosive Trap on triggering (only on periodic, in other aura proc)
+            else if (procSpell->SpellFamilyFlags.test<CF_HUNTER_FIRE_TRAP_EFFECTS>())
+                return SPELL_AURA_PROC_FAILED;
+
             break;
         }
         // Freezing Fog (Rime triggered)
@@ -5034,6 +5069,13 @@ SpellAuraProcResult Unit::HandleRemoveByDamageProc(Unit* pVictim, uint32 damage,
             return SPELL_AURA_PROC_FAILED;
     }
 
+    if (procSpell && triggeredByAura->GetModifier()->m_auraname == SPELL_AURA_MOD_STEALTH)
+    {
+            if (procSpell->AttributesEx & (SPELL_ATTR_EX_NOT_BREAK_STEALTH | SPELL_ATTR_EX_NO_THREAT) ||
+                procSpell->AttributesEx2 & SPELL_ATTR_EX2_UNK28)
+            return SPELL_AURA_PROC_FAILED;
+    }
+
     triggeredByAura->SetInUse(true);
     RemoveAurasByCasterSpell(triggeredByAura->GetSpellProto()->Id, triggeredByAura->GetCasterGuid());
     triggeredByAura->SetInUse(false);
@@ -5164,14 +5206,16 @@ SpellAuraProcResult Unit::IsTriggeredAtCustomProcEvent(Unit *pVictim, SpellAuraH
                 case SPELL_AURA_MOD_ROOT:
                 case SPELL_AURA_TRANSFORM:
                 {
-                    if ((EventProcFlag || spellProcEvent) &&
-                        procFlag & PROC_FLAG_TAKEN_ANY_DAMAGE &&
+                    if (procFlag & PROC_FLAG_TAKEN_ANY_DAMAGE &&
                         (spellProto->AuraInterruptFlags & AURA_INTERRUPT_FLAG_DAMAGE ||
                         spellProto->Attributes & SPELL_ATTR_BREAKABLE_BY_DAMAGE))
                         return SPELL_AURA_PROC_OK;
-                    else if (procFlag & PROC_FLAG_TAKEN_ANY_DAMAGE &&
-                        (spellProto->AuraInterruptFlags & AURA_INTERRUPT_FLAG_DAMAGE &&
-                        spellProto->AttributesEx & SPELL_ATTR_EX_BREAKABLE_BY_ANY_DAMAGE))
+                    if ((procFlag & PROC_FLAG_TAKEN_ANY_DAMAGE ||
+                        procExtra & PROC_EX_ABSORB) &&
+                        (spellProto->AttributesEx & SPELL_ATTR_EX_BREAKABLE_BY_ANY_DAMAGE &&
+                        (spellProto->AuraInterruptFlags & AURA_INTERRUPT_FLAG_DIRECT_DAMAGE ||
+                        spellProto->AuraInterruptFlags & AURA_INTERRUPT_FLAG_DAMAGE ||
+                        spellProto->Attributes & SPELL_ATTR_BREAKABLE_BY_DAMAGE)))
                         return SPELL_AURA_PROC_OK;
                     else if (EventProcFlag || spellProcEvent)
                         return SPELL_AURA_PROC_FAILED;
@@ -5182,13 +5226,21 @@ SpellAuraProcResult Unit::IsTriggeredAtCustomProcEvent(Unit *pVictim, SpellAuraH
                     if (procFlag & PROC_FLAG_TAKEN_MELEE_HIT)
                         return SPELL_AURA_PROC_OK;
                     break;
+                // Fake death auras
+                case SPELL_AURA_FEIGN_DEATH:
+                // Invisibility auras
                 case SPELL_AURA_MOD_STEALTH:
                 case SPELL_AURA_MOD_INVISIBILITY:
                 {
-                    if (procFlag & DAMAGE_OR_HIT_TRIGGER_MASK &&
-                        spellProto->AuraInterruptFlags & AURA_INTERRUPT_FLAG_DAMAGE)
+                    if ((procFlag & PROC_FLAG_TAKEN_ANY_DAMAGE ||
+                        procExtra & PROC_EX_DIRECT_DAMAGE) &&
+                        !(procFlag &  PROC_FLAG_TAKEN_AOE_SPELL_HIT ||
+                        procFlag &  PROC_FLAG_ON_TAKE_PERIODIC))
                         return SPELL_AURA_PROC_OK;
-                    break;
+                    else if (EventProcFlag || spellProcEvent)
+                        return SPELL_AURA_PROC_FAILED;
+                    else
+                        return SPELL_AURA_PROC_CANT_TRIGGER;
                 }
                 default:
                     break;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2103,7 +2103,7 @@ GameObject* BattleGround::GetBGObject(uint32 type)
 
 uint32 BattleGround::GetPlayerScore(Player *Source, uint32 type)
 {
-    BattleGroundScoreMap::const_iterator itr = m_PlayerScores.find(Source->GetGUID());
+    BattleGroundScoreMap::const_iterator itr = m_PlayerScores.find(Source->GetObjectGuid());
 
     if (itr == m_PlayerScores.end())                         // player not found...
         return 0;

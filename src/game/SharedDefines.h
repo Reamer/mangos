@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1147,6 +1147,9 @@ enum Mechanics
     (1<<(MECHANIC_STUN   -1))|(1<<(MECHANIC_FREEZE     -1))|(1<<(MECHANIC_BANISH-1))| \
     (1<<(MECHANIC_SHACKLE-1))|(1<<(MECHANIC_HORROR     -1))|(1<<(MECHANIC_TURN  -1))| \
     (1<<(MECHANIC_DAZE   -1))|(1<<(MECHANIC_SAPPED     -1)))
+
+#define IMMUNE_BY_UNVULNERABILITY_MASK ( \
+    (1<<(MECHANIC_SHIELD-1))|(1<<(MECHANIC_INVULNERABILITY-1))|(1<<(MECHANIC_IMMUNE_SHIELD-1)))
 
 // Spell dispell type
 enum DispelType
@@ -2426,25 +2429,6 @@ inline SkillType SkillByLockType(LockType locktype)
         default: break;
     }
     return SKILL_NONE;
-}
-
-inline uint32 SkillByQuestSort(int32 QuestSort)
-{
-    switch(QuestSort)
-    {
-        case QUEST_SORT_HERBALISM:      return SKILL_HERBALISM;
-        case QUEST_SORT_FISHING:        return SKILL_FISHING;
-        case QUEST_SORT_BLACKSMITHING:  return SKILL_BLACKSMITHING;
-        case QUEST_SORT_ALCHEMY:        return SKILL_ALCHEMY;
-        case QUEST_SORT_LEATHERWORKING: return SKILL_LEATHERWORKING;
-        case QUEST_SORT_ENGINEERING:    return SKILL_ENGINEERING;
-        case QUEST_SORT_TAILORING:      return SKILL_TAILORING;
-        case QUEST_SORT_COOKING:        return SKILL_COOKING;
-        case QUEST_SORT_FIRST_AID:      return SKILL_FIRST_AID;
-        case QUEST_SORT_JEWELCRAFTING:  return SKILL_JEWELCRAFTING;
-        case QUEST_SORT_INSCRIPTION:    return SKILL_INSCRIPTION;
-    }
-    return 0;
 }
 
 enum SkillCategory

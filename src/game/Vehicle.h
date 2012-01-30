@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -102,11 +102,12 @@ class MANGOS_DLL_SPEC VehicleKit
 class PassengerEjectEvent : public BasicEvent
 {
     public:
-        PassengerEjectEvent(Unit* passenger) : BasicEvent(), m_passenger(passenger) {}
+        PassengerEjectEvent(uint8 seatId, Unit& vehicle) : BasicEvent(), m_seatId(seatId), m_vehicle(vehicle) {}
         bool Execute(uint64 e_time, uint32 p_time);
 
     private:
-        Unit* m_passenger;
+        uint8 m_seatId;
+        Unit& m_vehicle;
 };
 
 #endif
