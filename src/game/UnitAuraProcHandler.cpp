@@ -2106,26 +2106,6 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura
                     triggered_spell_id = 32747;
                     break;
                 }
-                // Glyph of Backstab
-                case 56800:
-                {
-                    if (Aura* aura = target->GetAura(SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_ROGUE, UI64LIT(0x00100000), 0, GetGUID()))
-                    {
-                        uint32 countMin = aura->GetAuraMaxDuration();
-                        uint32 countMax = GetSpellMaxDuration(aura->GetSpellProto());
-                        countMax += 3 * triggerAmount * 1000;
-                        countMax += HasAura(56801) ? 4000 : 0;
-
-                        if (countMin < countMax)
-                        {
-                            aura->GetHolder()->SetAuraDuration(aura->GetAuraDuration() + triggerAmount * 1000);
-                            aura->GetHolder()->SetAuraMaxDuration(countMin + triggerAmount * 1000);
-                            aura->GetHolder()->SendAuraUpdate(false);
-                            return SPELL_AURA_PROC_OK;
-                        }
-                    }
-                    return SPELL_AURA_PROC_FAILED;
-                }
                 // Tricks of the trade
                 case 57934:
                 {

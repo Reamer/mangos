@@ -8345,6 +8345,7 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
             }
             // always return true -> perfect group all behind icebolt(iceblocks) -> no targets
             return true;
+        }
         case 19185: // Entrapment
         case 64803:
         case 64804:
