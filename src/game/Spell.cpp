@@ -8635,16 +8635,21 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
             }
             break;
         }
-        case 52659: // Static Overload (normal&heroic) (Ionar in Halls of Lightning)
-        case 59796:
-        case 63023: // Searing Light (normal&heroic) (XT-002 in Ulduar)
-        case 65120:
+        case 50811: // Shatter (normal&heroic) (Krystallus in Halls of Stone)
+        case 61547:
         case 63025: // Gravity Bomb (XT-002 in Ulduar) - exclude caster from pull and double damage
         case 64233:
         {
             FillAreaTargets(targetUnitMap, radius, PUSH_DEST_CENTER, SPELL_TARGETS_HOSTILE);
-            if (m_spellInfo->Id == 63025 || m_spellInfo->Id == 64233)
-                targetUnitMap.remove(m_caster);
+            targetUnitMap.remove(m_caster);
+            break;
+        }
+        case 52659: // Static Overload (normal&heroic) (Ionar in Halls of Lightning)
+        case 59796:
+        case 63023: // Searing Light (normal&heroic) (XT-002 in Ulduar)
+        case 65120:
+        {
+            FillAreaTargets(targetUnitMap, radius, PUSH_DEST_CENTER, SPELL_TARGETS_HOSTILE);
             break;
         }
         case 63278: // Mark of Faceless
