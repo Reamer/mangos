@@ -613,8 +613,8 @@ void DungeonResetScheduler::Update()
     while(!m_resetTimeQueue.empty() && (m_resetTimeQueue.begin()->first) < now)
     {
         sLog.outError("----------DungeonResetScheduler beginnt---------");
-        sLog.outError("Derzeitige Uhrzeit: %l",now);
-        sLog.outError("Listenl‰nge: %u",m_resetTimeQueue.size());
+        sLog.outError("Derzeitige Uhrzeit: %li",now);
+        sLog.outError("Listenl√§nge: %u",m_resetTimeQueue.size());
         DungeonResetEvent &event = m_resetTimeQueue.begin()->second;
         if (event.type == RESET_EVENT_NORMAL_DUNGEON)
         {
@@ -629,7 +629,7 @@ void DungeonResetScheduler::Update()
             // global reset/warning for a certain map
             time_t resetTime = GetResetTimeFor(event.mapid,event.difficulty);
             //MapDifficultyEntry const* mapDiff = GetMapDifficultyData(event.mapid,event.difficulty);
-            sLog.outError("Resetzeit: %d", resetTime);
+            sLog.outError("Resetzeit: %li", resetTime);
             sLog.outError("EventType: %u", event.type);
             m_InstanceSaves._ResetOrWarnAll(event.mapid, event.difficulty, event.type != RESET_EVENT_INFORM_LAST, resetTime);
             if(event.type != RESET_EVENT_INFORM_LAST)
@@ -646,7 +646,7 @@ void DungeonResetScheduler::Update()
                 MANGOS_ASSERT(mapDiff);
 
                 time_t next_reset = DungeonResetScheduler::CalculateNextResetTime(mapDiff);
-                sLog.outError("n‰chster Reset in %u f¸r Map %u und Difficult %u", (uint64)next_reset, uint32(event.mapid), uint32(event.difficulty));
+                sLog.outError("n√§chster Reset in %li f√ºr Map %u und Difficult %u", next_reset, uint32(event.mapid), uint32(event.difficulty));
                 CharacterDatabase.DirectPExecute("UPDATE instance_reset SET resettime = '"UI64FMTD"' WHERE mapid = '%u' AND difficulty = '%u'", (uint64)next_reset, uint32(event.mapid), uint32(event.difficulty));
 
                 SetResetTimeFor(event.mapid, event.difficulty, next_reset);
@@ -658,13 +658,13 @@ void DungeonResetScheduler::Update()
 
                 // add new scheduler event to the queue
                 event.type = type;
-                sLog.outError("n‰chster Event in %l ; Type: %u", next_reset - resetEventTypeDelay[event.type], event.type);
+                sLog.outError("n√§chster Event in %li ; Type: %u", next_reset - resetEventTypeDelay[event.type], event.type);
                 ScheduleReset(true, next_reset - resetEventTypeDelay[event.type], event);
             }
         }
-        sLog.outError("lˆschen des ersten Eintrags");
+        sLog.outError("l√∂schen des ersten Eintrags");
         m_resetTimeQueue.erase(m_resetTimeQueue.begin());
-        sLog.outError("Listenl‰nge: %u",m_resetTimeQueue.size());
+        sLog.outError("Listenl√§nge: %u",m_resetTimeQueue.size());
     }
 }
 
@@ -933,10 +933,12 @@ void MapPersistentStateManager::_ResetInstance(uint32 mapid, uint32 instanceId)
 //            MANGOS_ASSERT(iMap->IsDungeon());
 
             if (iMap->IsDungeon())
+            {
                 if (((DungeonMap*)iMap)->Reset(INSTANCE_RESET_RESPAWN_DELAY))
                     sLog.outError("Reset der Instanz - Erfolg");
                 else
                     sLog.outError("Reset der Instanz - KEIN Erfolg");
+            }
             return;
         }
 
@@ -959,7 +961,7 @@ void MapPersistentStateManager::_ResetOrWarnAll(uint32 mapid, Difficulty difficu
         return;
 
     time_t now = time(NULL);
-    sLog.outError("Derzeitige Uhrzeit: %l",now);
+    sLog.outError("Derzeitige Uhrzeit: %li",now);
     if (!warn)
     {
         MapDifficultyEntry const* mapDiff = GetMapDifficultyData(mapid,difficulty);
@@ -978,7 +980,7 @@ void MapPersistentStateManager::_ResetOrWarnAll(uint32 mapid, Difficulty difficu
                 ++itr;
         }
 
-        sLog.outError("Sql-Eintr‰ge in character_instance, group_instance und instance entfernen");
+        sLog.outError("Sql-Eintr√§ge in character_instance, group_instance und instance entfernen");
         // delete them from the DB, even if not loaded
         CharacterDatabase.BeginTransaction();
         CharacterDatabase.PExecute("DELETE FROM character_instance USING character_instance LEFT JOIN instance ON character_instance.instance = id WHERE map = '%u'", mapid);
@@ -988,7 +990,7 @@ void MapPersistentStateManager::_ResetOrWarnAll(uint32 mapid, Difficulty difficu
 
         // calculate the next reset time
         time_t next_reset = DungeonResetScheduler::CalculateNextResetTime(mapDiff);
-        sLog.outError("n‰chster Reset in %u f¸r Map %u und Difficult %u", (uint64)next_reset, mapid, difficulty);
+        sLog.outError("n√§chster Reset in %li f√ºr Map %u und Difficult %u", next_reset, mapid, difficulty);
         // update it in the DB
         CharacterDatabase.PExecute("UPDATE instance_reset SET resettime = '"UI64FMTD"' WHERE mapid = '%u' AND difficulty = '%u'", (uint64)next_reset, mapid, difficulty);
     }
