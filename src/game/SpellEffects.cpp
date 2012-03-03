@@ -6499,11 +6499,6 @@ void Spell::DoSummonWild(SpellEffectIndex eff_idx, uint32 forceFaction)
     float center_y = m_targets.m_destY;
     float center_z = m_targets.m_destZ;
 
-    float ox, oy, oz;
-    m_caster->GetPosition(ox, oy, oz);
-    m_caster->GetTerrain()->CheckPathAccurate(ox,oy,oz, center_x, center_y, center_z, sWorld.getConfig(CONFIG_BOOL_CHECK_GO_IN_PATH) ? m_caster : NULL );
-    m_caster->UpdateAllowedPositionZ(center_x,center_y,center_z);
-
     float radius = GetSpellRadius(sSpellRadiusStore.LookupEntry(m_spellInfo->EffectRadiusIndex[eff_idx]));
     // Special Summon Cases
     switch (m_spellInfo->Id)
@@ -6526,6 +6521,7 @@ void Spell::DoSummonWild(SpellEffectIndex eff_idx, uint32 forceFaction)
     for(int32 count = 0; count < amount; ++count)
     {
         float px, py, pz;
+        bool checkPath = false;
         // If dest location if present
         if (m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION)
         {
@@ -6538,7 +6534,10 @@ void Spell::DoSummonWild(SpellEffectIndex eff_idx, uint32 forceFaction)
             }
             // Summon in random point all other units if location present
             else
+            {
                 m_caster->GetRandomPoint(center_x, center_y, center_z, radius, px, py, pz);
+                checkPath = true;
+            }
         }
         // Summon if dest location not present near caster
         else
@@ -6547,6 +6546,7 @@ void Spell::DoSummonWild(SpellEffectIndex eff_idx, uint32 forceFaction)
             {
                 // not using bounding radius of caster here
                 m_caster->GetClosePoint(px, py, pz, 0.0f, radius);
+                checkPath = true;
             }
             else
             {
@@ -6557,8 +6557,13 @@ void Spell::DoSummonWild(SpellEffectIndex eff_idx, uint32 forceFaction)
             }
         }
 
-        m_caster->GetTerrain()->CheckPathAccurate(ox,oy,oz, px, py, pz, sWorld.getConfig(CONFIG_BOOL_CHECK_GO_IN_PATH) ? m_caster : NULL );
-        m_caster->UpdateAllowedPositionZ(px,py,pz);
+        if (checkPath)
+        {
+            float ox, oy, oz;
+            m_caster->GetPosition(ox, oy, oz);
+            m_caster->GetTerrain()->CheckPathAccurate(ox,oy,oz, px, py, pz, sWorld.getConfig(CONFIG_BOOL_CHECK_GO_IN_PATH) ? m_caster : NULL );
+            m_caster->UpdateAllowedPositionZ(px,py,pz);
+        }
 
         if (Creature* summon = m_caster->SummonCreature(creature_entry, px, py, pz, m_caster->GetOrientation(), summonType, m_duration))
         {
