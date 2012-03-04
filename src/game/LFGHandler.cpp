@@ -63,7 +63,6 @@ void WorldSession::HandleLfgJoinOpcode( WorldPacket & recv_data )
         recv_data >> dungeonID;
         LFGDungeonEntry const* dungeon = sLFGMgr.GetDungeon(dungeonID & 0x00FFFFFF);    // remove the type from the dungeon entry
         if (dungeon->map == 595
-            || dungeon->map == 599
             || dungeon->map == 632
             || dungeon->map == 650
             || dungeon->map == 658

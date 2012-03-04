@@ -2905,7 +2905,6 @@ LFGDungeonEntry const* LFGMgr::SelectRandomDungeonFromList(LFGDungeonSet dungeon
             if (!dungeon)
                 continue;
             if (dungeon->map == 595
-                || dungeon->map == 599
                 || dungeon->map == 632
                 || dungeon->map == 650
                 || dungeon->map == 658
