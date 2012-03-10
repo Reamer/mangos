@@ -2504,44 +2504,44 @@ bool LFGMgr::TryCreateGroup(LFGType type)
         LFGDungeonSet intersection;
         LFGQueueSet newGroup;
         LFGQueueSet const* applicants = &itr->second;
-        for (LFGQueueSet::const_iterator itr1 = applicants->begin(); itr1 != applicants->end(); ++itr1)
+        for (LFGQueueSet::const_iterator applicant = applicants->begin(); applicant != applicants->end(); ++applicant)
         {
-            ObjectGuid guid = *itr1;
-            bool checkPassed = true;
+            ObjectGuid applicantGuid = *applicant;
             LFGRolesMap rolesMap;
-            for (LFGQueueSet::const_iterator itr2 = newGroup.begin(); itr2 != newGroup.end(); ++itr2)
+            for (LFGQueueSet::const_iterator groupmember = newGroup.begin(); groupmember != newGroup.end(); ++groupmember)
             {
-                ObjectGuid guid2 = *itr2;
-                if ( guid != guid2 && (!CheckTeam(guid, guid2) || HasIgnoreState(guid, guid2)))
-                    checkPassed = false;
+                ObjectGuid groupmemberGuid = *groupmember;
+                if (applicantGuid != groupmemberGuid && (!CheckTeam(applicantGuid, groupmemberGuid) || HasIgnoreState(applicantGuid, groupmemberGuid)))
+                {
+                    DEBUG_LOG("LFGMgr:TryCreateGroup: !CheckTeam or HasIgnoreState are true", itr->second.size());
+                    continue;
+                }
                 else
                 {
-                    Player* player = sObjectMgr.GetPlayer(guid2);
+                    Player* player = sObjectMgr.GetPlayer(groupmemberGuid);
                     if (player && player->IsInWorld())
                     {
                         rolesMap.insert(std::make_pair(player->GetObjectGuid(), player->GetLFGState()->GetRoles()));
                     }
                 }
             }
-            if (!checkPassed)
-                continue;
 
-            Player* player1 = sObjectMgr.GetPlayer(guid);
-            if (player1 && player1->IsInWorld())
+            Player* applicantPlayer = sObjectMgr.GetPlayer(applicantGuid);
+            if (applicantPlayer && applicantPlayer->IsInWorld())
             {
-                rolesMap.insert(std::make_pair(player1->GetObjectGuid(), player1->GetLFGState()->GetRoles()));
+                rolesMap.insert(std::make_pair(applicantPlayer->GetObjectGuid(), applicantPlayer->GetLFGState()->GetRoles()));
 
                 if (!CheckRoles(&rolesMap))
                    continue;
 
-                newGroup.insert(guid);
+                newGroup.insert(applicantGuid);
                 if (newGroup.size() == 1)
-                   intersection = *player1->GetLFGState()->GetDungeons();
+                   intersection = *applicantPlayer->GetLFGState()->GetDungeons();
                 else
                 {
                    LFGDungeonSet groupDungeons = intersection;
                    intersection.clear();
-                   LFGDungeonSet const* playerDungeons = player1->GetLFGState()->GetDungeons();
+                   LFGDungeonSet const* playerDungeons = applicantPlayer->GetLFGState()->GetDungeons();
                    std::set_intersection(groupDungeons.begin(),groupDungeons.end(), playerDungeons->begin(),playerDungeons->end(),std::inserter(intersection,intersection.end()));
                 }
 
