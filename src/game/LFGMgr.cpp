@@ -2910,6 +2910,9 @@ LFGDungeonEntry const* LFGMgr::SelectRandomDungeonFromList(LFGDungeonSet dungeon
                 || dungeon->map == 658
                 || dungeon->map == 668)
             {
+                --rand;
+                if (rand < 0)
+                    rand = 0;
                 continue;
             }
             if (_key == rand)
