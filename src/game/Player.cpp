@@ -2299,15 +2299,8 @@ Creature* Player::GetNPCIfCanInteractWith(ObjectGuid guid, uint32 npcflagmask)
     if (unit->IsHostileTo(this))
         return NULL;
 
-    // not unfriendly
-    if (FactionTemplateEntry const* factionTemplate = sFactionTemplateStore.LookupEntry(unit->getFaction()))
-        if (factionTemplate->faction)
-            if (FactionEntry const* faction = sFactionStore.LookupEntry(factionTemplate->faction))
-                if (faction->reputationListID >= 0 && GetReputationMgr().GetRank(faction) <= REP_UNFRIENDLY)
-                    return NULL;
-
     // not too far
-    if(!unit->IsWithinDistInMap(this,INTERACTION_DISTANCE))
+    if (!unit->IsWithinDistInMap(this, INTERACTION_DISTANCE))
         return NULL;
 
     return unit;
@@ -6536,7 +6529,7 @@ void Player::setFactionForRace(uint8 race)
 ReputationRank Player::GetReputationRank(uint32 faction) const
 {
     FactionEntry const* factionEntry = sFactionStore.LookupEntry(faction);
-    return GetReputationMgr().GetRank(factionEntry);
+    return GetReputationMgr().GetRank(factionEntry, false);
 }
 
 //Calculate total reputation percent player gain with quest/creature level
@@ -6634,7 +6627,7 @@ void Player::RewardReputation(Unit *pVictim, float rate)
         }
     }
 
-    if (Rep->repfaction1 && (!Rep->team_dependent || GetTeam()==ALLIANCE))
+    if (Repfaction1 && (!Rep->team_dependent || GetTeam()==ALLIANCE))
     {
         int32 donerep1 = CalculateReputationGain(REPUTATION_SOURCE_KILL, Rep->repvalue1, Repfaction1, pVictim->getLevel());
         donerep1 = int32(donerep1*rate);
@@ -6652,7 +6645,7 @@ void Player::RewardReputation(Unit *pVictim, float rate)
         }
     }
 
-    if (Rep->repfaction2 && (!Rep->team_dependent || GetTeam()==HORDE))
+    if (Repfaction2 && (!Rep->team_dependent || GetTeam()==HORDE))
     {
         int32 donerep2 = CalculateReputationGain(REPUTATION_SOURCE_KILL, Rep->repvalue2, Repfaction2, pVictim->getLevel());
         donerep2 = int32(donerep2*rate);
