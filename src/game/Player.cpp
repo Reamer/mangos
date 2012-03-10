@@ -6529,7 +6529,7 @@ void Player::setFactionForRace(uint8 race)
 ReputationRank Player::GetReputationRank(uint32 faction) const
 {
     FactionEntry const* factionEntry = sFactionStore.LookupEntry(faction);
-    return GetReputationMgr().GetRank(factionEntry, false);
+    return GetReputationMgr().GetRank(factionEntry);
 }
 
 //Calculate total reputation percent player gain with quest/creature level
