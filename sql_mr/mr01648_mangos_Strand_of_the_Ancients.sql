@@ -49,12 +49,13 @@ UPDATE gameobject_template SET flags = 0 WHERE entry IN (191309, 191310);
 
 -- Vehicles support
 -- Battleground Demolisher
-UPDATE creature_template SET npcflag = 1, minlevel = 70, maxlevel = 70, minhealth = 80000, maxhealth = 80000, spell1 = 52338, spell2 = 60206, mechanic_immune_mask = mechanic_immune_mask|1|2|8|16|32|64|128|1024|2048|4096|8192|131072|262144|8388608|16777216|67108864, ScriptName = 'npc_sa_demolisher', RegenHealth = 0 WHERE entry = 28781;
-UPDATE creature_template SET npcflag = 1, minlevel = 80, maxlevel = 80, minhealth = 80000, maxhealth = 80000, spell1 = 52338, spell2 = 60206, mechanic_immune_mask = mechanic_immune_mask|1|2|8|16|32|64|128|1024|2048|4096|8192|131072|262144|8388608|16777216|67108864, RegenHealth = 0, ScriptName = '' WHERE entry = 32796;
+-- UPDATE creature_template SET npcflag = 1, minlevel = 70, maxlevel = 70, minhealth = 80000, maxhealth = 80000, spell1 = 52338, spell2 = 60206, mechanic_immune_mask = mechanic_immune_mask|1|2|8|16|32|64|128|1024|2048|4096|8192|131072|262144|8388608|16777216|67108864, vehicle_id = 158, ScriptName = 'npc_sa_demolisher', RegenHealth = 0 WHERE entry = 28781;
+UPDATE creature_template SET npcflag = 0, minlevel = 70, maxlevel = 70, minhealth = 80000, maxhealth = 80000, spell1 = 52338, spell2 = 60206, mechanic_immune_mask = mechanic_immune_mask|1|2|8|16|32|64|128|1024|2048|4096|8192|131072|262144|8388608|16777216|67108864, vehicle_id = 158, ScriptName = '' WHERE entry = 28781;
+UPDATE creature_template SET npcflag = 0, minlevel = 80, maxlevel = 80, minhealth = 80000, maxhealth = 80000, spell1 = 52338, spell2 = 60206, mechanic_immune_mask = mechanic_immune_mask|1|2|8|16|32|64|128|1024|2048|4096|8192|131072|262144|8388608|16777216|67108864, vehicle_id = 158, ScriptName = '' WHERE entry = 32796;
 DELETE FROM npc_spellclick_spells WHERE npc_entry IN (28781, 32796);
 INSERT INTO npc_spellclick_spells VALUES
-(28781, 60968, 0, 0, 0, 0),
-(32796, 60968, 0, 0, 0, 0);
+(28781, 60968, 0, 0, 0, 1),
+(32796, 60968, 0, 0, 0, 1);
 -- Demolishers must not heal
 DELETE FROM creature_template_addon WHERE entry IN (28781, 32796);
 INSERT INTO creature_template_addon VALUES
@@ -344,7 +345,12 @@ INSERT INTO gameobject VALUES
 (@GAMEOBJECT+174, 194086 , 607 , 3 , 1 , 986.176 , 3.50367 , 86.8217 , 1.5779 , 0 , 0 , 0 , 0 , 10 , 0 , 0),
 (@GAMEOBJECT+175, 194086 , 607 , 3 , 1 , 987.33 , 4.67389 , 86.8486 , 1.5779 , 0 , 0 , 0 , 0 , 10 , 0 , 0),
 (@GAMEOBJECT+176, 194086 , 607 , 3 , 1 , 985.23 , 4.65898 , 86.8368 , 1.5779 , 0 , 0 , 0 , 0 , 10 , 0 , 0),
-(@GAMEOBJECT+177, 194086 , 607 , 3 , 1 , 984.556 , 3.54097 , 86.8137 , 1.5779 , 0 , 0 , 0 , 0 , 10 , 0 , 0);
+(@GAMEOBJECT+177, 194086 , 607 , 3 , 1 , 984.556 , 3.54097 , 86.8137 , 1.5779 , 0 , 0 , 0 , 0 , 10 , 0 , 0),
+(@GAMEOBJECT+178, 192687 , 607 , 3 , 1 , 1415.57 , 105.176 , 41.5615 , 5.44516 , 0 , 0 , 0 , 0 , 10 , 0 , 0),
+(@GAMEOBJECT+179, 192689 , 607 , 3 , 1 , 1433.34 , -216.488 , 43.4646 , 0.871786 , 0 , 0 , 0 , 0 , 10 , 0 , 0),
+(@GAMEOBJECT+180, 192690 , 607 , 3 , 1 , 1231.73 , -210.455 , 67.8883 , 0.512855 , 0 , 0 , 0 , 0 , 10 , 0 , 0),
+(@GAMEOBJECT+181, 192691 , 607 , 3 , 1 , 1218.8 , 78.7113 , 65.5368 , 5.64543 , 0 , 0 , 0 , 0 , 10 , 0 , 0),
+(@GAMEOBJECT+182, 192685 , 607 , 3 , 1 , 1057.88 , -107.601 , 94.7255 , 0.0471208 , 0 , 0 , 0 , 0 , 10 , 0 , 0);
 
 DELETE FROM gameobject_battleground WHERE guid IN (SELECT guid FROM gameobject WHERE map=607);
 INSERT INTO gameobject_battleground VALUES
@@ -535,7 +541,12 @@ INSERT INTO gameobject_battleground VALUES
 (@GAMEOBJECT+174, 7, 4),
 (@GAMEOBJECT+175, 7, 4),
 (@GAMEOBJECT+176, 7, 4),
-(@GAMEOBJECT+177, 7, 4);
+(@GAMEOBJECT+177, 7, 4),
+(@GAMEOBJECT+178, 15, 0),
+(@GAMEOBJECT+179, 16, 0),
+(@GAMEOBJECT+180, 17, 0),
+(@GAMEOBJECT+181, 18, 0),
+(@GAMEOBJECT+182, 19, 0);
 
 DELETE FROM battleground_events WHERE map = 607;
 INSERT INTO battleground_events (map, event1, event2, description) VALUES
@@ -569,7 +580,12 @@ INSERT INTO battleground_events (map, event1, event2, description) VALUES
 (607, 12, 0, 'E base demolishers'),
 (607, 13, 0, 'W base demolishers'),
 (607, 14, 1, 'Titan Relic - A attacking'),
-(607, 14, 2, 'Titan Relic - H attacking');
+(607, 14, 2, 'Titan Relic - H attacking'),
+(607, 15, 0, 'Green sigil'),
+(607, 16, 0, 'Blue sigil'),
+(607, 17, 0, 'Red sigil'),
+(607, 18, 0, 'Purple sigil'),
+(607, 19, 0, 'Yellow sigil');
 
 -- Fix Rotation for all Objects in Map
 UPDATE gameobject SET rotation0=0, rotation1=0, rotation2=SIN(orientation*0.5), rotation3=COS(orientation*0.5) WHERE map = 607;
