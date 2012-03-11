@@ -42,7 +42,8 @@ namespace Movement
 
         explicit MoveSplineInit(Unit& m);
 
-        /*  Final pass of initialization that launches spline movement.
+        /* Final pass of initialization that launches spline movement.
+         * @return duration - estimated travel time
          */
         int32 Launch();
 
@@ -72,7 +73,7 @@ namespace Movement
         void MovebyPath(const PointsArray& path, int32 pointId = 0);
 
         /* Initializes simple A to B mition, A is current unit's position, B is destination
-         */ 
+         */
         void MoveTo(const Vector3& destination, bool generatePath = false, bool forceDestination = false);
         void MoveTo(float x, float y, float z, bool generatePath = false, bool forceDestination = false);
 

@@ -43,8 +43,6 @@
 #include "PointMovementGenerator.h"
 #include "PathFinder.h"
 #include "TargetedMovementGenerator.h"
-#include "SkillDiscovery.h"
-#include "SkillExtraItems.h"
 #include "SystemConfig.h"
 #include "Config/Config.h"
 #include "Mail.h"
@@ -711,7 +709,7 @@ bool ChatHandler::HandleReloadReputationSpilloverTemplateCommand(char* /*args*/)
 bool ChatHandler::HandleReloadSkillDiscoveryTemplateCommand(char* /*args*/)
 {
     sLog.outString( "Re-Loading Skill Discovery Table..." );
-    LoadSkillDiscoveryTable();
+    sSpellMgr.LoadSkillDiscoveryTable();
     SendGlobalSysMessage("DB table `skill_discovery_template` (recipes discovered at crafting) reloaded.");
     return true;
 }
@@ -719,7 +717,7 @@ bool ChatHandler::HandleReloadSkillDiscoveryTemplateCommand(char* /*args*/)
 bool ChatHandler::HandleReloadSkillExtraItemTemplateCommand(char* /*args*/)
 {
     sLog.outString( "Re-Loading Skill Extra Item Table..." );
-    LoadSkillExtraItemTable();
+    sSpellMgr.LoadSkillExtraItemTable();
     SendGlobalSysMessage("DB table `skill_extra_item_template` (extra item creation when crafting) reloaded.");
     return true;
 }
@@ -3898,7 +3896,13 @@ bool ChatHandler::HandleDamageCommand(char* args)
     {
         m_session->GetPlayer()->DealDamage(target, damage, NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
         if (target != m_session->GetPlayer())
-            m_session->GetPlayer()->SendAttackStateUpdate (HITINFO_NORMALSWING2, target, 1, SPELL_SCHOOL_MASK_NORMAL, damage, 0, 0, VICTIMSTATE_NORMAL, 0);
+        {
+            DamageInfo damageInfo  = DamageInfo(m_session->GetPlayer(), target);
+            damageInfo.damage      = damage;
+            damageInfo.HitInfo     = HITINFO_NORMALSWING2;
+            damageInfo.TargetState = VICTIMSTATE_NORMAL;
+            m_session->GetPlayer()->SendAttackStateUpdate(&damageInfo);
+        }
         return true;
     }
 
@@ -3908,6 +3912,11 @@ bool ChatHandler::HandleDamageCommand(char* args)
 
     if(school >= MAX_SPELL_SCHOOL)
         return false;
+
+    // number or [name] Shift-click form |color|Hspell:spell_id|h[name]|h|r or Htalent form
+    uint32 spellid = ExtractSpellIdFromLink(&args);
+    if (!spellid || !sSpellStore.LookupEntry(spellid))
+        spellid = 0;
 
     SpellSchoolMask schoolmask = SpellSchoolMask(1 << school);
 
@@ -3929,16 +3938,18 @@ bool ChatHandler::HandleDamageCommand(char* args)
 
         m_session->GetPlayer()->DealDamageMods(target,damage,&absorb);
         m_session->GetPlayer()->DealDamage(target, damage, NULL, DIRECT_DAMAGE, schoolmask, NULL, false);
-        m_session->GetPlayer()->SendAttackStateUpdate (HITINFO_NORMALSWING2, target, 1, schoolmask, damage, absorb, resist, VICTIMSTATE_NORMAL, 0);
+        DamageInfo damageInfo  = DamageInfo(m_session->GetPlayer(), target, spellid);
+        damageInfo.damage      = damage;
+        damageInfo.absorb      = absorb;
+        damageInfo.resist      = resist;
+        damageInfo.HitInfo     = HITINFO_NORMALSWING2;
+        damageInfo.TargetState = VICTIMSTATE_NORMAL;
+        m_session->GetPlayer()->SendAttackStateUpdate(&damageInfo);
         return true;
     }
 
     // non-melee damage
 
-    // number or [name] Shift-click form |color|Hspell:spell_id|h[name]|h|r or Htalent form
-    uint32 spellid = ExtractSpellIdFromLink(&args);
-    if (!spellid || !sSpellStore.LookupEntry(spellid))
-        return false;
 
     m_session->GetPlayer()->SpellNonMeleeDamageLog(target, spellid, damage);
     return true;
@@ -5597,19 +5608,19 @@ bool ChatHandler::HandleBanHelper(BanMode mode, char* args)
                         if (duration_secs > 0)
                             PSendGlobalSysMessage(LANG_BAN_ACCOUNT_ANNOUNCE, GMnameLink.c_str(), nameOrIP.c_str(), secsToTimeString(duration_secs, true).c_str(), reason);
                         else
-                            PSendGlobalSysMessage(LANG_PERMBAN_ACCOUNT_ANNOUNCE, GMnameLink.c_str(), nameOrIP.c_str(), secsToTimeString(duration_secs, true).c_str(), reason);
+                            PSendGlobalSysMessage(LANG_PERMBAN_ACCOUNT_ANNOUNCE, GMnameLink.c_str(), nameOrIP.c_str(), reason);
                         break;
                     case BAN_CHARACTER:
                         if (duration_secs > 0)
                             PSendGlobalSysMessage(LANG_BAN_CHARACTER_ANNOUNCE, GMnameLink.c_str(), nameOrIP.c_str(), secsToTimeString(duration_secs, true).c_str(), reason);
                         else
-                            PSendGlobalSysMessage(LANG_PERMBAN_CHARACTER_ANNOUNCE, GMnameLink.c_str(), nameOrIP.c_str(), secsToTimeString(duration_secs, true).c_str(), reason);
+                            PSendGlobalSysMessage(LANG_PERMBAN_CHARACTER_ANNOUNCE, GMnameLink.c_str(), nameOrIP.c_str(), reason);
                        break;
                     case BAN_IP:
                         if (duration_secs > 0)
                             PSendGlobalSysMessage(LANG_BAN_IP_ANNOUNCE, GMnameLink.c_str(), nameOrIP.c_str(), secsToTimeString(duration_secs, true).c_str(), reason);
                         else
-                            PSendGlobalSysMessage(LANG_PERMBAN_IP_ANNOUNCE, GMnameLink.c_str(), nameOrIP.c_str(), secsToTimeString(duration_secs, true).c_str(), reason);
+                            PSendGlobalSysMessage(LANG_PERMBAN_IP_ANNOUNCE, GMnameLink.c_str(), nameOrIP.c_str(), reason);
                         break;
                 }
             }
@@ -7220,6 +7231,34 @@ bool ChatHandler::HandleAccountFriendListCommand(char* args)
     return false;
 }
 
+bool ChatHandler::HandleShowGearScoreCommand(char *args)
+{
+    Player *player = getSelectedPlayer();
+
+    if (!player)
+    {
+        PSendSysMessage(LANG_PLAYER_NOT_FOUND);
+        SetSentErrorMessage(true);
+        return false;
+    }
+
+    uint32 withBags, withBank;
+    if (!ExtractOptUInt32(&args, withBags, 1))
+        return false;
+
+    if (!ExtractOptUInt32(&args, withBank, 0))
+        return false;
+
+    // always recalculate gear score for display
+    player->ResetCachedGearScore();
+
+    uint32 gearScore = player->GetEquipGearScore(withBags != 0, withBank != 0);
+
+    PSendSysMessage(LANG_GEARSCORE, GetNameLink(player).c_str(), gearScore);
+
+    return true;
+}
+
 bool ChatHandler::HandleMmap(char* args)
 {
     bool on;
@@ -7249,18 +7288,11 @@ bool ChatHandler::HandleMmapTestArea(char* args)
     float radius = 40.0f;
     ExtractFloat(&args, radius);
 
-    CellPair pair(MaNGOS::ComputeCellPair( m_session->GetPlayer()->GetPositionX(), m_session->GetPlayer()->GetPositionY()) );
-    Cell cell(pair);
-    cell.SetNoCreate();
-
     std::list<Creature*> creatureList;
-
     MaNGOS::AnyUnitInObjectRangeCheck go_check(m_session->GetPlayer(), radius);
     MaNGOS::CreatureListSearcher<MaNGOS::AnyUnitInObjectRangeCheck> go_search(creatureList, go_check);
-    TypeContainerVisitor<MaNGOS::CreatureListSearcher<MaNGOS::AnyUnitInObjectRangeCheck>, GridTypeMapContainer> go_visit(go_search);
-
     // Get Creatures
-    cell.Visit(pair, go_visit, *(m_session->GetPlayer()->GetMap()), *(m_session->GetPlayer()), radius);
+    Cell::VisitGridObjects(m_session->GetPlayer(), go_search, radius);
 
     if (!creatureList.empty())
     {
@@ -7285,32 +7317,6 @@ bool ChatHandler::HandleMmapTestArea(char* args)
     {
         PSendSysMessage("No creatures in %f yard range.", radius);
     }
-    return true;
-}
 
-bool ChatHandler::HandleShowGearScoreCommand(char *args)
-{
-    Player *player = getSelectedPlayer();
-
-    if (!player)
-    {
-        PSendSysMessage(LANG_PLAYER_NOT_FOUND);
-        SetSentErrorMessage(true);
-        return false;
-    }
-
-    uint32 withBags, withBank;
-    if (!ExtractOptUInt32(&args, withBags, 1))
-        return false;
-
-    if (!ExtractOptUInt32(&args, withBank, 0))
-        return false;
-
-    // always recalculate gear score for display
-    player->ResetCachedGearScore();
-
-    uint32 gearScore = player->GetEquipGearScore(withBags != 0, withBank != 0);
-
-    PSendSysMessage(LANG_GEARSCORE, GetNameLink(player).c_str(), gearScore);
     return true;
 }

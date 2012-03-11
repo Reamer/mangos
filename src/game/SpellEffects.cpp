@@ -26,7 +26,6 @@
 #include "ObjectMgr.h"
 #include "SpellMgr.h"
 #include "Player.h"
-#include "SkillExtraItems.h"
 #include "Unit.h"
 #include "Spell.h"
 #include "DynamicObject.h"
@@ -47,13 +46,13 @@
 #include "BattleGroundEY.h"
 #include "BattleGroundWS.h"
 #include "BattleGroundSA.h"
+#include "WorldPvP/WorldPvPMgr.h"
 #include "Language.h"
 #include "SocialMgr.h"
 #include "VMapFactory.h"
 #include "Util.h"
 #include "TemporarySummon.h"
 #include "ScriptMgr.h"
-#include "SkillDiscovery.h"
 #include "Formulas.h"
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
@@ -209,7 +208,7 @@ pEffect SpellEffects[TOTAL_SPELL_EFFECTS]=
     &Spell::EffectSuspendGravity,                           //145 SPELL_EFFECT_SUSPEND_GRAVITY          Black Hole Effect
     &Spell::EffectActivateRune,                             //146 SPELL_EFFECT_ACTIVATE_RUNE
     &Spell::EffectQuestFail,                                //147 SPELL_EFFECT_QUEST_FAIL               quest fail
-    &Spell::EffectNULL,                                     //148 SPELL_EFFECT_148                      single spell: Inflicts Fire damage to an enemy.
+    &Spell::EffectTriggerMissileSpell,                      //148 SPELL_EFFECT_TRIGGER_MISSILE_2        single spell: Inflicts Fire damage to an enemy.
     &Spell::EffectCharge2,                                  //149 SPELL_EFFECT_CHARGE2                  swoop
     &Spell::EffectQuestStart,                               //150 SPELL_EFFECT_QUEST_START
     &Spell::EffectTriggerRitualOfSummoning,                 //151 SPELL_EFFECT_TRIGGER_SPELL_2
@@ -4709,7 +4708,7 @@ void Spell::EffectTriggerMissileSpell(SpellEffectIndex effect_idx)
     uint32 triggered_spell_id = m_spellInfo->EffectTriggerSpell[effect_idx];
 
     // normal case
-    SpellEntry const *spellInfo = sSpellStore.LookupEntry( triggered_spell_id );
+    SpellEntry const* spellInfo = sSpellStore.LookupEntry(triggered_spell_id);
 
     if (!spellInfo)
     {
@@ -4724,17 +4723,25 @@ void Spell::EffectTriggerMissileSpell(SpellEffectIndex effect_idx)
     if (m_caster->GetTypeId() == TYPEID_PLAYER)
         ((Player*)m_caster)->RemoveSpellCooldown(triggered_spell_id);
 
-    // Init dest coordinates
-    float x,y,z;
-    x = m_targets.m_destX;
-    y = m_targets.m_destY;
-    z = m_targets.m_destZ;
+    if (m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION || m_caster == unitTarget )
+    {
+        // Init dest coordinates
+        float x,y,z;
+        x = m_targets.m_destX;
+        y = m_targets.m_destY;
+        z = m_targets.m_destZ;
 
-    MaNGOS::NormalizeMapCoord(x);
-    MaNGOS::NormalizeMapCoord(y);
-    m_caster->UpdateGroundPositionZ(x,y,z);
+        MaNGOS::NormalizeMapCoord(x);
+        MaNGOS::NormalizeMapCoord(y);
+        m_caster->UpdateAllowedPositionZ(x,y,z);
 
-    m_caster->CastSpell(x, y, z, spellInfo, true, m_CastItem, 0, m_originalCasterGUID);
+        m_caster->CastSpell(x, y, z, spellInfo, true, m_CastItem, NULL, m_originalCasterGUID);
+    }
+    else
+    {
+        Unit* caster = IsSpellWithCasterSourceTargetsOnly(spellInfo) ? unitTarget : m_caster;
+        caster->CastSpell(unitTarget,spellInfo,true,m_CastItem,NULL,m_originalCasterGUID);
+    }
 }
 
 void Spell::EffectJump(SpellEffectIndex eff_idx)
@@ -5465,7 +5472,7 @@ void Spell::DoCreateItem(SpellEffectIndex eff_idx, uint32 itemtype)
     // the maximum number of created additional items
     uint8 additionalMaxNum=0;
     // get the chance and maximum number for creating extra items
-    if ( canCreateExtraItems(player, m_spellInfo->Id, additionalCreateChance, additionalMaxNum) )
+    if (sSpellMgr.CanCreateExtraItems(player, m_spellInfo->Id, additionalCreateChance, additionalMaxNum) )
     {
         // roll with this chance till we roll not to create or we create the max num
         while ( roll_chance_f(additionalCreateChance) && items_count<=additionalMaxNum )
@@ -5524,11 +5531,6 @@ void Spell::DoCreateItem(SpellEffectIndex eff_idx, uint32 itemtype)
 
 void Spell::EffectCreateItem(SpellEffectIndex eff_idx)
 {
-    if (unitTarget->GetTypeId() == TYPEID_PLAYER && m_spellInfo->Id == 47345)           // Create Dark Brewmaiden's Brew for Brewfest Event (Coren Direbrew) HACK!!!
-    {
-        unitTarget->CastSpell(unitTarget, 47376, true);
-        unitTarget->CastSpell(unitTarget, 47331, true);
-    }
     DoCreateItem(eff_idx,m_spellInfo->EffectItemType[eff_idx]);
 }
 
@@ -5733,6 +5735,12 @@ void Spell::EffectEnergisePct(SpellEffectIndex eff_idx)
 
 void Spell::SendLoot(ObjectGuid guid, LootType loottype, LockType lockType)
 {
+    if (!m_caster)
+        return;
+
+    if (!m_IsTriggeredSpell && isSpellBreakStealth(m_spellInfo))
+        m_caster->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_USE);
+
     if (gameObjTarget)
     {
         switch (gameObjTarget->GetGoType())
@@ -5813,11 +5821,14 @@ void Spell::EffectOpenLock(SpellEffectIndex eff_idx)
                 return;
             }
         }
-        else if (m_spellInfo->Id == 1842 && gameObjTarget->GetGOInfo()->type == GAMEOBJECT_TYPE_TRAP && gameObjTarget->GetOwner())
+        else if(goInfo->type == GAMEOBJECT_TYPE_GOOBER)
         {
-            gameObjTarget->SetLootState(GO_JUST_DEACTIVATED);
-            return;
+            // Check if object is handled by outdoor pvp
+            // GameObject is handling some events related to world battleground events
+            if (sWorldPvPMgr.HandleObjectUse(player, gameObjTarget))
+                return;
         }
+
         lockId = goInfo->GetLockId();
         guid = gameObjTarget->GetObjectGuid();
     }
@@ -5926,6 +5937,10 @@ void Spell::EffectApplyAreaAura(SpellEffectIndex eff_idx)
         return;
 
     m_spellAuraHolder->CreateAura(AURA_CLASS_AREA_AURA, eff_idx, &m_currentBasePoints[eff_idx], m_spellAuraHolder, unitTarget, m_caster, m_CastItem);
+
+    if (m_spellInfo->EffectImplicitTargetA[eff_idx] == TARGET_SINGLE_FRIEND &&
+        m_spellInfo->EffectImplicitTargetB[eff_idx] == TARGET_NONE)
+        m_spellAuraHolder->SetAffectiveCasterGuid(m_originalCasterGUID);
 }
 
 void Spell::EffectSummonType(SpellEffectIndex eff_idx)
@@ -6096,12 +6111,12 @@ void Spell::DoSummonGroupPets(SpellEffectIndex eff_idx)
         m_duration = 0;
     }
 
-    uint32 amount = damage;
+    int32 amount = m_spellInfo->EffectRealPointsPerLevel[eff_idx] ? m_spellInfo->EffectRealPointsPerLevel[eff_idx] : m_currentBasePoints[eff_idx];
+
+    if (amount < 0)
+        amount = 1;
 
     uint32 originalSpellID = (m_IsTriggeredSpell && m_triggeredBySpellInfo) ? m_triggeredBySpellInfo->Id : m_spellInfo->Id;
-
-    if (amount > 5)
-        amount = 1;  // Don't find any cast, summons over 3 pet.
 
     CreatureCreatePos pos (m_caster->GetMap(), m_targets.m_destX, m_targets.m_destY, m_targets.m_destZ, -m_caster->GetOrientation(), m_caster->GetPhaseMask());
 
@@ -6524,7 +6539,9 @@ void Spell::DoSummonWild(SpellEffectIndex eff_idx, uint32 forceFaction)
     }
     TempSummonType summonType = (m_duration == 0) ? TEMPSUMMON_DEAD_DESPAWN : TEMPSUMMON_TIMED_OR_DEAD_DESPAWN;
 
-    int32 amount = damage > 0 ? damage : 1;
+    int32 amount = m_spellInfo->EffectRealPointsPerLevel[eff_idx] ? m_spellInfo->EffectRealPointsPerLevel[eff_idx] : m_currentBasePoints[eff_idx];
+    if (amount < 0)
+        amount = 1;
 
     for(int32 count = 0; count < amount; ++count)
     {
@@ -6632,8 +6649,12 @@ void Spell::DoSummonGuardian(SpellEffectIndex eff_idx, uint32 forceFaction)
         if (Pet* old_protector = m_caster->GetProtectorPet())
             old_protector->Unsummon(PET_SAVE_AS_DELETED, m_caster);
 
-    // in another case summon new
-    uint32 level = m_caster->getLevel();
+    int32 amount = m_spellInfo->EffectRealPointsPerLevel[eff_idx] ? m_spellInfo->EffectRealPointsPerLevel[eff_idx] : m_currentBasePoints[eff_idx];
+    if (amount < 0)
+        amount = 1;
+
+    //uint32 level  = m_caster->getLevel();
+    uint32 level  = m_spellInfo->EffectRealPointsPerLevel[eff_idx] ? (damage < m_caster->getLevel() ? damage : m_caster->getLevel()) : m_caster->getLevel();
 
     // level of pet summoned using engineering item based at engineering skill level
     if (m_caster->GetTypeId() == TYPEID_PLAYER && m_CastItem)
@@ -6663,9 +6684,6 @@ void Spell::DoSummonGuardian(SpellEffectIndex eff_idx, uint32 forceFaction)
     float radius = GetSpellRadius(sSpellRadiusStore.LookupEntry(m_spellInfo->EffectRadiusIndex[eff_idx]));
 
     uint32 originalSpellID = (m_IsTriggeredSpell && m_triggeredBySpellInfo) ? m_triggeredBySpellInfo->Id : m_spellInfo->Id;
-
-    // cannot find any guardian group over 5. need correct?
-    int32 amount = (damage > 0 && damage < 6) ? damage : 1;
 
     for (int32 count = 0; count < amount; ++count)
     {
@@ -6740,7 +6758,10 @@ void Spell::DoSummonVehicle(SpellEffectIndex eff_idx, uint32 forceFaction)
     if (!vehicle_entry)
         return;
 
-    SpellEntry const* m_mountspell = sSpellStore.LookupEntry(m_spellInfo->EffectBasePoints[eff_idx] != 0 ? m_spellInfo->CalculateSimpleValue(eff_idx) : 46598);
+    SpellEntry const* m_mountspell = sSpellStore.LookupEntry(
+        m_spellInfo->EffectBasePoints[eff_idx] != 0 ?
+        m_spellInfo->CalculateSimpleValue(eff_idx) :
+        SPELL_RIDE_VEHICLE_HARDCODED);
 
     if (!m_mountspell)
         m_mountspell = sSpellStore.LookupEntry(46598);
@@ -9485,8 +9506,12 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                         return;
 
                     // learn random explicit discovery recipe (if any)
-                    if (uint32 discoveredSpell = GetExplicitDiscoverySpell(m_spellInfo->Id, (Player*)m_caster))
+                    if (uint32 discoveredSpell = sSpellMgr.GetExplicitDiscoverySpell(m_spellInfo->Id, (Player*)m_caster))
+                    {
                         ((Player*)m_caster)->learnSpell(discoveredSpell, false);
+                        ((Player*)m_caster)->UpdateCraftSkill(m_spellInfo->Id);
+                    }
+
                     return;
                 }
                 case 62707:                                 // Grab (Ulduar: Ignis)
@@ -9570,6 +9595,11 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                         m_caster->CastSpell(m_caster, 62239, true);
                     return;
                 }
+                case 61263:                                 //Intravenous Healing Potion
+                {
+                    m_caster->CastSpell(unitTarget, 61828, true);
+                    break;
+                }
                 case 62536:                                 // Frog Kiss (quest Blade fit for a champion)
                 {
                     if (!unitTarget)
@@ -9606,6 +9636,7 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                 {
                     if (!unitTarget)
                         return;
+
                     if (SpellAuraHolderPtr holder = unitTarget->GetSpellAuraHolder(63050))
                     {
                         int32 stacks = 0;
@@ -9636,10 +9667,11 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     }
                     return;
                 }
-                case 63122:                                         // Clear Insane
+                case 63122:                                 // Clear Insane (Ulduar - Yogg Saron)
                 {
                     if (!unitTarget)
                         return;
+
                     unitTarget->RemoveAurasDueToSpell(63050);
                     unitTarget->RemoveAurasDueToSpell(63120);
                     return;
@@ -9658,6 +9690,7 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                 {
                     if (!unitTarget)    // ScriptTarget - Target: Yogg Saron
                         return;
+
                     // effect back to caster (Immortal Guardian)
                     unitTarget->CastSpell(m_caster, 64467, true);
                     break;
@@ -9666,6 +9699,7 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                 {
                     if (!unitTarget)
                         return;
+
                     uint32 spellid = 0;
                     unitTarget->GetMap()->IsRegularDifficulty() ? spellid = 64468 : spellid = 64469;
                     unitTarget->CastSpell(unitTarget, spellid, true);
@@ -10073,14 +10107,12 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                         unitTarget->RemoveAurasDueToSpell(m_spellInfo->CalculateSimpleValue(eff_idx));
                     return;
                 }
-                case 70117:                                 // Ice grip (Sindragosa pull effect)
+                case 70117:                                 // Icy grip (Sindragosa pull effect)
                 {
-                    if (!unitTarget)
-                        return;
-                    float fPosX, fPosY, fPosZ;
-                    m_caster->GetPosition(fPosX, fPosY, fPosZ);
-                    m_caster->GetRandomPoint(fPosX, fPosY, fPosZ, m_caster->GetObjectBoundingRadius(), fPosX, fPosY, fPosZ);
-                    unitTarget->NearTeleportTo(fPosX, fPosY, fPosZ+1.0f, -unitTarget->GetOrientation(), false);
+                    if (unitTarget)
+                        unitTarget->CastSpell(m_caster, 70122, true);
+
+                    m_caster->CastSpell(m_caster, 70123, false); // trigger Blistering Cold
                     return;
                 }
                 case 70360:                                 // Eat Ooze (Putricide)
@@ -11908,18 +11940,23 @@ void Spell::EffectTransmitted(SpellEffectIndex eff_idx)
             float max_angle = (max_dis - min_dis)/(max_dis + m_caster->GetObjectBoundingRadius());
             float angle_offset = max_angle * (rand_norm_f() - 0.5f);
             m_caster->GetNearPoint2D(fx, fy, dis, m_caster->GetOrientation() + angle_offset);
-            float waterZ = m_caster->GetTerrain()->GetWaterOrGroundLevel(fx, fy, m_caster->GetPositionZ());
-            GridMapLiquidData liqData;
-            if (!m_caster->GetTerrain()->IsInWater(fx, fy, waterZ, &liqData, 0.5f))
+
+            if (!m_caster->GetTerrain()->IsAboveWater(fx, fy, m_caster->GetPositionZ() + 1.5f, &fz))
             {
                 SendCastResult(SPELL_FAILED_NOT_FISHABLE);
                 SendChannelUpdate(0);
                 return;
             }
 
-            fz = liqData.level;
+            if (m_caster->GetPositionZ() < (fz - 1.0f))
+            {
+                SendCastResult(SPELL_FAILED_ONLY_ABOVEWATER);
+                SendChannelUpdate(0);
+                return;
+            }
+
             // finally, check LoS
-            if (!m_caster->IsWithinLOS(fx, fy, fz))
+            if (!m_caster->IsWithinLOS(fx, fy, fz, false))
             {
                 SendCastResult(SPELL_FAILED_LINE_OF_SIGHT);
                 SendChannelUpdate(0);

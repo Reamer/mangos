@@ -41,6 +41,7 @@
 #include "GridNotifiersImpl.h"
 #include "ObjectPosSelector.h"
 #include "TemporarySummon.h"
+#include "WorldPvP/WorldPvPMgr.h"
 #include "movement/packet_builder.h"
 
 #define TERRAIN_LOS_STEP_DISTANCE   3.0f        // sample distance for terrain LoS
@@ -553,6 +554,14 @@ void Object::BuildValuesUpdate(uint8 updatetype, ByteBuffer * data, UpdateMask *
                             *data << (m_uint32Values[index] & ~(UNIT_DYNFLAG_TAPPED | UNIT_DYNFLAG_TAPPED_BY_PLAYER));
                     }
                 }
+                // hide RAF flag if need
+                else if (index == UNIT_DYNAMIC_FLAGS && GetTypeId() == TYPEID_PLAYER)
+                {
+                    if (!((Player*)this)->IsReferAFriendLinked(target))
+                        *data << (m_uint32Values[index] & ~UNIT_DYNFLAG_REFER_A_FRIEND);
+                    else
+                        *data << m_uint32Values[index];
+                }
                 // Frozen Mod
                 else if (index == UNIT_FIELD_BYTES_2 || index == UNIT_FIELD_FACTIONTEMPLATE)
                 {
@@ -691,16 +700,14 @@ bool Object::LoadValues(const char* data)
 {
     if(!m_uint32Values) _InitValues();
 
-    Tokens tokens = StrSplit(data, " ");
+    Tokens tokens(data, ' ');
 
     if (tokens.size() != m_valuesCount)
         return false;
 
-    Tokens::iterator iter;
-    int index;
-    for (iter = tokens.begin(), index = 0; index < m_valuesCount; ++iter, ++index)
+    for (uint16 index = 0; index < m_valuesCount; ++index)
     {
-        m_uint32Values[index] = atol((*iter).c_str());
+        m_uint32Values[index] = atol(tokens[index]);
     }
 
     return true;
@@ -942,6 +949,15 @@ bool Object::PrintIndexError(uint32 index, bool set) const
     return false;
 }
 
+bool Object::PrintEntryError(char const* descr) const
+{
+    sLog.outError("Object Type %u, Entry %u (lowguid %u) with invalid call for %s", GetTypeId(), GetEntry(), GetObjectGuid().GetCounter(), descr);
+
+    // always false for continue assert fail
+    return false;
+}
+
+
 void Object::BuildUpdateDataForPlayer(Player* pl, UpdateDataMapType& update_players)
 {
     UpdateDataMapType::iterator iter = update_players.find(pl);
@@ -988,7 +1004,7 @@ void Object::MarkForClientUpdate()
 
 WorldObject::WorldObject()
     : m_groupLootTimer(0), m_groupLootId(0), m_lootGroupRecipientId(0),
-    m_isActiveObject(false), m_currMap(NULL), m_mapId(0), m_InstanceId(0), m_phaseMask(PHASEMASK_NORMAL)
+    m_isActiveObject(false), m_currMap(NULL), m_mapId(0), m_InstanceId(0), m_phaseMask(PHASEMASK_NORMAL), m_zoneScript(NULL)
 {
 }
 
@@ -1145,7 +1161,7 @@ bool WorldObject::_IsWithinDist(WorldObject const* obj, float dist2compare, bool
     return distsq < maxdist * maxdist;
 }
 
-bool WorldObject::IsWithinLOSInMap(const WorldObject* obj) const
+bool WorldObject::IsWithinLOSInMap(const WorldObject* obj, bool strict) const
 {
     if (!IsInMap(obj))
         return false;
@@ -1153,60 +1169,20 @@ bool WorldObject::IsWithinLOSInMap(const WorldObject* obj) const
     float ox,oy,oz;
     obj->GetPosition(ox,oy,oz);
 
-    if (GetMapId() == 617) // Waterfall DA BattleGround
-    {
-        if (GameObject *pWaterfall = const_cast<WorldObject*>(this)->GetClosestGameObjectWithEntry(this, 194395, 60.0f))
-        {
-            if (pWaterfall->isSpawned() && pWaterfall->IsInBetween(this, obj, pWaterfall->GetObjectBoundingRadius()))
-                return false;
-        }
-    }
-    else if (GetMapId() == 618) // Pillars RV BattleGround
-    {
-        uint32 const pillars[] = {194583, 194584, 194585, 194587};
-        for (size_t i = 0; i < countof(pillars); ++i)
-        {
-            if (GameObject *pPillar = const_cast<WorldObject*>(this)->GetClosestGameObjectWithEntry(this, pillars[i], 35.0f))
-                if (pPillar->GetGoState() == GO_STATE_ACTIVE && pPillar->IsInBetween(this, obj, pPillar->GetObjectBoundingRadius()))
-                    return false;
-        }
-    }
-
-    return(IsWithinLOS(ox, oy, oz ));
+    return(IsWithinLOS(ox, oy, oz, strict ));
 }
 
-bool WorldObject::IsWithinLOS(float ox, float oy, float oz) const
+bool WorldObject::IsWithinLOS(float ox, float oy, float oz, bool strict) const
 {
     float x,y,z;
     GetPosition(x,y,z);
-    z += 2.0f;
-    oz += 2.0f;
 
-    // check for line of sight because of terrain height differences
-    if (!GetMap()->IsDungeon())  // avoid unnecessary calculation inside raid/dungeons
-    {
-        float dx = ox - x, dy = oy - y, dz = oz - z;
-        float dist = sqrt(dx*dx + dy*dy + dz*dz);
-        if (dist > ATTACK_DISTANCE && dist < MAX_VISIBILITY_DISTANCE)
-        {
-            uint32 steps = uint32(dist / TERRAIN_LOS_STEP_DISTANCE);
-            float step_dist = dist / (float)steps;  // to make sampling intervals symmetric in both directions
-            float inc_factor = step_dist / dist;
-            float incx = dx*inc_factor, incy = dy*inc_factor, incz = dz*inc_factor;
-            float px = x, py = y, pz = z;
-            for (; steps; --steps)
-            {
-                if (GetTerrain()->GetHeight(px, py, pz, false) > pz)
-                    return false;   // found intersection with ground
-                px += incx;
-                py += incy;
-                pz += incz;
-            }
-        }
-    }
+    Unit* searcher = GetObjectGuid().IsUnit() ? (Unit*)this : NULL;
 
-    VMAP::IVMapManager *vMapManager = VMAP::VMapFactory::createOrGetVMapManager();
-    return vMapManager->isInLineOfSight(GetMapId(), x, y, z, ox, oy, oz);
+    VMAP::IVMapManager* vMapManager = VMAP::VMapFactory::createOrGetVMapManager();
+    return vMapManager->isInLineOfSight(GetMapId(), x, y, z + 2.0f, ox, oy, oz + 2.0f) ?
+            (strict ? GetTerrain()->CheckPathAccurate(x,y,z, ox, oy, oz, sWorld.getConfig(CONFIG_BOOL_CHECK_GO_IN_PATH) ? searcher : NULL ) : true) :
+            false;
 }
 
 bool WorldObject::GetDistanceOrder(WorldObject const* obj1, WorldObject const* obj2, bool is3D /* = true */) const
@@ -1417,6 +1393,16 @@ void WorldObject::UpdateAllowedPositionZ(float x, float y, float &z) const
     {
         case TYPEID_UNIT:
         {
+            Unit* pVictim = ((Creature const*)this)->getVictim();
+            if (pVictim)
+            {
+                // anyway creature move to victim if is in 2D melee attack distance (prevent some exploit bye cheaters)
+                if (GetDistance2d(x, y) <= ((Creature const*)this)->GetMeleeAttackDistance(pVictim))
+                    return;
+                // anyway creature move to victim for thinly Z distance (shun some VMAP wrong ground calculating)
+                if (fabs(GetPositionZ() - pVictim->GetPositionZ()) < 5.0f)
+                    return;
+            }
             // non fly unit don't must be in air
             // non swim unit must be at ground (mostly speedup, because it don't must be in water and water level check less fast
             if (!((Creature const*)this)->CanFly())
@@ -1427,7 +1413,7 @@ void WorldObject::UpdateAllowedPositionZ(float x, float y, float &z) const
 
                 if (max_z > INVALID_HEIGHT)
                 {
-                    if (max_z != ground_z && z > max_z)
+                    if (z > max_z)
                         z = max_z;
                     else if (z < ground_z)
                         z = ground_z;
@@ -1667,6 +1653,15 @@ TerrainInfo const* WorldObject::GetTerrain() const
 void WorldObject::AddObjectToRemoveList()
 {
     GetMap()->AddObjectToRemoveList(this);
+}
+
+void WorldObject::SetZoneScript()
+{
+    if (Map *map = GetMap())
+    {
+        if (!map->IsBattleGroundOrArena() && !map->IsDungeon())
+            m_zoneScript = sWorldPvPMgr.GetZoneScript(GetZoneId());
+    }
 }
 
 Creature* WorldObject::SummonCreature(uint32 id, float x, float y, float z, float ang,TempSummonType spwtype,uint32 despwtime, bool asActiveObject)

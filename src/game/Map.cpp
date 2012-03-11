@@ -360,7 +360,7 @@ Map::Add(T *obj)
     if(obj->isActiveObject())
         AddToActive(obj);
 
-    DEBUG_LOG("%s enters grid[%u,%u]", obj->GetObjectGuid().GetString().c_str(), cell.GridX(), cell.GridY());
+    DEBUG_LOG("%s enters grid[%u,%u]", obj->GetGuidStr().c_str(), cell.GridX(), cell.GridY());
 
     obj->GetViewPoint().Event_AddedToWorld(&(*grid)(cell.CellX(), cell.CellY()));
     UpdateObjectVisibility(obj,cell,p);
@@ -3270,11 +3270,9 @@ uint32 Map::GenerateLocalLowGuid(HighGuid guidhigh)
         case HIGHGUID_PET:
             return m_PetGuids.Generate();
         default:
-            MANGOS_ASSERT(0);
+            MANGOS_ASSERT(false);
+            return 0;
     }
-
-    MANGOS_ASSERT(0);
-    return 0;
 }
 
 /**
@@ -3374,6 +3372,52 @@ void Map::PlayDirectSoundToMap(uint32 soundId, uint32 zoneId /*=0*/)
     for (PlayerList::const_iterator itr = pList.begin(); itr != pList.end(); ++itr)
         if (!zoneId || itr->getSource()->GetZoneId() == zoneId)
             itr->getSource()->SendDirectMessage(&data);
+}
+
+/**
+* Function to change weather in zone and change weather on map from script. 
+*
+* need base support (With Values 0)
+*/
+
+void Map::SetMapWeather(WeatherState state, float grade)
+{
+    //Weather is OFF
+    if (!sWorld.getConfig(CONFIG_BOOL_WEATHER))
+        return;
+
+    if (grade < 0.0f || grade > 1.0f)
+        return;
+
+    if (!IsDungeon())
+        return;
+
+    WorldPacket data(SMSG_WEATHER, (4+4+4));
+    data << uint32(state) << (float)grade << uint8(0);
+
+    ((DungeonMap*)this)->SendToPlayers(&data);
+}
+
+bool Map::SetZoneWeather(uint32 zoneId, WeatherType type, float grade)
+{
+    //Weather is OFF
+    if (!sWorld.getConfig(CONFIG_BOOL_WEATHER))
+        return false;
+
+    if (grade < 0.0f || grade > 1.0f || MAX_WEATHER_TYPE <= type)
+        return false;
+
+    Weather* weather = sWorld.FindWeather(zoneId);
+
+    if (!weather)
+        weather = sWorld.AddWeather(zoneId);
+
+    if (!weather)
+        return false;
+
+    weather->SetWeather(type, grade);
+
+    return true;
 }
 
 /**

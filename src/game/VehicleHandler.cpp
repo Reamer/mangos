@@ -25,6 +25,7 @@
 #include "Vehicle.h"
 #include "ObjectMgr.h"
 #include "SpellAuras.h"
+#include "SpellMgr.h"
 #include "TemporarySummon.h"
 
 void WorldSession::HandleDismissControlledVehicle(WorldPacket &recv_data)
@@ -57,7 +58,7 @@ void WorldSession::HandleDismissControlledVehicle(WorldPacket &recv_data)
         GetPlayer()->ExitVehicle();
 
     if (dismiss)
-        vehicle->ForcedDespawn();
+        vehicle->ForcedDespawn(1000);
 
 }
 
@@ -117,8 +118,8 @@ void WorldSession::HandleRequestVehicleSwitchSeat(WorldPacket &recv_data)
         if (VehicleKit *pVehicle2 = Vehicle2->GetVehicleKit())
             if (pVehicle2->HasEmptySeat(seatId))
             {
-                    GetPlayer()->ExitVehicle();
-                    GetPlayer()->EnterVehicle(pVehicle2, seatId);
+                GetPlayer()->ExitVehicle();
+                GetPlayer()->EnterVehicle(pVehicle2, seatId);
             }
     }
 }
@@ -204,7 +205,6 @@ void WorldSession::HandleChangeSeatsOnControlledVehicle(WorldPacket &recv_data)
 
     MovementInfo mi;
     recv_data >> mi;
-    GetPlayer()->m_movementInfo = mi;
 
     recv_data >> guid2.ReadAsPacked(); //guid of vehicle or of vehicle in target seat
 
@@ -219,19 +219,18 @@ void WorldSession::HandleChangeSeatsOnControlledVehicle(WorldPacket &recv_data)
     if (pVehicle->GetBase()->GetVehicleInfo()->GetEntry()->m_flags & VEHICLE_FLAG_DISABLE_SWITCH)
         return;
 
-    if(guid.GetRawValue() == guid2.GetRawValue())
-        GetPlayer()->ChangeSeat(seatId, false);
+    pVehicle->GetBase()->m_movementInfo = mi;
 
+    if(!guid2 || guid.GetRawValue() == guid2.GetRawValue())
+        GetPlayer()->ChangeSeat(seatId);
+    // seat to another vehicle or accessory
     else if (guid2.IsVehicle())
     {
         if (Creature* vehicle = GetPlayer()->GetMap()->GetAnyTypeCreature(guid2))
         {
-            if (VehicleKit* pVehicle2 = vehicle->GetVehicleKit())
-                if(pVehicle2->HasEmptySeat(seatId))
-                {
-                    GetPlayer()->ExitVehicle();
-                    GetPlayer()->EnterVehicle(pVehicle2, seatId);
-                }
+            GetPlayer()->ExitVehicle();
+            GetPlayer()->EnterVehicle(vehicle, seatId);
+            DEBUG_LOG("WorldSession::HandleChangeSeatsOnControlledVehicle player %s try seat on vehicle %s, seat %u.",GetPlayer()->GetObjectGuid().GetString().c_str(),guid2.GetString().c_str(), seatId);
         }
     }
 }

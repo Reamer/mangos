@@ -37,6 +37,9 @@
     <Filter Include="Movement">
       <UniqueIdentifier>{0ac140f9-89c1-4830-b673-514c5e8b4d37}</UniqueIdentifier>
     </Filter>
+    <Filter Include="WorldPvP">
+      <UniqueIdentifier>{c25f76ed-c7d6-495a-a647-1f97b1261fa7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\game\AccountMgr.cpp">
@@ -231,12 +234,6 @@
     <ClCompile Include="..\..\src\game\ScriptMgr.cpp">
       <Filter>World/Handlers</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\SkillDiscovery.cpp">
-      <Filter>World/Handlers</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\game\SkillExtraItems.cpp">
-      <Filter>World/Handlers</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\game\SkillHandler.cpp">
       <Filter>World/Handlers</Filter>
     </ClCompile>
@@ -278,6 +275,33 @@
     </ClCompile>
     <ClCompile Include="..\..\src\game\World.cpp">
       <Filter>World/Handlers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\WorldPvP\WorldPvP.cpp">
+      <Filter>WorldPvP</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\WorldPvP\WorldPvPEP.cpp">
+      <Filter>WorldPvP</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\WorldPvP\WorldPvPGH.cpp">
+      <Filter>WorldPvP</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\WorldPvP\WorldPvPHP.cpp">
+      <Filter>WorldPvP</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\WorldPvP\WorldPvPMgr.cpp">
+      <Filter>WorldPvP</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\WorldPvP\WorldPvPNA.cpp">
+      <Filter>WorldPvP</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\WorldPvP\WorldPvPSI.cpp">
+      <Filter>WorldPvP</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\WorldPvP\WorldPvPTF.cpp">
+      <Filter>WorldPvP</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\WorldPvP\WorldPvPZM.cpp">
+      <Filter>WorldPvP</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\game\ConfusedMovementGenerator.cpp">
       <Filter>Motion generators</Filter>
@@ -490,13 +514,13 @@
     <ClCompile Include="..\..\src\game\UnitAuraProcHandler.cpp">
       <Filter>World/Handlers</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\ChatLexicsCutter.cpp">
+    <ClCompile Include="..\..\src\game\ChatLexicsCutter.cpp" >
       <Filter>Object</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\ChatLog.cpp">
+    <ClCompile Include="..\..\src\game\ChatLog.cpp" >
       <Filter>Object</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\VehicleHandler.cpp">
+    <ClCompile Include="..\..\src\game\VehicleHandler.cpp" >
       <Filter>Object</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\game\AuctionHouseBot\AuctionHouseBot.cpp">
@@ -732,12 +756,6 @@
     <ClInclude Include="..\..\src\game\ScriptMgr.h">
       <Filter>World/Handlers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game\SkillDiscovery.h">
-      <Filter>World/Handlers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\game\SkillExtraItems.h">
-      <Filter>World/Handlers</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\game\Spell.h">
       <Filter>World/Handlers</Filter>
     </ClInclude>
@@ -763,6 +781,36 @@
       <Filter>World/Handlers</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\game\World.h">
+      <Filter>World/Handlers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\WorldPvP\WorldPvP.h">
+      <Filter>WorldPvP</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\WorldPvP\WorldPvPEP.h">
+      <Filter>WorldPvP</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\WorldPvP\WorldPvPGH.h">
+      <Filter>WorldPvP</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\WorldPvP\WorldPvPHP.h">
+      <Filter>WorldPvP</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\WorldPvP\WorldPvPMgr.h">
+      <Filter>WorldPvP</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\WorldPvP\WorldPvPNA.h">
+      <Filter>WorldPvP</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\WorldPvP\WorldPvPSI.h">
+      <Filter>WorldPvP</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\WorldPvP\WorldPvPTF.h">
+      <Filter>WorldPvP</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\WorldPvP\WorldPvPZM.h">
+      <Filter>WorldPvP</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\ZoneScript.h">
       <Filter>World/Handlers</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\game\ConfusedMovementGenerator.h">
@@ -1003,20 +1051,20 @@
     <ClInclude Include="..\..\src\game\LFGMgr.h">
       <Filter>World/Handlers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game\ChatLexicsCutter.h">
+    <ClInclude Include="..\..\src\game\ChatLexicsCutter.h" >
       <Filter>Object</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game\ChatLog.h">
+    <ClInclude Include="..\..\src\game\ChatLog.h" >
       <Filter>Object</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\game\AuctionHouseBot\AuctionHouseBot.h">
-      <Filter>AhBot</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\game\MoveMap.h">
       <Filter>World/Handlers</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\game\MoveMapSharedDefines.h">
       <Filter>World/Handlers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\AuctionHouseBot\AuctionHouseBot.h">
+      <Filter>AhBot</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\game\vmap\BIH.h">
       <Filter>vmaps</Filter>
@@ -1138,6 +1186,5 @@
     <ClInclude Include="..\..\src\game\CreatureLinkingMgr.h">
       <Filter>World/Handlers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game\ObjectLock.h" />
   </ItemGroup>
 </Project>

@@ -28,6 +28,7 @@
 #include "Policies/Singleton.h"
 #include "SharedDefines.h"
 #include "ObjectLock.h"
+#include "Util.h"
 
 #include <map>
 #include <set>
@@ -302,6 +303,8 @@ enum eConfigFloatValues
     CONFIG_FLOAT_PLAYERBOT_MINDISTANCE,
     CONFIG_FLOAT_PLAYERBOT_MAXDISTANCE,
     CONFIG_FLOAT_CROWDCONTROL_HP_BASE,
+    CONFIG_FLOAT_LOADBALANCE_HIGHVALUE,
+    CONFIG_FLOAT_LOADBALANCE_LOWVALUE,
     CONFIG_FLOAT_VALUE_COUNT
 };
 
@@ -376,20 +379,23 @@ enum eConfigBoolValues
     CONFIG_BOOL_PLAYERBOT_DEBUGWHISPER,
     CONFIG_BOOL_PLAYERBOT_SHAREDBOTS,
     CONFIG_BOOL_CHECK_GO_IN_PATH,
+    CONFIG_BOOL_ALLOW_CUSTOM_MAPS,
     CONFIG_BOOL_ALLOW_HONOR_KILLS_TITLES,
     CONFIG_BOOL_PET_SAVE_ALL,
+    CONFIG_BOOL_THREADS_DYNAMIC,
     CONFIG_BOOL_VMSS_ENABLE,
     CONFIG_BOOL_VMSS_TRYSKIPFIRST,
-    CONFIG_BOOL_MMAP_ENABLED,
     CONFIG_BOOL_USE_REACHABLE,
     CONFIG_BOOL_PLAYERBOT_ALLOW_SUMMON_OPPOSITE_FACTION,
-    CONFIG_BOOL_PLAYERBOT_COLLECT_COMBAT,  
-    CONFIG_BOOL_PLAYERBOT_COLLECT_QUESTS,  
-    CONFIG_BOOL_PLAYERBOT_COLLECT_PROFESSION,  
-    CONFIG_BOOL_PLAYERBOT_COLLECT_LOOT,  
-    CONFIG_BOOL_PLAYERBOT_COLLECT_SKIN,  
-    CONFIG_BOOL_PLAYERBOT_COLLECT_OBJECTS,  
+    CONFIG_BOOL_PLAYERBOT_COLLECT_COMBAT,
+    CONFIG_BOOL_PLAYERBOT_COLLECT_QUESTS,
+    CONFIG_BOOL_PLAYERBOT_COLLECT_PROFESSION,
+    CONFIG_BOOL_PLAYERBOT_COLLECT_LOOT,
+    CONFIG_BOOL_PLAYERBOT_COLLECT_SKIN,
+    CONFIG_BOOL_PLAYERBOT_COLLECT_OBJECTS,
     CONFIG_BOOL_PLAYERBOT_SELL_TRASH,
+    CONFIG_BOOL_MMAP_ENABLED,
+    CONFIG_BOOL_RESET_DUEL_AREA_ENABLED,
     CONFIG_BOOL_VALUE_COUNT
 };
 
@@ -644,6 +650,10 @@ class World
         // multithread locking (World locking used only if object map == NULL)
         ObjectLockType& GetLock(MapLockType _locktype = MAP_LOCK_TYPE_DEFAULT) { return i_lock[_locktype]; }
 
+        // reset duel system
+        void setDuelResetEnableAreaIds(const char* areas);
+        bool IsAreaIdEnabledDuelReset(uint32 areaId);
+
     protected:
         void _UpdateGameTime();
         // callback for UpdateRealmCharacters
@@ -744,6 +754,9 @@ class World
 
         // World locking for global (not-in-map) objects.
         ObjectLockType   i_lock[MAP_LOCK_TYPE_MAX];
+
+        // reset duel system
+        std::set<uint32> areaEnabledIds; //set of areaIds where is enabled the Duel reset system
 
 };
 

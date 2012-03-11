@@ -982,6 +982,9 @@ bool Item::GemsFitSockets() const
     {
         uint8 SocketColor = GetProto()->Socket[enchant_slot-SOCK_ENCHANTMENT_SLOT].Color;
 
+        if (!SocketColor) //prismatic socket
+            continue;
+
         uint32 enchant_id = GetEnchantmentId(EnchantmentSlot(enchant_slot));
         if (!enchant_id)
         {
@@ -1052,6 +1055,30 @@ uint8 Item::GetGemCountWithLimitCategory(uint32 limitCategory) const
             continue;
 
         if (gemProto->ItemLimitCategory == limitCategory)
+            ++count;
+    }
+    return count;
+}
+
+uint8 Item::GetJewelcraftingGemCount() const
+{
+    uint8 count = 0;
+    for (uint32 enchant_slot = SOCK_ENCHANTMENT_SLOT; enchant_slot < SOCK_ENCHANTMENT_SLOT + MAX_GEM_SOCKETS; ++enchant_slot)
+    {
+        uint32 enchant_id = GetEnchantmentId(EnchantmentSlot(enchant_slot));
+
+        if (!enchant_id)
+            continue;
+
+        SpellItemEnchantmentEntry const* enchantEntry = sSpellItemEnchantmentStore.LookupEntry(enchant_id);
+        if (!enchantEntry)
+            continue;
+
+        ItemPrototype const* gemProto = ObjectMgr::GetItemPrototype(enchantEntry->GemID);
+        if (!gemProto)
+            continue;
+
+        if (gemProto->RequiredSkill == SKILL_JEWELCRAFTING)
             ++count;
     }
     return count;

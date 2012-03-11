@@ -32,8 +32,6 @@
 #include "WorldPacket.h"
 #include "Weather.h"
 #include "Player.h"
-#include "SkillExtraItems.h"
-#include "SkillDiscovery.h"
 #include "AccountMgr.h"
 #include "AchievementMgr.h"
 #include "AuctionHouseMgr.h"
@@ -52,6 +50,7 @@
 #include "Policies/SingletonImp.h"
 #include "BattleGroundMgr.h"
 #include "Language.h"
+#include "WorldPvP/WorldPvPMgr.h"
 #include "TemporarySummon.h"
 #include "VMapFactory.h"
 #include "MoveMap.h"
@@ -558,6 +557,10 @@ void World::LoadConfigSettings(bool reload)
         sMapMgr.SetGridCleanUpDelay(getConfig(CONFIG_UINT32_INTERVAL_GRIDCLEAN));
 
     setConfig(CONFIG_UINT32_NUMTHREADS, "MapUpdate.Threads", 3);
+    setConfig(CONFIG_BOOL_THREADS_DYNAMIC,"MapUpdate.DynamicThreadsCount", false);
+
+    setConfigMinMax(CONFIG_FLOAT_LOADBALANCE_HIGHVALUE, "MapUpdate.LoadBalanceHighValue", 0.8f, 0.5f, 1.0f);
+    setConfigMinMax(CONFIG_FLOAT_LOADBALANCE_LOWVALUE, "MapUpdate.LoadBalanceLowValue", 0.2f, 0.0f, 0.5f);
 
     setConfigMin(CONFIG_UINT32_INTERVAL_MAPUPDATE, "MapUpdateInterval", 100, MIN_MAP_UPDATE_DELAY);
     if (reload)
@@ -645,6 +648,8 @@ void World::LoadConfigSettings(bool reload)
     setConfigMinMax(CONFIG_UINT32_LFG_MAXKICKS, "LFG.MaxKicks", 5, 1, 10);
 
     setConfig(CONFIG_BOOL_CHECK_GO_IN_PATH, "CheckGOInPath", false);
+
+    setConfig(CONFIG_BOOL_ALLOW_CUSTOM_MAPS, "AllowTransferToCustomMap", false);
 
     setConfigMinMax(CONFIG_UINT32_GEAR_CALC_BASE, "Player.GSCalculationBase", 190, 1, 384);
 
@@ -959,8 +964,8 @@ void World::LoadConfigSettings(bool reload)
     }
 
     setConfig(CONFIG_BOOL_VMAP_INDOOR_CHECK, "vmap.enableIndoorCheck", true);
-    bool enableLOS = sConfig.GetBoolDefault("vmap.enableLOS", false);
-    bool enableHeight = sConfig.GetBoolDefault("vmap.enableHeight", false);
+    bool enableLOS = true;
+    bool enableHeight = true;
     std::string ignoreSpellIds = sConfig.GetStringDefault("vmap.ignoreSpellIds", "");
 
     if (!enableHeight)
@@ -977,6 +982,12 @@ void World::LoadConfigSettings(bool reload)
     std::string ignoreMapIds = sConfig.GetStringDefault("mmap.ignoreMapIds", "");
     MMAP::MMapFactory::preventPathfindingOnMaps(ignoreMapIds.c_str());
     sLog.outString("WORLD: mmap pathfinding %sabled", getConfig(CONFIG_BOOL_MMAP_ENABLED) ? "en" : "dis");
+
+    // reset duel system
+    setConfig(CONFIG_BOOL_RESET_DUEL_AREA_ENABLED, "DuelReset.Enable", false);
+    std::string areaIdsEnabledDuel = sConfig.GetStringDefault("DuelReset.AreaIds", "");
+    setDuelResetEnableAreaIds(areaIdsEnabledDuel.c_str());
+    sLog.outString("WORLD: reset duel area %sabled", getConfig(CONFIG_BOOL_RESET_DUEL_AREA_ENABLED) ? "en" : "dis");
 
     // chat log and lexics cutter settings
     if (reload)
@@ -1337,10 +1348,10 @@ void World::SetInitialWorldSettings()
     sLog.outString();
 
     sLog.outString( "Loading Skill Discovery Table..." );
-    LoadSkillDiscoveryTable();
+    sSpellMgr.LoadSkillDiscoveryTable();
 
     sLog.outString( "Loading Skill Extra Item Table..." );
-    LoadSkillExtraItemTable();
+    sSpellMgr.LoadSkillExtraItemTable();
 
     sLog.outString( "Loading Skill Fishing base level requirements..." );
     sObjectMgr.LoadFishingBaseSkillLevel();
@@ -1530,6 +1541,10 @@ void World::SetInitialWorldSettings()
     sBattleGroundMgr.CreateInitialBattleGrounds();
     sBattleGroundMgr.InitAutomaticArenaPointDistribution();
 
+    ///- Initialize World PvP
+    sLog.outString( "Starting World PvP System" );
+    sWorldPvPMgr.InitWorldPvP();
+
     //Not sure if this can be moved up in the sequence (with static data loading) as it uses MapManager
     sLog.outString( "Loading Transports..." );
     sMapMgr.LoadTransports();
@@ -1709,6 +1724,7 @@ void World::Update(uint32 diff)
     ///- Update objects (maps, transport, creatures,...)
     sMapMgr.Update(diff);
     sBattleGroundMgr.Update(diff);
+    sWorldPvPMgr.Update(diff);
 
     ///- Delete all characters which have been deleted X days before
     if (m_timers[WUPDATE_DELETECHARS].Passed())
@@ -2654,4 +2670,22 @@ bool World::configNoReload(bool reload, eConfigBoolValues index, char const* fie
         sLog.outError("%s option can't be changed at mangosd.conf reload, using current value (%s).", fieldname, getConfig(index) ? "'true'" : "'false'");
 
     return false;
+}
+
+void World::setDuelResetEnableAreaIds(const char* areas)
+{
+    if (areaEnabledIds.empty())
+    {
+        Tokens areaEnabledIdsString(areas, ',');
+        Tokens::iterator it;
+        for(it = areaEnabledIdsString.begin(); it != areaEnabledIdsString.end(); ++it)
+        {
+           areaEnabledIds.insert(atoi(*it));
+        }
+    }
+}
+
+bool World::IsAreaIdEnabledDuelReset(uint32 areaId)
+{
+    return areaEnabledIds.find(areaId) != areaEnabledIds.end();
 }

@@ -2812,10 +2812,10 @@ void ObjectMgr::LoadPetLevelInfo()
                     pInfo[level].mindmg = uint16(pInfo[sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL)-1].mindmg * (petBaseInfo[level].mindmg / petBaseInfo[sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL)-1].mindmg));
 
                 if(pInfo[level].maxdmg == 0)
-                    pInfo[level].mana = uint16(pInfo[sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL)-1].maxdmg * (petBaseInfo[level].maxdmg / petBaseInfo[sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL)-1].maxdmg));
+                    pInfo[level].maxdmg = uint16(pInfo[sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL)-1].maxdmg * (petBaseInfo[level].maxdmg / petBaseInfo[sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL)-1].maxdmg));
 
                 if(pInfo[level].attackpower == 0)
-                    pInfo[level].mana = uint16(pInfo[sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL)-1].attackpower * (petBaseInfo[level].attackpower / petBaseInfo[sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL)-1].attackpower));
+                    pInfo[level].attackpower = uint16(pInfo[sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL)-1].attackpower * (petBaseInfo[level].attackpower / petBaseInfo[sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL)-1].attackpower));
 
                 for (int i = 0; i < MAX_STATS; i++)
                 {
@@ -2864,7 +2864,7 @@ void ObjectMgr::LoadPetScalingData()
         return;
     }
 
-    BarGoLink bar( (int)result->GetRowCount() );
+    BarGoLink bar((int)result->GetRowCount());
 
     m_PetScalingData.clear();
 
@@ -3000,11 +3000,11 @@ void ObjectMgr::LoadAntiCheatConfig()
 
         std::string zonesList = fields[5+ANTICHEAT_CHECK_PARAMETERS*2+ANTICHEAT_ACTIONS*2].GetCppString();
 
-        Tokens _list = StrSplit(zonesList, " ");
+        Tokens _list(zonesList, ' ');
         if (!_list.empty())
         {
             for (Tokens::iterator itr = _list.begin(); itr != _list.end(); ++itr)
-                AntiCheatConfigEntry.disabledZones.insert(atol(itr->c_str()));
+                AntiCheatConfigEntry.disabledZones.insert(atol(*itr));
         }
 
         AntiCheatConfigEntry.description  = fields[6+ANTICHEAT_CHECK_PARAMETERS*2+ANTICHEAT_ACTIONS*2].GetCppString();
@@ -5795,6 +5795,53 @@ bool ObjectMgr::AddGraveYardLink(uint32 id, uint32 zoneId, Team team, bool inDB)
     return true;
 }
 
+void ObjectMgr::RemoveGraveYardLink(uint32 id, uint32 zoneId, Team team, bool inDB)
+{
+    GraveYardMap::iterator graveLow  = mGraveYardMap.lower_bound(zoneId);
+    GraveYardMap::iterator graveUp   = mGraveYardMap.upper_bound(zoneId);
+    if(graveLow==graveUp)
+    {
+        //sLog.outErrorDb("Table `game_graveyard_zone` incomplete: Zone %u Team %u does not have a linked graveyard.",zoneId,team);
+        return;
+    }
+
+    bool found = false;
+
+    GraveYardMap::iterator itr;
+
+    for (itr = graveLow; itr != graveUp; ++itr)
+    {
+        GraveYardData & data = itr->second;
+
+        // skip not matching safezone id
+        if(data.safeLocId != id)
+            continue;
+
+        // skip enemy faction graveyard at same map (normal area, city, or battleground)
+        // team == 0 case can be at call from .neargrave
+        if(data.team != 0 && team != 0 && data.team != team)
+            continue;
+
+        found = true;
+        break;
+    }
+
+    // no match, return
+    if(!found)
+        return;
+
+    // remove from links
+    mGraveYardMap.erase(itr);
+
+    // remove link from DB
+    if(inDB)
+    {
+        WorldDatabase.PExecute("DELETE FROM game_graveyard_zone WHERE id = '%u' AND ghost_zone = '%u' AND faction = '%u'",id,zoneId,team);
+    }
+
+    return;
+}
+
 void ObjectMgr::LoadAreaTriggerTeleports()
 {
     mAreaTriggers.clear();                                  // need for reload case
@@ -5857,7 +5904,7 @@ void ObjectMgr::LoadAreaTriggerTeleports()
         at.combatMode           = fields[20].GetUInt32();
 
         AreaTriggerEntry const* atEntry = sAreaTriggerStore.LookupEntry(Trigger_ID);
-        if (!atEntry)
+        if (!atEntry && !sWorld.getConfig(CONFIG_BOOL_ALLOW_CUSTOM_MAPS))
         {
             sLog.outErrorDb("Table `areatrigger_teleport` has area trigger (ID:%u) not listed in `AreaTrigger.dbc`.", Trigger_ID);
             continue;
@@ -5950,10 +5997,17 @@ void ObjectMgr::LoadAreaTriggerTeleports()
             continue;
         }
 
-        if (at.target_X==0 && at.target_Y==0 && at.target_Z==0)
+        if ( fabs(at.target_X) < M_NULL_F && fabs(at.target_Y) < M_NULL_F && fabs(at.target_Z) < M_NULL_F)
         {
-            sLog.outErrorDb("Table `areatrigger_teleport` has area trigger (ID:%u) without target coordinates.",Trigger_ID);
-            continue;
+            if (!sWorld.getConfig(CONFIG_BOOL_ALLOW_CUSTOM_MAPS))
+            {
+                sLog.outErrorDb("Table `areatrigger_teleport` has area trigger (ID:%u) without target coordinates.",Trigger_ID);
+                continue;
+            }
+            else
+            {
+                sLog.outDetail("Table `areatrigger_teleport` has area trigger (ID:%u) without correct target coordinates.",Trigger_ID);
+            }
         }
 
         mAreaTriggers[Trigger_ID] = at;
@@ -5982,6 +6036,8 @@ AreaTrigger const* ObjectMgr::GetGoBackTrigger(uint32 map_id) const
             AreaTriggerEntry const* atEntry = sAreaTriggerStore.LookupEntry(itr->first);
             if(atEntry && atEntry->mapid == map_id)
                 return &itr->second;
+            else if (sWorld.getConfig(CONFIG_BOOL_ALLOW_CUSTOM_MAPS))
+                return &itr->second;
         }
     }
     return NULL;
@@ -5998,6 +6054,8 @@ AreaTrigger const* ObjectMgr::GetMapEntranceTrigger(uint32 Map) const
         {
             AreaTriggerEntry const* atEntry = sAreaTriggerStore.LookupEntry(itr->first);
             if(atEntry)
+                return &itr->second;
+            else if (sWorld.getConfig(CONFIG_BOOL_ALLOW_CUSTOM_MAPS))
                 return &itr->second;
         }
     }
@@ -8500,7 +8558,7 @@ GameTele const* ObjectMgr::GetGameTele(const std::string& name) const
     // explicit name case
     std::wstring wname;
     if(!Utf8toWStr(name,wname))
-        return false;
+        return NULL;
 
     // converting string that we try to find to lower case
     wstrToLower( wname );

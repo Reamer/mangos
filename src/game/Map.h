@@ -35,12 +35,12 @@
 #include "MapRefManager.h"
 #include "Utilities/TypeList.h"
 #include "ScriptMgr.h"
+#include "Weather.h"
 #include "CreatureLinkingMgr.h"
 #include "ObjectLock.h"
 
 #include <bitset>
 #include <list>
-#include <set>
 
 struct CreatureInfo;
 class Creature;
@@ -262,6 +262,10 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
         void MonsterYellToMap(ObjectGuid guid, int32 textId, uint32 language, Unit* target);
         void MonsterYellToMap(CreatureInfo const* cinfo, int32 textId, uint32 language, Unit* target, uint32 senderLowGuid = 0);
         void PlayDirectSoundToMap(uint32 soundId, uint32 zoneId = 0);
+
+        // Weather
+        void SetMapWeather(WeatherState state, float grade);
+        bool SetZoneWeather(uint32 zoneId, WeatherType type, float grade);
 
         // Attacker per-map storage operations
         void AddAttackerFor(ObjectGuid targetGuid, ObjectGuid attackerGuid);

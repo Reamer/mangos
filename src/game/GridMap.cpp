@@ -1016,12 +1016,36 @@ bool TerrainInfo::IsInWater(float x, float y, float pZ, GridMapLiquidData *data,
     return false;
 }
 
-bool TerrainInfo::IsUnderWater(float x, float y, float z) const
+bool TerrainInfo::IsAboveWater(float x, float y, float z, float* pWaterZ/*= NULL*/) const
 {
     if (const_cast<TerrainInfo*>(this)->GetGrid(x, y))
     {
-        if (getLiquidStatus(x, y, z, MAP_LIQUID_TYPE_WATER|MAP_LIQUID_TYPE_OCEAN) & LIQUID_MAP_UNDER_WATER)
+        GridMapLiquidData mapData;
+
+        if (getLiquidStatus(x, y, z, MAP_LIQUID_TYPE_WATER|MAP_LIQUID_TYPE_OCEAN, &mapData) & LIQUID_MAP_ABOVE_WATER)
+        {
+            if (pWaterZ)
+                *pWaterZ = mapData.level;
+
             return true;
+        }
+    }
+    return false;
+}
+
+bool TerrainInfo::IsUnderWater(float x, float y, float z, float* pWaterZ/*= NULL*/) const
+{
+    if (const_cast<TerrainInfo*>(this)->GetGrid(x, y))
+    {
+        GridMapLiquidData mapData;
+
+        if (getLiquidStatus(x, y, z, MAP_LIQUID_TYPE_WATER|MAP_LIQUID_TYPE_OCEAN, &mapData) & LIQUID_MAP_UNDER_WATER)
+        {
+            if (pWaterZ)
+                *pWaterZ = mapData.level;
+
+            return true;
+        }
     }
     return false;
 }
@@ -1152,24 +1176,7 @@ float TerrainInfo::GetWaterLevel(float x, float y, float z, float* pGround /*= N
 
 bool TerrainInfo::IsNextZcoordOK(float x, float y, float oldZ, float maxDiff) const
 {
-    // The fastest way to get an accurate result 90% of the time.
-    // Better result can be obtained like 99% accuracy with a ray light, but the cost is too high and the code is too long.
-    maxDiff = maxDiff >= 100.0f ? 10.0f : sqrtf(maxDiff);
-    bool useVmaps = false;
-    if (GetHeight(x, y, oldZ, false) <  GetHeight(x, y, oldZ, true)) // check use of vmaps
-        useVmaps = true;
-
-    float newZ = GetHeight(x, y, oldZ+maxDiff-2.0f, useVmaps);
-
-    if (fabs(newZ-oldZ) > maxDiff)                                // bad...
-    {
-        useVmaps = !useVmaps;                                     // try change vmap use
-        newZ = GetHeight(x, y, oldZ+maxDiff-2.0f, useVmaps);
-
-        if (fabs(newZ-oldZ) > maxDiff)
-            return false;
-    }
-    return true;
+    return ((fabs(GetHeight(x, y, oldZ, true) - oldZ) < maxDiff ) || (fabs(GetHeight(x, y, oldZ, false) - oldZ) < maxDiff ));
 }
 
 bool TerrainInfo::CheckPath(float srcX, float srcY, float srcZ, float& dstX, float& dstY, float& dstZ) const
@@ -1192,14 +1199,22 @@ bool TerrainInfo::CheckPath(float srcX, float srcY, float srcZ, float& dstX, flo
     return result;
 }
 
-bool TerrainInfo::CheckPathAccurate(float srcX, float srcY, float srcZ, float& dstX, float& dstY, float& dstZ, Unit* mover ) const
+bool TerrainInfo::CheckPathAccurate(float srcX, float srcY, float srcZ, float& dstX, float& dstY, float& dstZ, Unit* mover, bool onlyLOS ) const
 {
+
+    const float DELTA    = 0.5f;
 
     float tstX = dstX;
     float tstY = dstY;
-    float tstZ = dstZ;
+
+    // test LOS at least on 4*DELTA under source coord (as in clean mangos)
+    float tstZ = dstZ + 4*DELTA;
+    srcZ += 4*DELTA;
+
+    const bool  isVMAPBroken = !IsNextZcoordOK(srcX, srcY, srcZ, 8.0f);
+
     // check by standart way. may be not need path checking?
-    if (!mover && CheckPath(srcX, srcY, srcZ, tstX, tstY, tstZ) && IsNextZcoordOK(tstX, tstY, tstZ, 5.0f))
+    if (!mover && CheckPath(srcX, srcY, srcZ, tstX, tstY, tstZ) && (isVMAPBroken || IsNextZcoordOK(tstX, tstY, tstZ, 5.0f)))
     {
         DEBUG_LOG("TerrainInfo::CheckPathAccurate vmaps hit! delta is %f %f %f",dstX - tstX,dstY - tstY,dstZ - tstZ);
         dstX = tstX;
@@ -1209,10 +1224,10 @@ bool TerrainInfo::CheckPathAccurate(float srcX, float srcY, float srcZ, float& d
     }
 
     const float distance = sqrt((dstY - srcY)*(dstY - srcY) + (dstX - srcX)*(dstX - srcX));
-    const float DELTA    = 0.5f;
     const uint8 numChecks = ceil(fabs(distance/DELTA));
     const float DELTA_X  = (dstX-srcX)/numChecks;
     const float DELTA_Y  = (dstY-srcY)/numChecks;
+    const float DELTA_Z  = (dstZ-srcZ)/numChecks;
 
     float lastGoodX = srcX;
     float lastGoodY = srcY;
@@ -1222,23 +1237,93 @@ bool TerrainInfo::CheckPathAccurate(float srcX, float srcY, float srcZ, float& d
     uint32 goodCount   = 0;
     uint32 vmaperrorsCount   = 0;
 
+    std::set<GameObject*> inLOSGOList;
+    bool bGOCheck = false;
+    if (mover)
+    {
+        std::list<GameObject*> tempTargetGOList;
+        MaNGOS::GameObjectInRangeCheck check(mover, tstX, tstY, tstZ, distance + 2.0f *mover->GetObjectBoundingRadius());
+        MaNGOS::GameObjectListSearcher<MaNGOS::GameObjectInRangeCheck> searcher(tempTargetGOList, check);
+        Cell::VisitAllObjects(mover, searcher, 2*mover->GetObjectBoundingRadius());
+        if (!tempTargetGOList.empty())
+        {
+            for(std::list<GameObject*>::iterator iter = tempTargetGOList.begin(); iter != tempTargetGOList.end(); ++iter)
+            {
+                GameObject* pGo = *iter;
+
+                if (!pGo || !pGo->IsInWorld())
+                    continue;
+
+                // Not require check GO's, if his not in path
+                // first fast check
+                if (pGo->GetPositionX() > std::max(srcX, dstX)
+                    || pGo->GetPositionX() < std::min(srcX, dstX)
+                    || pGo->GetPositionY() > std::max(srcY, dstY)
+                    || pGo->GetPositionY() < std::min(srcY, dstY))
+                    continue;
+
+                // don't check very small and very large objects
+                if (pGo->GetDeterminativeSize(true) < mover->GetObjectBoundingRadius() * 0.5f ||
+                    pGo->GetDeterminativeSize(false) > mover->GetObjectBoundingRadius() * 100.0f)
+                    continue;
+
+                // second check by angle
+                float angle = mover->GetAngle(pGo) - mover->GetAngle(dstX, dstY);
+                if (abs(sin(angle)) * pGo->GetExactDist2d(srcX, srcY) > pGo->GetObjectBoundingRadius() * 0.5f)
+                    continue;
+
+                bool bLOSBreak = false;
+                switch (pGo->GetGoType())
+                {
+                        case GAMEOBJECT_TYPE_TRAP:
+                        case GAMEOBJECT_TYPE_SPELL_FOCUS:
+                        case GAMEOBJECT_TYPE_MO_TRANSPORT:
+                        case GAMEOBJECT_TYPE_CAMERA:
+                        case GAMEOBJECT_TYPE_FISHINGNODE:
+                        case GAMEOBJECT_TYPE_SUMMONING_RITUAL:
+                        case GAMEOBJECT_TYPE_SPELLCASTER:
+                        case GAMEOBJECT_TYPE_FISHINGHOLE:
+                        case GAMEOBJECT_TYPE_CAPTURE_POINT:
+                        case GAMEOBJECT_TYPE_DUEL_ARBITER:
+                            break;
+                        case GAMEOBJECT_TYPE_DOOR:
+                            if (pGo->isSpawned() && pGo->GetGoState() == GO_STATE_READY)
+                                bLOSBreak = true;
+                            break;
+                        case GAMEOBJECT_TYPE_TRANSPORT:
+                            if (pGo->isSpawned() && pGo->GetGoState() == GO_STATE_ACTIVE)
+                                bLOSBreak = true;
+                            break;
+                        case GAMEOBJECT_TYPE_DESTRUCTIBLE_BUILDING:
+                            if (!pGo->HasFlag(GAMEOBJECT_FLAGS, GO_FLAG_DESTROYED))
+                                bLOSBreak = true;
+                            break;
+                        default:
+                            if (pGo->isSpawned())
+                                bLOSBreak = true;
+                            break;
+                }
+                if (bLOSBreak)
+                    inLOSGOList.insert(pGo);
+            }
+        }
+        if (!inLOSGOList.empty())
+            bGOCheck = true;
+    }
+
     //Going foward until max distance
     for (uint8 i = 1; i < numChecks; ++i)
     {
         float prevX = srcX + (float(i-1)*DELTA_X);
         float prevY = srcY + (float(i-1)*DELTA_Y);
-        float prevZ = GetHeight(prevX, prevY, srcZ+5.0f);
+        float prevZ = srcZ + (float(i-1)*DELTA_Z);
 
         tstX = srcX + (float(i)*DELTA_X);
         tstY = srcY + (float(i)*DELTA_Y);
-        tstZ = GetHeight(tstX, tstY, srcZ+5.0f);
+        tstZ = srcZ + (float(i)*DELTA_Z);
 
         MaNGOS::NormalizeMapCoord(tstX);
         MaNGOS::NormalizeMapCoord(tstY);
-
-        if (tstZ <= INVALID_HEIGHT)
-            break;
-        tstZ += 0.5f;
 
         if (!CheckPath(prevX, prevY, prevZ, tstX, tstY, tstZ))
         {
@@ -1246,28 +1331,28 @@ bool TerrainInfo::CheckPathAccurate(float srcX, float srcY, float srcZ, float& d
             ++errorsCount;
             goodCount = 0;
         }
-        else if (!IsNextZcoordOK(tstX, tstY, tstZ, 5.0f))
+        else if (!isVMAPBroken && !IsNextZcoordOK(tstX, tstY, tstZ, 8.0f + 4*DELTA))
         {
             ++errorsCount;
             goodCount = 0;
         }
-        else if (mover)
+        else if (mover && bGOCheck)
         {
-            std::list<GameObject*> tempTargetGOList;
-            MaNGOS::GameObjectInRangeCheck check(mover, tstX, tstY, tstZ, 2*mover->GetObjectBoundingRadius());
-            MaNGOS::GameObjectListSearcher<MaNGOS::GameObjectInRangeCheck> searcher(tempTargetGOList, check);
-            Cell::VisitAllObjects(mover, searcher, 2*mover->GetObjectBoundingRadius());
-            if (!tempTargetGOList.empty())
+            bool bError = false;
+            for(std::set<GameObject*>::const_iterator iter = inLOSGOList.begin(); iter != inLOSGOList.end(); ++iter)
             {
-                for(std::list<GameObject*>::iterator iter = tempTargetGOList.begin(); iter != tempTargetGOList.end(); ++iter)
-                {
-                    if (((*iter)->GetGoType() == GAMEOBJECT_TYPE_DOOR && (*iter)->GetGoState() == GO_STATE_READY)
-                        || (*iter)->GetGoType() != GAMEOBJECT_TYPE_DOOR)
-                    {
-                        ++errorsCount;
-                        goodCount = 0;
-                    }
-                }
+                if (!(*iter) || (*iter)->GetDistance2d(tstX, tstY) > (*iter)->GetObjectBoundingRadius())
+                    continue;
+
+                DEBUG_FILTER_LOG(LOG_FILTER_PLAYER_MOVES,"TerrainInfo::CheckPathAccurate GO %s in LOS found, %f %f %f ",(*iter)->GetObjectGuid().GetString().c_str(),tstX,tstY,tstZ);
+                bError = true;
+                break;
+            }
+
+            if (bError)
+            {
+                ++errorsCount;
+                goodCount = 0;
             }
             else
                 ++goodCount;
@@ -1277,13 +1362,17 @@ bool TerrainInfo::CheckPathAccurate(float srcX, float srcY, float srcZ, float& d
             ++goodCount;
         }
 
+        DEBUG_FILTER_LOG(LOG_FILTER_PLAYER_MOVES,"TerrainInfo::CheckPathAccurate test data %f %f %f good=%u, errors=%u vmap=%u",tstX,tstY,tstZ, goodCount, errorsCount, vmaperrorsCount);
+
         if (!errorsCount)
         {
             lastGoodX = prevX;
             lastGoodY = prevY;
             lastGoodZ = prevZ;
         }
-//        DEBUG_LOG("TerrainInfo::CheckPathAccurate test data %f %f %f good=%u, errors=%u vmap=%u",tstX,tstY,tstZ, goodCount, errorsCount, vmaperrorsCount);
+        else
+            if (onlyLOS)
+                break;
 
         if (errorsCount && goodCount > 10)
         {
@@ -1296,13 +1385,13 @@ bool TerrainInfo::CheckPathAccurate(float srcX, float srcY, float srcZ, float& d
     {
         dstX = lastGoodX;
         dstY = lastGoodY;
-        dstZ = GetHeight(lastGoodX, lastGoodY, lastGoodZ+2.0f) + 0.5f;
+        dstZ = isVMAPBroken ? lastGoodZ - 4*DELTA + 0.1f: GetHeight(lastGoodX, lastGoodY, lastGoodZ + DELTA) + 0.1f;
     }
     else
     {
         dstX = tstX;
         dstY = tstY;
-        dstZ = GetHeight(tstX, tstY, tstZ+2.0f) + 0.5f;
+        dstZ = isVMAPBroken ? tstZ - 4*DELTA + 0.1f : GetHeight(tstX, tstY, tstZ + DELTA) + 0.1f;
     }
 
     return (errorsCount == 0);

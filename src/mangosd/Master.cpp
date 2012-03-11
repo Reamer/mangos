@@ -644,10 +644,6 @@ void Master::_OnSignal(int s)
             }
             else
             {
-                #ifdef _WIN32
-                if ( s == SIGUSR1)
-                    s = SIGABRT;
-                #endif
                 signal(s, SIG_DFL);
                 ACE_OS::kill(getpid(), s);
             }
