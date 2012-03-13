@@ -2901,7 +2901,7 @@ LFGDungeonEntry const* LFGMgr::SelectRandomDungeonFromList(LFGDungeonSet dungeon
         return *dungeons.begin();
     else
     {
-        uint32 rand = urand(0, dungeons.size() - 1);
+        int32 rand = irand(0, dungeons.size() - 1);
         uint32 _key = 0;
         for (LFGDungeonSet::const_iterator itr = dungeons.begin(); itr != dungeons.end(); ++itr)
         {
