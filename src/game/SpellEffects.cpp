@@ -2646,6 +2646,17 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     m_caster->CastSpell(m_caster, 30452, true, NULL);
                     return;
                 }
+                case 51659:                                 // Quest: A Mammoth Undertaking
+                {
+                    if (m_caster->GetTypeId() != TYPEID_PLAYER)
+                        return;
+
+                    if (unitTarget->GetEntry() != 28379)
+                        return;
+
+                    m_caster->CastSpell(m_caster, 51658, true);
+                    return;
+                }
                 case 51840:                                 // Despawn Fruit Tosser
                 {
                     if (!unitTarget || unitTarget->GetTypeId() != TYPEID_UNIT)
