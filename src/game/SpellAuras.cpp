@@ -11234,6 +11234,15 @@ void SpellAuraHolder::HandleSpellSpecificBoosts(bool apply)
                         return;
                     break;
                 }
+                case 62546:                                 // Scorch (Ignis encounter)
+                case 63474:                                 // Scorch (Ignis encounter) heroic
+                {
+                    if (apply)
+                    {
+                        spellId1 = 62551;
+                    }
+                    break;
+                }
                 case 62619:                                 // Potent Pheromones (Freya encounter)
                 case 64321:                                 // Potent Pheromones (Freya encounter) heroic
                 {
