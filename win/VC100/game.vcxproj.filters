@@ -252,6 +252,9 @@
     <ClCompile Include="..\..\src\game\SpellHandler.cpp">
       <Filter>World/Handlers</Filter>
     </ClCompile>
+   <ClCompile Include="..\..\src\game\StateMgr.cpp">
+      <Filter>World/Handlers</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\game\TaxiHandler.cpp">
       <Filter>World/Handlers</Filter>
     </ClCompile>
@@ -766,6 +769,12 @@
       <Filter>World/Handlers</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\game\SpellAuras.h">
+      <Filter>World/Handlers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\StateMgr.h">
+      <Filter>World/Handlers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\StateMgrImpl.h">
       <Filter>World/Handlers</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\game\Transports.h">
