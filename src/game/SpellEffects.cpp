@@ -9555,34 +9555,6 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
 
                     return;
                 }
-                case 62707:                                 // Grab (Ulduar: Ignis)
-                case 63535:                                 // Grab heroic
-                {
-                    if (!unitTarget || !m_caster)
-                        return;
-                    unitTarget->CastSpell(m_caster, 62708, true); // Control Vehicle aura
-                    m_caster->CastSpell(unitTarget, (m_spellInfo->Id == 62707) ? 62717 : 63477, true); // DoT/Immunity
-                    break;
-                }
-                case 62705:                                 // Auto-repair
-                {
-                    if (!unitTarget)
-                        return;
-                    unitTarget->SetHealth(unitTarget->GetMaxHealth());
-                    if (VehicleKit* vehicle = unitTarget->GetVehicleKit())
-                        if (Unit* seat = vehicle->GetPassenger(1))
-                            seat->ModifyPower(POWER_ENERGY,50);
-                    break;
-                }
-                case 64475:                                 // Ignis Strength of the Creator stack decreasing
-                {
-                    if (!unitTarget)
-                        return;
-                    if (SpellAuraHolderPtr holder = unitTarget->GetSpellAuraHolder(64473))
-                        if (holder->ModStackAmount(-1))
-                            unitTarget->RemoveSpellAuraHolder(holder);
-                    break;
-                }
                 case 60123: // Lightwell
                 {
                    if (m_caster->GetTypeId() != TYPEID_UNIT)
@@ -9653,6 +9625,26 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     unitTarget->RemoveAurasDueToSpell(62574);
 
                     m_caster->GetMotionMaster()->MoveFollow(unitTarget, PET_FOLLOW_DIST, unitTarget->GetAngle(m_caster));
+                    break;
+                }
+                case 62705:                                 // Auto-repair
+                {
+                    if (!unitTarget)
+                        return;
+                    unitTarget->SetHealth(unitTarget->GetMaxHealth());
+                    if (VehicleKit* vehicle = unitTarget->GetVehicleKit())
+                        if (Unit* seat = vehicle->GetPassenger(1))
+                            seat->ModifyPower(POWER_ENERGY,50);
+                    break;
+                }
+                case 62707:                                 // Grab (Ulduar: Ignis)
+                case 63535:                                 // Grab heroic
+                {
+                    if (!unitTarget || !m_caster)
+                        return;
+
+                    unitTarget->CastSpell(m_caster, 62708, true); // Control Vehicle aura
+                    m_caster->CastSpell(unitTarget, (m_spellInfo->Id == 62707) ? 62717 : 63477, true); // DoT/Immunity
                     break;
                 }
                 case 63027:                                 // Proximity Mines for Mimiron Encounter
@@ -9744,6 +9736,15 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     uint32 spellid = 0;
                     unitTarget->GetMap()->IsRegularDifficulty() ? spellid = 64468 : spellid = 64469;
                     unitTarget->CastSpell(unitTarget, spellid, true);
+                    break;
+                }
+                case 64475:                                 // Ignis Strength of the Creator stack decreasing
+                {
+                    if (!unitTarget)
+                        return;
+                    if (SpellAuraHolderPtr holder = unitTarget->GetSpellAuraHolder(64473))
+                        if (holder->ModStackAmount(-1))
+                            unitTarget->RemoveSpellAuraHolder(holder);
                     break;
                 }
                 case 65044:                                 // Flames Ulduar
