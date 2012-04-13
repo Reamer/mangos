@@ -385,7 +385,6 @@ enum eConfigBoolValues
     CONFIG_BOOL_THREADS_DYNAMIC,
     CONFIG_BOOL_VMSS_ENABLE,
     CONFIG_BOOL_VMSS_TRYSKIPFIRST,
-    CONFIG_BOOL_USE_REACHABLE,
     CONFIG_BOOL_PLAYERBOT_ALLOW_SUMMON_OPPOSITE_FACTION,
     CONFIG_BOOL_PLAYERBOT_COLLECT_COMBAT,
     CONFIG_BOOL_PLAYERBOT_COLLECT_QUESTS,
@@ -638,8 +637,6 @@ class World
         void UpdateResultQueue();
         void InitResultQueue();
 
-        void UpdateRealmCharCount(uint32 accid);
-
         LocaleConstant GetAvailableDbcLocale(LocaleConstant locale) const { if(m_availableDbcLocaleMask & (1 << locale)) return locale; else return m_defaultDbcLocale; }
 
         //used World DB version
@@ -656,8 +653,6 @@ class World
 
     protected:
         void _UpdateGameTime();
-        // callback for UpdateRealmCharacters
-        void _UpdateRealmCharCount(QueryResult *resultCharCount, uint32 accountId);
 
         void InitDailyQuestResetTime();
         void InitWeeklyQuestResetTime();

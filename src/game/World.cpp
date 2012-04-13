@@ -459,9 +459,6 @@ void World::LoadConfigSettings(bool reload)
     setConfig(CONFIG_UINT32_VMSS_FORCEUNLOADDELAY,    "VMSS.ForceUnloadDelay",3000);
     setConfig(CONFIG_BOOL_VMSS_TRYSKIPFIRST,          "VMSS.TrySkipFirstThreadBreak", false);
 
-    // Reachable System
-    setConfig(CONFIG_BOOL_USE_REACHABLE,              "Reachable.Enable", false);
-
     ///- Read all rates from the config file
     setConfigPos(CONFIG_FLOAT_RATE_HEALTH, "Rate.Health", 1.0f);
     setConfigPos(CONFIG_FLOAT_RATE_POWER_MANA, "Rate.Mana", 1.0f);
@@ -1356,8 +1353,8 @@ void World::SetInitialWorldSettings()
     sLog.outString( "Loading Skill Fishing base level requirements..." );
     sObjectMgr.LoadFishingBaseSkillLevel();
 
-    sLog.outString( "Loading Achievements..." );
     sLog.outString();
+    sLog.outString( "Loading Achievements..." );
     sAchievementMgr.LoadAchievementReferenceList();
     sAchievementMgr.LoadAchievementCriteriaList();
     sAchievementMgr.LoadAchievementCriteriaRequirements();
@@ -1369,9 +1366,6 @@ void World::SetInitialWorldSettings()
 
     sLog.outString( "Loading Instance encounters data..." );  // must be after Creature loading
     sObjectMgr.LoadInstanceEncounters();
-
-    sLog.outString( "Loading Npc Text Id..." );
-    sObjectMgr.LoadNpcGossips();                            // must be after load Creature and LoadGossipText
 
     sLog.outString( "Loading Gossip scripts..." );
     sScriptMgr.LoadGossipScripts();                         // must be before gossip menu options

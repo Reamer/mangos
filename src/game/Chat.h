@@ -456,7 +456,6 @@ class MANGOS_DLL_SPEC ChatHandler
         bool HandleReloadLootTemplatesSpellCommand(char* args);
         bool HandleReloadMailLevelRewardCommand(char* args);
         bool HandleReloadMangosStringCommand(char* args);
-        bool HandleReloadNpcGossipCommand(char* args);
         bool HandleReloadNpcTextCommand(char* args);
         bool HandleReloadNpcTrainerCommand(char* args);
         bool HandleReloadNpcVendorCommand(char* args);
@@ -590,7 +589,6 @@ class MANGOS_DLL_SPEC ChatHandler
         bool HandleLinkGraveCommand(char* args);
         bool HandleNearGraveCommand(char* args);
         bool HandleExploreCheatCommand(char* args);
-        bool HandleHoverCommand(char* args);
         bool HandleLevelUpCommand(char* args);
         bool HandleShowAreaCommand(char* args);
         bool HandleHideAreaCommand(char* args);

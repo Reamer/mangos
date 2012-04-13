@@ -40,6 +40,7 @@ class MANGOS_DLL_SPEC PointMovementGenerator
         void MovementInform(T &);
 
         MovementGeneratorType GetMovementGeneratorType() const { return POINT_MOTION_TYPE; }
+        const char* Name() const { return "<Point>"; }
 
         bool GetDestination(float& x, float& y, float& z) const { x=i_x; y=i_y; z=i_z; return true; }
     private:
@@ -70,6 +71,7 @@ class EffectMovementGenerator : public MovementGenerator
         void Reset(Unit &) {}
         bool Update(Unit &u, const uint32 &);
         MovementGeneratorType GetMovementGeneratorType() const { return EFFECT_MOTION_TYPE; }
+        const char* Name() const { return "<Effect>"; }
     private:
         uint32 m_Id;
 };

@@ -2733,9 +2733,6 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
 
                     if (pTargetDummy)
                     {
-                        if (unitTarget->hasUnitState(UNIT_STAT_FOLLOW | UNIT_STAT_FOLLOW_MOVE))
-                            unitTarget->GetMotionMaster()->MovementExpired();
-
                         unitTarget->MonsterMoveWithSpeed(pTargetDummy->GetPositionX(), pTargetDummy->GetPositionY(), pTargetDummy->GetPositionZ(), 24.f);
 
                         // Add state to temporarily prevent follow
@@ -3383,7 +3380,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     Unit* pZerg = unitTarget->GetMiniPet();
                     if (pZerg && pZerg->isAlive() && pZerg->GetEntry() == 11327)
                     {
-                        pZerg->GetMotionMaster()->MovementExpired();
+                        pZerg->GetUnitStateMgr().InitDefaults();
                         m_caster->DealDamage(pZerg, unitTarget->GetMaxHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
                         ((Creature*)pZerg)->ForcedDespawn(5000);
                     }
@@ -3396,7 +3393,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
 
                     m_caster->DealDamage(unitTarget, unitTarget->GetMaxHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
                     ((Pet*)unitTarget)->Unsummon(PET_SAVE_AS_DELETED);
-                    m_caster->GetMotionMaster()->MovementExpired();
+                    m_caster->GetUnitStateMgr().InitDefaults();
                     return;
                 }
                 case 68576:                                 // Eject All Passengers (also used in encounters Lich King, Jaraxxus?)
@@ -4813,7 +4810,7 @@ void Spell::EffectJump(SpellEffectIndex eff_idx)
     if (pTarget == m_caster)
         pTarget = NULL;
 
-    m_caster->MonsterMoveJump(x, y, z, o, float(speed_xy) / 2, float(speed_z) / 10, false, pTarget);
+    m_caster->MonsterMoveToDestination(x, y, z, o, float(speed_xy) / 2, float(speed_z) / 10, false, pTarget);
 }
 
 void Spell::EffectTeleportUnits(SpellEffectIndex eff_idx)
@@ -8482,9 +8479,6 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                             // can only affect "own" summoned
                             if (pSummon->GetSummonerGuid() == m_caster->GetObjectGuid())
                             {
-                                if (pTarget->hasUnitState(UNIT_STAT_ROAMING | UNIT_STAT_ROAMING_MOVE))
-                                    pTarget->GetMotionMaster()->MovementExpired();
-
                                 // trigger cast of quest complete script (see code for this spell below)
                                 pTarget->CastSpell(pTarget, 44462, true);
 
@@ -9701,24 +9695,31 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                         int32 stacks = 0;
                         switch (m_spellInfo->Id)
                         {
-                            case 63795: stacks = -9;    break;      // Psychosis; remove!?, more script Effect basepoints 63988
-                            case 65301: stacks = -12;   break;      // Psychosis; remove!?, more script Effect basepoints 63988
-                            case 64164: stacks = -4;    break;      // Lunatic Gaze
-                            case 64168: 
-                            case 63803: stacks = -2;    break;      // Brain Link
-                            case 63830:                             // Induce Madness; 65201 (Crush) as basepoints !?
-                            case 63881: stacks = -3;    break;
-                            case 64059:                             // remove!?, more script Effect basepoints 63988
+                            case 63795: stacks = -9;
+                                break;                      // Psychosis; remove!?, more script Effect basepoints 63988
+                            case 65301: stacks = -12;
+                                break;                      // Psychosis; remove!?, more script Effect basepoints 63988
+                            case 64164: stacks = -4;
+                                break;                      // Lunatic Gaze
+                            case 64168:
+                            case 63803: stacks = -2;
+                                break;                      // Brain Link
+                            case 63830:                     // Induce Madness; 65201 (Crush) as basepoints !?
+                            case 63881: stacks = -3;
+                                break;
+                            case 64059:                     // remove!?, more script Effect basepoints 63988
                             {
                                 if (unitTarget->GetPositionZ() > 245.0f)
                                     return;
-                                stacks = -100;  break;
+                                stacks = -100; break;
                             }
                         }
                         int32 stackAmount = holder->GetStackAmount() + stacks;
+
                         if (stackAmount > 100)
                             stackAmount = 100;
-                        else if (stackAmount <=0) // Last aura from stack removed
+
+                        else if (stackAmount <=0)           // Last aura from stack removed
                         {
                             stackAmount = 0;
                         }
@@ -11090,6 +11091,10 @@ static ScriptInfo generateActivateCommand()
 {
     ScriptInfo si;
     si.command = SCRIPT_COMMAND_ACTIVATE_OBJECT;
+    si.id = 0;
+    si.buddyEntry = 0;
+    si.searchRadius = 0;
+    si.data_flags = 0x00;
     return si;
 }
 
@@ -11616,20 +11621,21 @@ void Spell::EffectSkinning(SpellEffectIndex /*eff_idx*/)
 
 void Spell::EffectCharge(SpellEffectIndex /*eff_idx*/)
 {
-    if (!unitTarget)
+    if (!unitTarget || !m_caster)
         return;
 
     float x, y, z;
     unitTarget->GetContactPoint(m_caster, x, y, z);
 
     // Try to normalize Z coord cuz GetContactPoint do nothing with Z axis
-    unitTarget->UpdateGroundPositionZ(x, y, z);
+    m_caster->UpdateAllowedPositionZ(x, y, z);
 
     if (unitTarget->GetTypeId() != TYPEID_PLAYER)
-        ((Creature *)unitTarget)->StopMoving();
+        ((Creature*)unitTarget)->StopMoving();
 
-    // Only send MOVEMENTFLAG_WALK_MODE, client has strange issues with other move flags
-    m_caster->MonsterMoveWithSpeed(x, y, z, 24.f, true, true);
+    float speed = m_spellInfo->speed ? m_spellInfo->speed : BASE_CHARGE_SPEED;
+
+    m_caster->MonsterMoveToDestination(x, y, z, m_caster->GetOrientation(), speed, 0, false, unitTarget);
 
     // not all charge effects used in negative spells
     if (unitTarget != m_caster && !IsPositiveSpell(m_spellInfo->Id))
@@ -11658,10 +11664,11 @@ void Spell::EffectCharge2(SpellEffectIndex /*eff_idx*/)
         return;
 
     // Try to normalize Z coord cuz GetContactPoint do nothing with Z axis
-    unitTarget->UpdateGroundPositionZ(x, y, z);
+    m_caster->UpdateAllowedPositionZ(x, y, z);
 
-    // Only send MOVEMENTFLAG_WALK_MODE, client has strange issues with other move flags
-    m_caster->MonsterMoveWithSpeed(x, y, z, 24.f, true, true);
+    float speed = m_spellInfo->speed ? m_spellInfo->speed : BASE_CHARGE_SPEED;
+
+    m_caster->MonsterMoveToDestination(x, y, z, m_caster->GetOrientation(), speed, 0, false, unitTarget);
 
     // not all charge effects used in negative spells
     if (unitTarget && unitTarget != m_caster && !IsPositiveSpell(m_spellInfo->Id))
@@ -12722,10 +12729,23 @@ void Spell::EffectSuspendGravity(SpellEffectIndex eff_idx)
     if (!unitTarget)
         return;
 
-    float fTargetX, fTargetY, fTargetZ;
-    unitTarget->GetPosition(fTargetX, fTargetY, fTargetZ);
-    float mapZ = unitTarget->GetTerrain()->GetHeight(fTargetX, fTargetY, fTargetZ);
-    float radius = m_spellInfo->EffectMiscValue[eff_idx]/10;
-    if (fTargetZ < mapZ + 0.5)
-        unitTarget->KnockBackFrom(m_caster, -radius, radius);
+    float x,y,z;
+
+    if (m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION)
+    {
+        x = m_targets.m_destX;
+        y = m_targets.m_destY;
+        z = m_targets.m_destZ;
+    }
+    else
+    {
+        m_caster->GetClosePoint(x, y, z, m_caster->GetObjectBoundingRadius(), 0.0f, m_caster->GetAngle(unitTarget));
+    }
+
+    unitTarget->UpdateAllowedPositionZ(x, y, z);
+
+    float speed  = float(m_spellInfo->EffectMiscValue[eff_idx]/2.0f);
+    float height = float(unitTarget->GetDistance(x,y,z) / 10.0f);
+
+    unitTarget->MonsterMoveToDestination(x, y, z + 0.1f, unitTarget->GetOrientation(), speed, height, true, m_caster == unitTarget ? NULL : m_caster);
 }

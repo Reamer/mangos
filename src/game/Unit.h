@@ -38,6 +38,7 @@
 #include "SpellAuras.h"
 #include "Timer.h"
 #include <list>
+#include "StateMgr.h"
 
 enum SpellInterruptFlags
 {
@@ -457,6 +458,8 @@ enum UnitMoveType
 #define MAX_MOVE_TYPE     9
 
 extern float baseMoveSpeed[MAX_MOVE_TYPE];
+
+#define BASE_CHARGE_SPEED 27.0f
 
 enum CombatRating
 {
@@ -1550,7 +1553,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         void SendSpellDamageImmune(Unit* target, uint32 spellId);
 
         void NearTeleportTo(float x, float y, float z, float orientation, bool casting = false);
-        void MonsterMoveJump(float x, float y, float z, float o, float speed, float height, bool isKnockBack = false, Unit* target = NULL);
+        void MonsterMoveToDestination(float x, float y, float z, float o, float speed, float height, bool isKnockBack = false, Unit* target = NULL);
         // recommend use MonsterMove/MonsterMoveWithSpeed for most case that correctly work with movegens
         // if used additional args in ... part then floats must explicitly casted to double
         void SendMonsterMoveTransport(WorldObject *transport, SplineType type, SplineFlags flags, uint32 moveTime, ...);
@@ -1885,6 +1888,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
 
         Aura* GetAura(uint32 spellId, SpellEffectIndex effindex);
         Aura* GetAura(AuraType type, SpellFamily family, ClassFamilyMask const& classMask, ObjectGuid casterGuid = ObjectGuid());
+        Aura* GetAuraByEffectMask(AuraType type, SpellFamily family, ClassFamilyMask const& classMask, ObjectGuid casterGuid = ObjectGuid());
         Aura* GetAura(AuraType type, SpellFamily family, uint64 familyFlag, uint32 familyFlag2 = 0, ObjectGuid casterGuid = ObjectGuid())
         {
             return GetAura(type, family, ClassFamilyMask(familyFlag, familyFlag2), casterGuid);
@@ -2042,7 +2046,6 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         float GetSpeedRate( UnitMoveType mtype ) const { return m_speed_rate[mtype]; }
         void SetSpeedRate(UnitMoveType mtype, float rate, bool forced = false);
 
-        void SetHover(bool on);
         bool isHover() const { return HasAuraType(SPELL_AURA_HOVER); }
 
         void KnockBackFrom(Unit* target, float horizontalSpeed, float verticalSpeed);
@@ -2065,6 +2068,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         void removeFollower(FollowerReference* /*pRef*/ ) { /* nothing to do yet */ }
 
         MotionMaster* GetMotionMaster() { return &i_motionMaster; }
+        UnitStateMgr& GetUnitStateMgr() { return m_stateMgr; }
 
         bool IsStopped() const { return !(hasUnitState(UNIT_STAT_MOVING)); }
         void StopMoving();
@@ -2256,6 +2260,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         GuardianPetList m_guardianPets;
 
         ObjectGuid m_TotemSlot[MAX_TOTEM_SLOT];
+        UnitStateMgr m_stateMgr;
 
     private:                                                // Error traps for some wrong args using
         // this will catch and prevent build for any cases when all optional args skipped and instead triggered used non boolean type

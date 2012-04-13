@@ -2235,8 +2235,7 @@ bool ChatHandler::HandleNpcUnFollowCommand(char* /*args*/)
         return false;
     }
 
-    if (creature->GetMotionMaster()->empty() ||
-        creature->GetMotionMaster()->GetCurrentMovementGeneratorType ()!=FOLLOW_MOTION_TYPE)
+    if (creature->GetMotionMaster()->GetCurrentMovementGeneratorType () != FOLLOW_MOTION_TYPE)
     {
         PSendSysMessage(LANG_CREATURE_NOT_FOLLOW_YOU);
         SetSentErrorMessage(true);
@@ -2247,18 +2246,16 @@ bool ChatHandler::HandleNpcUnFollowCommand(char* /*args*/)
         = static_cast<FollowMovementGenerator<Creature> const*>((creature->GetMotionMaster()->top()));
 
     if (mgen->GetTarget() != player)
-    {
         PSendSysMessage(LANG_CREATURE_NOT_FOLLOW_YOU);
-        SetSentErrorMessage(true);
-        return false;
-    }
+        // Need remove chase action even if chase not for your.
 
-    // reset movement
-    creature->GetMotionMaster()->MovementExpired(true);
+    // remove UNIT_ACTION_CHASE
+    creature->GetUnitStateMgr().DropAction(UNIT_ACTION_CHASE);
 
-    PSendSysMessage(LANG_CREATURE_NOT_FOLLOW_YOU_NOW, creature->GetName());
+    PSendSysMessage(LANG_CREATURE_NOT_FOLLOW_YOU_NOW, creature->GetObjectGuid().GetString().c_str());
     return true;
 }
+
 //npc tame handling
 bool ChatHandler::HandleNpcTameCommand(char* /*args*/)
 {
@@ -2495,9 +2492,17 @@ bool ChatHandler::HandleModifyMorphCommand(char* args)
     if (!*args)
         return false;
 
-    uint16 display_id = (uint16)atoi(args);
+    uint32 display_id = (uint32)atoi(args);
 
-    Unit *target = getSelectedUnit();
+    CreatureDisplayInfoEntry const* displayEntry = sCreatureDisplayInfoStore.LookupEntry(display_id);
+    if (!displayEntry)
+    {
+        SendSysMessage(LANG_BAD_VALUE);
+        SetSentErrorMessage(true);
+        return false;
+    }
+
+    Unit* target = getSelectedUnit();
     if (!target)
         target = m_session->GetPlayer();
 
@@ -2650,7 +2655,7 @@ bool ChatHandler::HandlePInfoCommand(char* args)
 
     std::string nameLink = playerLink(target_name);
 
-    PSendSysMessage(LANG_PINFO_ACCOUNT, (target?"":GetMangosString(LANG_OFFLINE)), nameLink.c_str(), target_guid.GetCounter(), username.c_str(), accId, email.c_str(), security, last_ip.c_str(), last_login.c_str(), latency, target->GetPhaseMask());
+    PSendSysMessage(LANG_PINFO_ACCOUNT, (target?"":GetMangosString(LANG_OFFLINE)), nameLink.c_str(), target_guid.GetCounter(), username.c_str(), accId, email.c_str(), security, last_ip.c_str(), last_login.c_str(), latency);
 
     std::string race_s = "", Class_s = "";
     switch (race)
@@ -4086,7 +4091,8 @@ bool ChatHandler::HandleCharacterChangeFactionCommand(char* args)
         // TODO : add text into database
         PSendSysMessage(LANG_CUSTOMIZE_PLAYER, GetNameLink(target).c_str());
         target->SetAtLoginFlag(AT_LOGIN_CHANGE_FACTION);
-        CharacterDatabase.PExecute("UPDATE characters SET at_login = at_login | '64' WHERE guid = '%u'", target->GetGUIDLow());
+        target->SetAtLoginFlag(AT_LOGIN_CHECK_TITLES);
+        CharacterDatabase.PExecute("UPDATE characters SET at_login = at_login | '320' WHERE guid = '%u'", target->GetGUIDLow());
     }
     else
     {
@@ -4094,7 +4100,7 @@ bool ChatHandler::HandleCharacterChangeFactionCommand(char* args)
 
         // TODO : add text into database
         PSendSysMessage(LANG_CUSTOMIZE_PLAYER_GUID, oldNameLink.c_str(), target_guid.GetCounter());
-        CharacterDatabase.PExecute("UPDATE characters SET at_login = at_login | '64' WHERE guid = '%u'", target_guid.GetCounter());
+        CharacterDatabase.PExecute("UPDATE characters SET at_login = at_login | '320' WHERE guid = '%u'", target_guid.GetCounter());
     }
 
     return true;

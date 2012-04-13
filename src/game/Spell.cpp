@@ -889,6 +889,12 @@ void Spell::AddUnitTarget(Unit* pVictim, SpellEffectIndex effIndex)
     WorldObject* affectiveObject = GetAffectiveCasterObject();
 
     float speed_proto = m_spellInfo->speed;
+    // spell speed calculation for charge-like spells
+    if ((m_spellInfo->AttributesEx7 & SPELL_ATTR_EX7_HAS_CHARGE_EFFECT) && (fabs(m_spellInfo->speed) < M_NULL_F))
+    {
+        speed_proto = BASE_CHARGE_SPEED;
+    }
+
     // Spell have trajectory - need calculate incoming time
     if (affectiveObject && (m_targets.GetSpeed() > M_NULL_F))
     {
@@ -1096,7 +1102,7 @@ void Spell::DoAllEffectOnTarget(TargetInfo *target)
         damageInfo.procVictim   = PROC_FLAG_NONE;
     }
 
-    if (m_spellInfo->speed > 0)
+    if (m_spellInfo->speed > 0 || GetDelayStart())
     {
         // mark effects that were already handled in Spell::HandleDelayedSpellLaunch on spell launch as processed
         for (int32 i = 0; i < MAX_EFFECT_INDEX; ++i)
@@ -1107,10 +1113,11 @@ void Spell::DoAllEffectOnTarget(TargetInfo *target)
         m_damage += target->damage;
     }
 
-    // recheck for visibility of target
-    if ((m_spellInfo->speed > 0.0f ||
-        (m_spellInfo->EffectImplicitTargetA[0] == TARGET_CHAIN_DAMAGE && GetSpellCastTime(m_spellInfo, this) > 0)) &&
-        (!unit->isVisibleForOrDetect(m_caster, m_caster, false) && !m_IsTriggeredSpell))
+    // recheck for availability/visibility of target
+    if (((m_spellInfo->speed > 0.0f ||
+        (m_spellInfo->EffectImplicitTargetA[0] == TARGET_CHAIN_DAMAGE &&
+        GetSpellCastTime(m_spellInfo, this) > 0)) &&
+        (!unit->isVisibleForOrDetect(m_caster, m_caster, false) && !m_IsTriggeredSpell)))
     {
         caster->SendSpellMiss(unit, m_spellInfo->Id, SPELL_MISS_EVADE);
         missInfo = SPELL_MISS_EVADE;
@@ -1735,8 +1742,8 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 case 45976:                                 // Open Portal
                 case 48278:                                 // Paralyze (Utgarde Pinnacle)
                 case 50988:                                 // Glare of the Tribunal (Halls of Stone)
-                case 54148:                                 // Svala Get Random Target
-                case 55479:                                 // Forced Obedience (Naxxramas - Razovius encounter)
+                case 54148:                                 // Ritual of the Sword (Utgarde Pinnacle, Svala)
+                case 55479:                                 // Forced Obedience (Naxxramas, Razovius)
                 case 59870:                                 // Glare of the Tribunal (h) (Halls of Stone)
                 case 62016:                                 // Charge Orb (Thorim)
                 case 62166:                                 // StoneGrip nh
@@ -1774,13 +1781,13 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 case 68950:                                 // Fear (ICC: Forge of Souls)
                 case 68912:                                 // Wailing Souls (FoS)
                 case 69048:                                 // Mirrored Soul (FoS)
-                case 69674:                                 // Mutated Infection (Rotface)
-                case 70882:                                 // Slime Spray Summon Trigger (Rotface)
-                case 70920:                                 // Unbound Plague Search Effect (Putricide)
-                case 71224:                                 // Mutated Infection (Rotface)
-                case 72091:                                 // Frozen Orb (Vault of Archavon, Toravon encounter, normal)
-                case 73022:                                 // Mutated Infection (heroic)
-                case 73023:                                 // Mutated Infection (heroic)
+                case 69674:                                 // Mutated Infection (ICC, Rotface)
+                case 70882:                                 // Slime Spray Summon Trigger (ICC, Rotface)
+                case 70920:                                 // Unbound Plague Search Effect (ICC, Putricide)
+                case 71224:                                 // Mutated Infection (Mode 1)
+                case 72091:                                 // Frozen Orb (Vault of Archavon, Toravon)
+                case 73022:                                 // Mutated Infection (Mode 2)
+                case 73023:                                 // Mutated Infection (Mode 3)
                 case 51146:                                 // Searching Gaze (Halls Of Stone)
                     unMaxTargets = 1;
                     break;
@@ -1802,23 +1809,17 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 case 28796:                                 // Poison Bolt Volley
                 case 29213:                                 // Curse of the Plaguebringer
                 case 31298:                                 // Sleep
-                case 39992:                                 // Needle Spine Targeting (Warlord Najentus)
+                case 39992:                                 // Needle Spine Targeting (BT, Warlord Najentus)
                 case 51904:                                 // Limiting the count of Summoned Ghouls
                 case 54522:
                 case 60936:                                 // Surge of Power (h) (Malygos)
-                case 61693:                                 // Arcane Storm (Malygos) (N)
+                case 61693:                                 // Arcane Storm (Malygos)
                 case 62477:                                 // Icicle (Hodir 25man)
                 case 63981:                                 // StoneGrip H
                 case 64598:                                 // Cosmic Smash (Algalon 25man) 
                 case 70814:                                 // Bone Slice (Icecrown Citadel, Lord Marrowgar, heroic)
                 case 72095:                                 // Frozen Orb (Vault of Archavon, Toravon encounter, heroic)
                     unMaxTargets = 3;
-                    break;
-                case 61916:                                 // Lightning Whirl (Stormcaller Brundir - Ulduar)
-                    unMaxTargets = urand(2, 3);
-                    break;
-                case 63482:                                 // Lightning Whirl (h) (Stormcaller Brundir - Ulduar)
-                    unMaxTargets = urand(3, 6);
                     break;
                 case 67756:                                 // Nerubian Burrower (Trial of the Crusader, ->
                 case 67757:                                 // -> Anub'arak encounter, 25 and 25 heroic)
@@ -1829,14 +1830,14 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 case 42005:                                 // Bloodboil
                 case 55665:                                 // Life Drain (h)
                 case 58917:                                 // Consume Minions
-                case 64604:                                 // Nature Bomb Freya
-                case 67076:                                 // Mistress' Kiss (Trial of the Crusader, ->
-                case 67078:                                 // -> Lord Jaraxxus encounter, 25 and 25 heroic)
+                case 64604:                                 // Nature Bomb (Ulduar, Freya)
+                case 67076:                                 // Mistress' Kiss (Mode 1) (ToCrusader, Jaraxxus)
+                case 67078:                                 // Mistress' Kiss (Mode 3) (ToCrusader, Jaraxxus)
                 case 67700:                                 // Penetrating Cold (25 man)
                 case 68510:                                 // Penetrating Cold (25 man, heroic)
                     unMaxTargets = 5;
                     break;
-                case 61694:                                 // Arcane Storm(H) (25 man) (Malygos)
+                case 61694:                                 // Arcane Storm (h) (Malygos)
                     unMaxTargets = 7;
                     break;
                 case 54098:                                 // Poison Bolt Volley (h)
@@ -1845,6 +1846,16 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                     break;
                 case 25991:                                 // Poison Bolt Volley (Pincess Huhuran)
                     unMaxTargets = 15;
+                    break;
+                // random count
+                case 61916:                                 // Lightning Whirl (Ulduar, Stormcaller Brundir)
+                    unMaxTargets = urand(2, 3);
+                    break;
+                case 46771:                                 // Flame Sear (SWP, Grand Warlock Alythess)
+                    unMaxTargets = urand(3, 5);
+                    break;
+                case 63482:                                 // Lightning Whirl (h) (Ulduar, Stormcaller Brundir)
+                    unMaxTargets = urand(3, 6);
                     break;
                 default:
                     break;
@@ -1874,7 +1885,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
         }
         case SPELLFAMILY_DEATHKNIGHT:
         {
-            if (m_spellInfo->SpellIconID == 1737)           // Corpse Explosion
+            if (m_spellInfo->SpellIconID == 1737)           // Corpse Explosion // TODO - spell 50445?
                 unMaxTargets = 1;
             break;
         }
@@ -4078,6 +4089,7 @@ void Spell::update(uint32 difftime)
             cancel();
     }
 
+
     switch(m_spellState)
     {
         case SPELL_STATE_PREPARING:
@@ -4113,6 +4125,35 @@ void Spell::update(uint32 difftime)
                     // check if player has turned if flag is set
                     if ( m_spellInfo->ChannelInterruptFlags & CHANNEL_FLAG_TURNING && m_castOrientation != m_caster->GetOrientation() )
                         cancel();
+                }
+
+                // check if all targets away range
+                if (!m_IsTriggeredSpell && (difftime >= m_timer))
+                {
+                    SpellCastResult result = CheckRange(true, m_targets.getUnitTarget());
+                    bool checkFailed = false;
+                    switch (result)
+                    {
+                        case SPELL_CAST_OK:
+                            break;
+                        case SPELL_FAILED_TOO_CLOSE:
+                        case SPELL_FAILED_UNIT_NOT_INFRONT:
+                            if (m_spellInfo->AttributesEx7 & SPELL_ATTR_EX7_HAS_CHARGE_EFFECT)
+                                break;
+                            checkFailed = true;
+                            break;
+                        case SPELL_FAILED_OUT_OF_RANGE:
+                        default:
+                            checkFailed = true;
+                            break;
+                    }
+
+                    if (checkFailed)
+                    {
+                        SendCastResult(result);
+                        cancel();
+                        return;
+                    }
                 }
 
                 // check if there are alive targets left
@@ -5449,6 +5490,25 @@ SpellCastResult Spell::CheckCast(bool strict)
                 // spell expected to be auto-downranking in cast handle, so must be same
                 if (m_spellInfo != sSpellMgr.SelectAuraRankForLevel(m_spellInfo, target->getLevel()))
                     return SPELL_FAILED_LOWLEVEL;
+            }
+
+            if (m_caster->GetTypeId() == TYPEID_PLAYER && m_spellInfo->Mechanic == MECHANIC_DISARM)
+            {
+                if (target->GetTypeId() == TYPEID_PLAYER)
+                {
+                    Player *player = (Player*)target;
+                    if (m_spellInfo->Id == 51722)                           // Dismantle
+                    {
+                        if (!player->GetWeaponForAttack(BASE_ATTACK) && !player->GetShield() && !player->GetWeaponForAttack(RANGED_ATTACK))
+                            return SPELL_FAILED_TARGET_NO_WEAPONS;
+                    }
+                    else if ((!player->GetWeaponForAttack(BASE_ATTACK) && !player->GetWeaponForAttack(RANGED_ATTACK)) || !player->IsUsingEquippedWeapon(true))
+                    {
+                        return SPELL_FAILED_TARGET_NO_WEAPONS;
+                    }
+                }
+                else if (!target->GetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID))
+                    return SPELL_FAILED_TARGET_NO_WEAPONS;
             }
         }
         else if (m_caster == target)
@@ -6881,16 +6941,17 @@ bool Spell::CanAutoCast(Unit* target)
     return false;                                           //target invalid
 }
 
-SpellCastResult Spell::CheckRange(bool strict)
+SpellCastResult Spell::CheckRange(bool strict, WorldObject* checkTarget)
 {
-    Unit *target = m_targets.getUnitTarget();
-    GameObject *pGoTarget = m_targets.getGOTarget();
+    Unit* target = (checkTarget && checkTarget->GetObjectGuid().IsUnit()) ? (Unit*)checkTarget : m_targets.getUnitTarget();
+    GameObject* pGoTarget = (checkTarget && checkTarget->GetObjectGuid().IsGameObject()) ? (GameObject*)checkTarget : m_targets.getGOTarget();
 
     SpellRangeEntry const* srange = sSpellRangeStore.LookupEntry(m_spellInfo->rangeIndex);
 
     bool friendly = target ? target->IsFriendlyTo(m_caster) : false;
     float max_range = GetSpellMaxRange(srange, friendly);
     float min_range = GetSpellMinRange(srange, friendly);
+    float add_range = checkTarget ? 0.0f : (strict ? 1.25f : 6.25f);
 
     // special range cases
     switch(m_spellInfo->rangeIndex)
@@ -6914,7 +6975,7 @@ SpellCastResult Spell::CheckRange(bool strict)
 
                 float combat_range = m_caster->GetMeleeAttackDistance(target);
 
-                float range_mod = combat_range + (strict ? 1.25f : 6.25f);
+                float range_mod = combat_range + add_range;
 
                 if (Player* modOwner = m_caster->GetSpellModOwner())
                     modOwner->ApplySpellMod(m_spellInfo->Id, SPELLMOD_RANGE, range_mod, this);
@@ -6928,7 +6989,7 @@ SpellCastResult Spell::CheckRange(bool strict)
         }
         default:
             //add radius of caster and ~5 yds "give" for non stricred (landing) check
-            max_range += (strict ? 1.25f : 6.25f);
+            max_range += add_range;
             break;
     }
 

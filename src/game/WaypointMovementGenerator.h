@@ -78,6 +78,8 @@ public PathMovementBase<Creature, WaypointPath const*>
 
         MovementGeneratorType GetMovementGeneratorType() const { return WAYPOINT_MOTION_TYPE; }
 
+        const char* Name() const { return "<Waypoint>"; }
+
         // now path movement implmementation
         void LoadPath(Creature &c);
 
@@ -121,10 +123,11 @@ public PathMovementBase<Player,TaxiPathNodeList const*>
             i_path = &pathnodes;
             i_currentNode = startNode;
         }
-        void Initialize(Player &);
-        void Finalize(Player &);
-        void Interrupt(Player &);
-        void Reset(Player &);
+        virtual void Initialize(Player &u) {_Initialize(u);};
+        virtual void Finalize(Player &u)   {_Finalize(u);};
+        virtual void Interrupt(Player &u)  {_Interrupt(u);};
+        virtual void Reset(Player &u)      {_Reset(u);};
+
         bool Update(Player &, const uint32 &);
         MovementGeneratorType GetMovementGeneratorType() const { return FLIGHT_MOTION_TYPE; }
 
@@ -135,5 +138,12 @@ public PathMovementBase<Player,TaxiPathNodeList const*>
         void SkipCurrentNode() { ++i_currentNode; }
         void DoEventIfAny(Player& player, TaxiPathNodeEntry const& node, bool departure);
         bool GetResetPosition(Player&, float& x, float& y, float& z);
+
+    protected:
+        void _Initialize(Player &);
+        void _Finalize(Player &);
+        void _Interrupt(Player &);
+        void _Reset(Player &);
+
 };
 #endif

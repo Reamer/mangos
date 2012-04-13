@@ -853,6 +853,36 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder *holder)
     // Handle Login-Achievements (should be handled after loading)
     pCurrChar->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_ON_LOGIN, 1);
 
+    // Titles check
+    if (pCurrChar->HasAtLoginFlag(AT_LOGIN_CHECK_TITLES))
+    {
+        Team team = pCurrChar->GetTeam();
+        if (QueryResult *result = WorldDatabase.Query("SELECT alliance_id, horde_id FROM player_factionchange_titles"))
+        {
+            do
+            {
+                Field *fields = result->Fetch();
+                uint32 title_alliance = fields[0].GetUInt32();
+                uint32 title_horde = fields[1].GetUInt32();
+
+                CharTitlesEntry const* titleEntry = sCharTitlesStore.LookupEntry(team == HORDE ? title_alliance : title_horde);
+                uint32 fieldIndexOffset = titleEntry->bit_index / 32;
+                uint32 flag = 1 << (titleEntry->bit_index % 32);
+                if (pCurrChar->HasFlag(PLAYER__FIELD_KNOWN_TITLES + fieldIndexOffset, flag))
+                {
+                    pCurrChar->SetTitle(titleEntry, true);
+                    if (CharTitlesEntry const* titleNewEntry = sCharTitlesStore.LookupEntry(team == HORDE ? title_horde : title_alliance))
+                    {
+                        pCurrChar->SetTitle(titleNewEntry);
+                        pCurrChar->SetUInt32Value(PLAYER_CHOSEN_TITLE, 0);
+                    }
+                }
+            }
+            while(result->NextRow());
+        }
+        pCurrChar->RemoveAtLoginFlag(AT_LOGIN_CHECK_TITLES);
+    }
+
     delete holder;
 }
 
@@ -1023,7 +1053,7 @@ void WorldSession::HandleSetPlayerDeclinedNamesOpcode(WorldPacket& recv_data)
 
     // not accept declined names for unsupported languages
     std::string name;
-    if(!sObjectMgr.GetPlayerNameByGUID(guid, name))
+    if(!sAccountMgr.GetPlayerNameByGUID(guid, name))
     {
         WorldPacket data(SMSG_SET_PLAYER_DECLINED_NAMES_RESULT, 4+8);
         data << uint32(1);
@@ -1240,9 +1270,9 @@ void WorldSession::HandleCharFactionOrRaceChangeOpcode(WorldPacket& recv_data)
     }
 
     // character with this name already exist
-    if (sObjectMgr.GetPlayerGuidByName(newname))
+    if (sAccountMgr.GetPlayerGuidByName(newname))
     {
-        ObjectGuid newguid = sObjectMgr.GetPlayerGuidByName(newname);
+        ObjectGuid newguid = sAccountMgr.GetPlayerGuidByName(newname);
         if (newguid != guid)
         {
             WorldPacket data(SMSG_CHAR_FACTION_CHANGE, 1);
@@ -1501,7 +1531,7 @@ void WorldSession::HandleCharCustomizeOpcode(WorldPacket& recv_data)
     }
 
     // character with this name already exist
-    ObjectGuid newguid = sObjectMgr.GetPlayerGuidByName(newname);
+    ObjectGuid newguid = sAccountMgr.GetPlayerGuidByName(newname);
     if (newguid && newguid != guid)
     {
         WorldPacket data(SMSG_CHAR_CUSTOMIZE, 1);

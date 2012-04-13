@@ -196,6 +196,7 @@ Unit::Unit() :
     m_HostileRefManager(this),
     m_charmInfo(NULL),
     m_vehicleInfo(NULL),
+    m_stateMgr(this),
     movespline(new Movement::MoveSpline())
 {
     m_objectType |= TYPEMASK_UNIT;
@@ -398,7 +399,7 @@ void Unit::Update( uint32 update_diff, uint32 p_time )
     ModifyAuraState(AURA_STATE_HEALTHLESS_35_PERCENT, GetHealth() < GetMaxHealth()*0.35f);
     ModifyAuraState(AURA_STATE_HEALTH_ABOVE_75_PERCENT, GetHealth() > GetMaxHealth()*0.75f);
     UpdateSplineMovement(p_time);
-    i_motionMaster.UpdateMotion(p_time);
+    GetUnitStateMgr().Update(p_time);
 }
 
 bool Unit::UpdateMeleeAttackingState()
@@ -3135,15 +3136,12 @@ void Unit::SendMeleeAttackStart(Unit* pVictim)
 
 void Unit::SendMeleeAttackStop(Unit* victim)
 {
-    if(!victim)
-        return;
-
-    WorldPacket data( SMSG_ATTACKSTOP, (4+16) );            // we guess size
+    WorldPacket data( SMSG_ATTACKSTOP, (8+8+4) );                                      // we guess size
     data << GetPackGUID();
-    data << victim->GetPackGUID();                          // can be 0x00...
-    data << uint32(0);                                      // can be 0x1
+    data << (victim ? victim->GetPackGUID() : ObjectGuid().WriteAsPacked());           // can be 0x00...
+    data << uint32(0);                                                                 // can be 0x1
     SendMessageToSet(&data, true);
-    DETAIL_FILTER_LOG(LOG_FILTER_COMBAT, "%s %u stopped attacking %s %u", (GetTypeId()==TYPEID_PLAYER ? "player" : "creature"), GetGUIDLow(), (victim->GetTypeId()==TYPEID_PLAYER ? "player" : "creature"),victim->GetGUIDLow());
+    DETAIL_FILTER_LOG(LOG_FILTER_COMBAT, "%s stopped attacking %s", GetObjectGuid().GetString().c_str(), victim ? victim->GetObjectGuid().GetString().c_str() : "");
 
     /*if (victim->GetTypeId() == TYPEID_UNIT)
     ((Creature*)victim)->AI().EnterEvadeMode(this);*/
@@ -4087,8 +4085,16 @@ bool Unit::isInAccessablePlaceFor(Unit const* unit) const
 
     if (unit->GetObjectGuid().IsAnyTypeCreature())
     {
-        if (IsInWater())
+        float targetReach = ((Creature*)unit)->GetReachDistance(this);
+        if (IsWithinDistInMap(unit, targetReach, true))
+            return true;
+
+        if (IsInWater() || IsUnderWater())
             return ((Creature*)unit)->CanSwim();
+        else if (IsLevitating())
+            return (unit->IsLevitating() || ((Creature*)unit)->CanFly());
+        else if (GetTypeId() == TYPEID_PLAYER && ((Player*)this)->IsFlying())
+            return (unit->IsLevitating() || ((Creature*)unit)->CanFly());
         else
             return ((Creature*)unit)->CanWalk() || ((Creature*)unit)->CanFly();
     }
@@ -5701,6 +5707,20 @@ Aura* Unit::GetAura(AuraType type, SpellFamily family, ClassFamilyMask const& cl
     return NULL;
 }
 
+Aura* Unit::GetAuraByEffectMask(AuraType type, SpellFamily family, ClassFamilyMask const& classMask, ObjectGuid casterGuid)
+{
+    AuraList const& auras = GetAurasByType(type);
+    for (AuraList::const_iterator i = auras.begin();i != auras.end(); ++i)
+    {
+        if ((*i)->GetAuraSpellClassMask() == classMask &&
+            (family <= SPELLFAMILY_PET &&  (*i)->GetSpellProto()->SpellFamilyName == family) &&
+            (!casterGuid || (*i)->GetCasterGuid() == casterGuid))
+            return *i;
+    }
+
+    return NULL;
+}
+
 Aura* Unit::GetTriggeredByClientAura(uint32 spellId)
 {
     if (spellId)
@@ -7067,21 +7087,21 @@ void Unit::UnsummonAllTotems()
             totem->UnSummon();
 }
 
-int32 Unit::DealHeal(Unit *pVictim, uint32 addhealth, SpellEntry const *spellProto, bool critical, uint32 absorb)
+int32 Unit::DealHeal(Unit* pVictim, uint32 addhealth, SpellEntry const* spellProto, bool critical, uint32 absorb)
 {
     int32 gain = pVictim->ModifyHealth(int32(addhealth));
 
     Unit* unit = this;
 
-    if ( GetTypeId()==TYPEID_UNIT && ((Creature*)this)->IsTotem() && ((Totem*)this)->GetTotemType()!=TOTEM_STATUE)
+    if (GetTypeId() == TYPEID_UNIT && ((Creature*)this)->IsTotem() && ((Totem*)this)->GetTotemType() != TOTEM_STATUE)
         unit = GetOwner();
 
-     // overheal = addhealth - gain
+    // overheal = addhealth - gain
     unit->SendHealSpellLog(pVictim, spellProto->Id, addhealth, addhealth - gain, critical, absorb);
 
-    if (unit->GetTypeId()==TYPEID_PLAYER)
+    if (unit->GetTypeId() == TYPEID_PLAYER)
     {
-        if (BattleGround *bg = ((Player*)unit)->GetBattleGround())
+        if (BattleGround* bg = ((Player*)unit)->GetBattleGround())
             bg->UpdatePlayerScore((Player*)unit, SCORE_HEALING_DONE, gain);
 
         // use the actual gain, as the overheal shall not be counted, skip gain 0 (it ignored anyway in to criteria)
@@ -7091,7 +7111,7 @@ int32 Unit::DealHeal(Unit *pVictim, uint32 addhealth, SpellEntry const *spellPro
         ((Player*)unit)->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_HEAL_CASTED, addhealth);
     }
 
-    if (pVictim->GetTypeId()==TYPEID_PLAYER)
+    if (pVictim->GetTypeId() == TYPEID_PLAYER)
     {
         ((Player*)pVictim)->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_TOTAL_HEALING_RECEIVED, gain);
         ((Player*)pVictim)->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_HEALING_RECEIVED, addhealth);
@@ -7110,13 +7130,21 @@ Unit* Unit::SelectMagnetTarget(Unit *victim, Spell* spell, SpellEffectIndex eff)
                   spell->m_spellInfo->DmgClass == SPELL_DAMAGE_CLASS_MAGIC ||
                   spell->m_spellInfo->DmgClass == SPELL_DAMAGE_CLASS_NONE ))
     {
-        Unit::AuraList const& magnetAuras = victim->GetAurasByType(SPELL_AURA_SPELL_MAGNET);
-        for(Unit::AuraList::const_iterator itr = magnetAuras.begin(); itr != magnetAuras.end(); ++itr)
+        AuraList const& magnetAuras = victim->GetAurasByType(SPELL_AURA_SPELL_MAGNET);
+        if (!magnetAuras.empty())
         {
-            if (Unit* magnet = (*itr)->GetCaster())
+            for (AuraList::const_iterator itr = magnetAuras.begin(); itr != magnetAuras.end(); ++itr)
             {
-                if (magnet->isAlive() && magnet->IsWithinLOSInMap(this) && spell->CheckTarget(magnet, eff))
-                    return magnet;
+                Aura* aura = *itr;
+                if (!aura || !aura->GetHolder() || aura->GetHolder()->IsDeleted())
+                    continue;
+
+                if (Unit* magnet = aura->GetCaster())
+                {
+                    // spell->CheckTarget() include LOS check
+                    if (magnet->isAlive() && spell->CheckTarget(magnet, eff))
+                        return magnet;
+                }
             }
         }
     }
@@ -7124,14 +7152,22 @@ Unit* Unit::SelectMagnetTarget(Unit *victim, Spell* spell, SpellEffectIndex eff)
     else
     {
         AuraList const& hitTriggerAuras = victim->GetAurasByType(SPELL_AURA_ADD_CASTER_HIT_TRIGGER);
-        for(AuraList::const_iterator i = hitTriggerAuras.begin(); i != hitTriggerAuras.end(); ++i)
+        if (!hitTriggerAuras.empty())
         {
-            if (Unit* magnet = (*i)->GetCaster())
+            for (AuraList::const_iterator itr = hitTriggerAuras.begin(); itr != hitTriggerAuras.end(); ++itr)
             {
-                if (magnet->isAlive() && magnet->IsWithinLOSInMap(this) && (!spell || spell->CheckTarget(magnet, eff)))
+                Aura* aura = *itr;
+                if (!aura || !aura->GetHolder() || aura->GetHolder()->IsDeleted())
+                    continue;
+
+                if (Unit* magnet = aura->GetCaster())
                 {
-                    if (roll_chance_i((*i)->GetModifier()->m_amount))
-                        return magnet;
+                    // spell->CheckTarget() include LOS check
+                    if (magnet->isAlive() && ((!spell && magnet->IsWithinLOSInMap(this) || (spell && spell->CheckTarget(magnet, eff)))))
+                    {
+                        if (roll_chance_i(aura->GetModifier()->m_amount))
+                            return magnet;
+                    }
                 }
             }
         }
@@ -7516,17 +7552,21 @@ uint32 Unit::SpellDamageBonusDone(Unit *pVictim, SpellEntry const *spellProto, u
                 }
             }
             // Torment the weak affected (Arcane Barrage, Arcane Blast, Frostfire Bolt, Arcane Missiles, Fireball, Pyroblast)
-            if (spellProto->SpellFamilyFlags.test<CF_MAGE_FIREBALL, CF_MAGE_FROSTBOLT, CF_MAGE_ARCANE_MISSILES2, CF_MAGE_ARCANE_BLAST, CF_MAGE_FROSTFIRE_BOLT, CF_MAGE_ARCANE_BARRAGE>() &&
-                (pVictim->HasAuraType(SPELL_AURA_MOD_DECREASE_SPEED) || pVictim->HasAuraType(SPELL_AURA_HASTE_ALL)))
+            if (spellProto->SpellFamilyFlags.test<CF_MAGE_FIREBALL, CF_MAGE_FROSTBOLT, CF_MAGE_ARCANE_MISSILES2, CF_MAGE_ARCANE_BLAST, CF_MAGE_FROSTFIRE_BOLT, CF_MAGE_ARCANE_BARRAGE>())
             {
                 //Search for Torment the weak dummy aura
-                Unit::AuraList const& ttw = GetAurasByType(SPELL_AURA_DUMMY);
-                for(Unit::AuraList::const_iterator i = ttw.begin(); i != ttw.end(); ++i)
+                if (Aura* ttwAura = GetAuraByEffectMask(SPELL_AURA_DUMMY,SPELLFAMILY_GENERIC,ClassFamilyMask(0x00240000,0,0),GetObjectGuid()))
                 {
-                    if ((*i)->GetSpellProto()->SpellIconID == 3263)
+                    Unit::SpellAuraHolderMap const& holderMap = pVictim->GetSpellAuraHolderMap();
+                    for (Unit::SpellAuraHolderMap::const_iterator itr = holderMap.begin(); itr != holderMap.end(); ++itr)
                     {
-                        DoneTotalMod *= ((*i)->GetModifier()->m_amount+100.0f) / 100.0f;
-                        break;
+                        if (itr->second && 
+                            !itr->second->IsDeleted() && 
+                            itr->second->HasMechanic(ttwAura->GetModifier()->m_miscvalue))
+                        {
+                            DoneTotalMod *= ((float)ttwAura->GetModifier()->m_amount + 100.0f) / 100.0f;
+                            break;
+                        }
                     }
                 }
             }
@@ -9748,14 +9788,6 @@ void Unit::SetSpeedRate(UnitMoveType mtype, float rate, bool forced)
     CallForAllControlledUnits(SetSpeedRateHelper(mtype,forced), CONTROLLED_PET|CONTROLLED_GUARDIANS|CONTROLLED_CHARM|CONTROLLED_MINIPET);
 }
 
-void Unit::SetHover(bool on)
-{
-    if (on)
-        CastSpell(this, 11010, true);
-    else
-        RemoveAurasDueToSpell(11010);
-}
-
 void Unit::SetDeathState(DeathState s)
 {
     if (s != ALIVE && s!= JUST_ALIVED)
@@ -9776,8 +9808,7 @@ void Unit::SetDeathState(DeathState s)
         RemoveMiniPet();
         UnsummonAllTotems();
 
-        i_motionMaster.Clear(false,true);
-        i_motionMaster.MoveIdle();
+        GetUnitStateMgr().InitDefaults(false);
         StopMoving();
 
         ModifyAuraState(AURA_STATE_HEALTHLESS_20_PERCENT, false);
@@ -9793,6 +9824,10 @@ void Unit::SetDeathState(DeathState s)
     else if (s == JUST_ALIVED)
     {
         RemoveFlag (UNIT_FIELD_FLAGS, UNIT_FLAG_SKINNABLE); // clear skinnable for creature and player (at battleground)
+    }
+    else if (s == DEAD || s == CORPSE)
+    {
+        GetUnitStateMgr().DropAllStates();
     }
 
     if (m_deathState != ALIVE && s == ALIVE)
@@ -10014,33 +10049,30 @@ bool Unit::SelectHostileTarget()
             if (oldTarget != target)
                 ((Creature*)this)->AI()->AttackStart(target);
 
-            if (sWorld.getConfig(CONFIG_BOOL_USE_REACHABLE))
+            // check if currently selected target is reachable
+            // NOTE: path alrteady generated from AttackStart()
+           if (!target->isInAccessablePlaceFor(this))
             {
-                // check if currently selected target is reachable
-                // NOTE: path alrteady generated from AttackStart()
-                if(!GetMotionMaster()->operator->()->IsReachable())
+                // remove all taunts
+                RemoveSpellsCausingAura(SPELL_AURA_MOD_TAUNT);
+
+                if(m_ThreatManager.getThreatList().size() < 2)
                 {
-                    // remove all taunts
-                    RemoveSpellsCausingAura(SPELL_AURA_MOD_TAUNT);
+                    // only one target in list, we have to evade after timer
+                    // TODO: make timer - inside Creature class
+                    ((Creature*)this)->AI()->EnterEvadeMode();
+                }
+                else
+                {
+                    // remove unreachable target from our threat list
+                    // next iteration we will select next possible target
+                    m_HostileRefManager.deleteReference(target);
+                    m_ThreatManager.modifyThreatPercent(target, -101);
 
-                    if(m_ThreatManager.getThreatList().size() < 2)
-                    {
-                        // only one target in list, we have to evade after timer
-                        // TODO: make timer - inside Creature class
-                        ((Creature*)this)->AI()->EnterEvadeMode();
-                    }
-                    else
-                    {
-                        // remove unreachable target from our threat list
-                        // next iteration we will select next possible target
-                        m_HostileRefManager.deleteReference(target);
-                        m_ThreatManager.modifyThreatPercent(target, -101);
+                    GetMap()->RemoveAttackerFor(GetObjectGuid(),target->GetObjectGuid());
+                }
 
-                        GetMap()->RemoveAttackerFor(GetObjectGuid(),target->GetObjectGuid());
-                    }
-
-                    return false;
-                }    
+                return false;
             }
         }
         return true;
@@ -10859,6 +10891,7 @@ void Unit::CleanupsBeforeDelete()
         else
             getHostileRefManager().deleteReferences();
         RemoveAllAuras(AURA_REMOVE_BY_DELETE);
+        GetUnitStateMgr().InitDefaults(false);
     }
     WorldObject::CleanupsBeforeDelete();
 }
@@ -11132,6 +11165,8 @@ void Unit::DoPetAction( Player* owner, uint8 flag, uint32 spellid, ObjectGuid pe
             {
                 case COMMAND_STAY:                          //flat=1792  //STAY
                 {
+                    InterruptNonMeleeSpells(false);
+                    AttackStop();
                     StopMoving();
                     GetMotionMaster()->Clear(false);
                     GetMotionMaster()->MoveIdle();
@@ -11141,7 +11176,9 @@ void Unit::DoPetAction( Player* owner, uint8 flag, uint32 spellid, ObjectGuid pe
                 }
                 case COMMAND_FOLLOW:                        //spellid=1792  //FOLLOW
                 {
+                    InterruptNonMeleeSpells(false);
                     AttackStop();
+                    GetMotionMaster()->Clear(false);
                     GetMotionMaster()->MoveFollow(owner,PET_FOLLOW_DIST,((Pet*)this)->GetPetFollowAngle());
                     GetCharmInfo()->SetState(CHARM_STATE_COMMAND,COMMAND_FOLLOW);
                     SendCharmState();
@@ -11193,6 +11230,12 @@ void Unit::DoPetAction( Player* owner, uint8 flag, uint32 spellid, ObjectGuid pe
                 }
                 case COMMAND_ABANDON:                       // abandon (hunter pet) or dismiss (summoned pet)
                 {
+                    InterruptNonMeleeSpells(false);
+                    AttackStop();
+                    StopMoving();
+                    GetMotionMaster()->Clear(false);
+                    GetMotionMaster()->MoveIdle();
+
                     if(((Creature*)this)->IsPet())
                     {
                         Pet* p = (Pet*)this;
@@ -11788,33 +11831,25 @@ void Unit::SetFeared(bool apply, ObjectGuid casterGuid, uint32 spellID, uint32 t
         if (HasAuraType(SPELL_AURA_PREVENTS_FLEEING))
             return;
 
-        SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_FLEEING);
-
-        GetMotionMaster()->MovementExpired(false);
         CastStop(GetObjectGuid() == casterGuid ? spellID : 0);
 
         Unit* caster = IsInWorld() ?  GetMap()->GetUnit(casterGuid) : NULL;
+
+        SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_FLEEING);
 
         GetMotionMaster()->MoveFleeing(caster, time);       // caster==NULL processed in MoveFleeing
     }
     else
     {
+        GetUnitStateMgr().DropAction(UNIT_ACTION_FEARED);
+
         RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_FLEEING);
 
-        GetMotionMaster()->MovementExpired(false);
-
+        // attack caster if can
         if (GetTypeId() != TYPEID_PLAYER && isAlive())
         {
-            Creature* c = ((Creature*)this);
-            // restore appropriate movement generator
-            if (getVictim())
-                GetMotionMaster()->MoveChase(getVictim());
-            else
-                GetMotionMaster()->Initialize();
-
-            // attack caster if can
             if (Unit* caster = IsInWorld() ? GetMap()->GetUnit(casterGuid) : NULL)
-                c->AttackedBy(caster);
+                AttackedBy(caster);
         }
     }
 
@@ -11826,33 +11861,14 @@ void Unit::SetConfused(bool apply, ObjectGuid casterGuid, uint32 spellID)
 {
     if (apply)
     {
-        SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_CONFUSED);
-
         CastStop(GetObjectGuid() == casterGuid ? spellID : 0);
-
+        SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_CONFUSED);
         GetMotionMaster()->MoveConfused();
     }
     else
     {
         RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_CONFUSED);
-
-        StopMoving();
-        GetMotionMaster()->MovementExpired(true);
-
-        if (GetTypeId() == TYPEID_PLAYER)
-        {
-            //Clear unit movement flags
-            ((Player*)this)->m_movementInfo.SetMovementFlags(MOVEFLAG_NONE);
-        }
-
-        if (GetTypeId() != TYPEID_PLAYER && isAlive())
-        {
-            // restore appropriate movement generator
-            if (getVictim())
-                GetMotionMaster()->MoveChase(getVictim());
-            else
-                GetMotionMaster()->Initialize();
-        }
+        GetUnitStateMgr().DropAction(UNIT_ACTION_CONFUSED);
     }
 
     if (GetTypeId() == TYPEID_PLAYER && !GetVehicle())
@@ -11870,27 +11886,12 @@ void Unit::SetFeignDeath(bool apply, ObjectGuid casterGuid, uint32 /*spellID*/)
         SendMessageToSet(&data,true);
         */
 
-        if (GetTypeId() != TYPEID_PLAYER)
-            StopMoving();
-        else
-            ((Player*)this)->m_movementInfo.SetMovementFlags(MOVEFLAG_NONE);
-
-                                                            // blizz like 2.0.x
-        SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNK_29);
-                                                            // blizz like 2.0.x
-        SetFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_FEIGN_DEATH);
-                                                            // blizz like 2.0.x
-        SetFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_DEAD);
-
-        addUnitState(UNIT_STAT_DIED);
-        CombatStop();
-        RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_IMMUNE_OR_LOST_SELECTION);
-
         // prevent interrupt message
         if (casterGuid == GetObjectGuid())
             FinishSpell(CURRENT_GENERIC_SPELL,false);
-        InterruptNonMeleeSpells(true);
-        getHostileRefManager().deleteReferences();
+
+        GetUnitStateMgr().PushAction(UNIT_ACTION_FEIGNDEATH);
+        RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_IMMUNE_OR_LOST_SELECTION);
     }
     else
     {
@@ -11900,24 +11901,8 @@ void Unit::SetFeignDeath(bool apply, ObjectGuid casterGuid, uint32 /*spellID*/)
         data<<uint8(1);
         SendMessageToSet(&data,true);
         */
-                                                            // blizz like 2.0.x
-        RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNK_29);
-                                                            // blizz like 2.0.x
-        RemoveFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_FEIGN_DEATH);
-                                                            // blizz like 2.0.x
-        RemoveFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_DEAD);
 
-        clearUnitState(UNIT_STAT_DIED);
-
-        if (GetTypeId() != TYPEID_PLAYER && isAlive())
-        {
-            // restore appropriate movement generator
-            if (getVictim())
-                GetMotionMaster()->MoveChase(getVictim());
-            else
-                GetMotionMaster()->Initialize();
-        }
-
+        GetUnitStateMgr().DropAction(UNIT_ACTION_FEIGNDEATH);
     }
 }
 
@@ -12404,7 +12389,11 @@ void Unit::RemoveAurasAtMechanicImmunity(uint32 mechMask, uint32 exceptSpellId, 
 
                 for (int32 i = 0; i < MAX_EFFECT_INDEX; i++)
                 {
-                    if ((1 << (iter->second->GetSpellProto()->EffectMechanic[SpellEffectIndex(i)] - 1)) & mechMask)
+                    uint8 mechanic  = iter->second->GetSpellProto()->EffectMechanic[SpellEffectIndex(i)] ?
+                                      iter->second->GetSpellProto()->EffectMechanic[SpellEffectIndex(i)] :
+                                      iter->second->GetSpellProto()->Mechanic;
+
+                    if ((1 << (mechanic - 1)) & mechMask)
                     {
                         Aura* aura = iter->second->GetAuraByEffectIndex(SpellEffectIndex(i));
                         if (aura && !aura->IsDeleted())
@@ -12504,20 +12493,8 @@ void Unit::NearTeleportTo( float x, float y, float z, float orientation, bool ca
     {
         ExitVehicle();
         Creature* c = (Creature*)this;
-        // Creature relocation acts like instant movement generator, so current generator expects interrupt/reset calls to react properly
-        if (!c->GetMotionMaster()->empty())
-            if (MovementGenerator *movgen = c->GetMotionMaster()->top())
-                movgen->Interrupt(*c);
-
-        SetPosition(x, y, z, orientation, true);
-
+        GetMap()->CreatureRelocation((Creature*)this, x, y, z, orientation);
         SendHeartBeat();
-
-        // finished relocation, movegen can different from top before creature relocation,
-        // but apply Reset expected to be safe in any case
-        if (!c->GetMotionMaster()->empty())
-            if (MovementGenerator *movgen = c->GetMotionMaster()->top())
-                movgen->Reset(*c);
     }
 }
 
@@ -12529,7 +12506,7 @@ void Unit::MonsterMoveWithSpeed(float x, float y, float z, float speed, bool gen
     init.Launch();
 }
 
-void Unit::MonsterMoveJump(float x, float y, float z, float o, float speed, float height, bool isKnockBack, Unit* target)
+void Unit::MonsterMoveToDestination(float x, float y, float z, float o, float speed, float height, bool isKnockBack, Unit* target)
 {
     MaNGOS::NormalizeMapCoord(x);
     MaNGOS::NormalizeMapCoord(y);
@@ -12540,7 +12517,7 @@ void Unit::MonsterMoveJump(float x, float y, float z, float o, float speed, floa
         InterruptNonMeleeSpells(false);
     }
 
-    GetMotionMaster()->MoveJumpTo(x, y, z, o, target, speed, height, 0);
+    GetMotionMaster()->MoveToDestination(x, y, z, o, target, speed, height, 0);
 }
 
 struct SetPvPHelper
@@ -12593,12 +12570,6 @@ void Unit::EnterVehicle(Unit* vehicleBase, int8 seatId)
 
     InterruptNonMeleeSpells(false);
     RemoveSpellsCausingAura(SPELL_AURA_MOUNTED);
-
-    if (GetTypeId() == TYPEID_PLAYER)
-        ((Player*)this)->UnsummonPetTemporaryIfAny(true);
-    else
-        if (Pet *pet = GetPet())
-            pet->Unsummon(PET_SAVE_AS_CURRENT,this);
 
     SpellEntry const* spellInfo = NULL;
     int32 bp[MAX_EFFECT_INDEX];
@@ -12688,9 +12659,6 @@ void Unit::ExitVehicle()
         _ExitVehicle();
         sLog.outDetail("Unit::ExitVehicle: unit %s leave vehicle %s but no control aura!", GetObjectGuid().GetString().c_str(), vehicleBase->GetObjectGuid().GetString().c_str());
     }
-
-    if (isAlive() && GetTypeId() == TYPEID_PLAYER)
-        ((Player*)this)->ResummonPetTemporaryUnSummonedIfAny();
 }
 
 void Unit::ChangeSeat(int8 seatId, bool next)
@@ -12732,6 +12700,16 @@ void Unit::_EnterVehicle(VehicleKit* vehicle, int8 seatId)
         else
             ExitVehicle();
     }
+    else
+    {
+        if (Pet* pet = GetPet())
+        {
+            if (GetTypeId() == TYPEID_PLAYER)
+                ((Player*)this)->UnsummonPetTemporaryIfAny(true);
+            else
+                pet->Unsummon(PET_SAVE_AS_CURRENT,this);
+        }
+    }
 
     if (!vehicle->AddPassenger(this, seatId))
         return;
@@ -12770,6 +12748,9 @@ void Unit::_ExitVehicle()
     GetVehicle()->RemovePassenger(this, true);
 
     m_pVehicle = NULL;
+
+    if (isAlive() && GetTypeId() == TYPEID_PLAYER)
+        ((Player*)this)->ResummonPetTemporaryUnSummonedIfAny();
 }
 
 void Unit::SetPvP( bool state )
@@ -12821,7 +12802,7 @@ void Unit::KnockBackFrom(Unit* target, float horizontalSpeed, float verticalSpee
         float fy = oy + dis * vsin;
         float fz = oz;
 
-        MonsterMoveJump(fx,fy,fz,GetOrientation(),horizontalSpeed,max_height, true);
+        MonsterMoveToDestination(fx,fy,fz,GetOrientation(),horizontalSpeed,max_height, true);
     }
 }
 
