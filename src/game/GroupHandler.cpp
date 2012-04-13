@@ -23,6 +23,7 @@
 #include "WorldPacket.h"
 #include "WorldSession.h"
 #include "World.h"
+#include "AccountMgr.h"
 #include "ObjectMgr.h"
 #include "Player.h"
 #include "Group.h"
@@ -583,7 +584,7 @@ void WorldSession::HandleGroupChangeSubGroupOpcode( WorldPacket & recv_data )
         group->ChangeMembersGroup(player, groupNr);
     else
     {
-        if (ObjectGuid guid = sObjectMgr.GetPlayerGuidByName(name.c_str()))
+        if (ObjectGuid guid = sAccountMgr.GetPlayerGuidByName(name.c_str()))
             group->ChangeMembersGroup(guid, groupNr);
     }
 }
@@ -706,15 +707,10 @@ void WorldSession::BuildPartyMemberStatsChangedPacket(Player *player, WorldPacke
 
     if (mask & GROUP_UPDATE_FLAG_STATUS)
     {
-        if (player)
-        {
-            if (player->IsPvP())
-                *data << uint16(MEMBER_STATUS_ONLINE | MEMBER_STATUS_PVP);
-            else
-                *data << uint16(MEMBER_STATUS_ONLINE);
-        }
+        if (player->IsPvP())
+            *data << uint16(MEMBER_STATUS_ONLINE | MEMBER_STATUS_PVP);
         else
-            *data << uint16(MEMBER_STATUS_OFFLINE);
+            *data << uint16(MEMBER_STATUS_ONLINE);
     }
 
     if (mask & GROUP_UPDATE_FLAG_CUR_HP)

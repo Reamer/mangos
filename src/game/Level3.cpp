@@ -43,6 +43,7 @@
 #include "PointMovementGenerator.h"
 #include "PathFinder.h"
 #include "TargetedMovementGenerator.h"
+#include "HomeMovementGenerator.h"
 #include "SystemConfig.h"
 #include "Config/Config.h"
 #include "Mail.h"
@@ -269,10 +270,8 @@ bool ChatHandler::HandleReloadAllLootCommand(char* /*args*/)
     return true;
 }
 
-bool ChatHandler::HandleReloadAllNpcCommand(char* args)
+bool ChatHandler::HandleReloadAllNpcCommand(char* /*args*/)
 {
-    if (*args!='a')                                         // will be reloaded from all_gossips
-        HandleReloadNpcGossipCommand((char*)"a");
     HandleReloadNpcTrainerCommand((char*)"a");
     HandleReloadNpcVendorCommand((char*)"a");
     HandleReloadPointsOfInterestCommand((char*)"a");
@@ -346,7 +345,6 @@ bool ChatHandler::HandleReloadAllGossipsCommand(char* args)
     if (*args!='a')                                         // already reload from all_scripts
         HandleReloadGossipScriptsCommand((char*)"a");
     HandleReloadGossipMenuCommand((char*)"a");
-    HandleReloadNpcGossipCommand((char*)"a");
     HandleReloadPointsOfInterestCommand((char*)"a");
     return true;
 }
@@ -614,14 +612,6 @@ bool ChatHandler::HandleReloadMangosStringCommand(char* /*args*/)
     sLog.outString( "Re-Loading mangos_string Table!" );
     sObjectMgr.LoadMangosStrings();
     SendGlobalSysMessage("DB table `mangos_string` reloaded.");
-    return true;
-}
-
-bool ChatHandler::HandleReloadNpcGossipCommand(char* /*args*/)
-{
-    sLog.outString( "Re-Loading `npc_gossip` Table!" );
-    sObjectMgr.LoadNpcGossips();
-    SendGlobalSysMessage("DB table `npc_gossip` reloaded.");
     return true;
 }
 
@@ -1276,7 +1266,7 @@ void ChatHandler::ShowAchievementCriteriaListHelper(AchievementCriteriaEntry con
         ss << GetMangosString(LANG_COUNTER);
     else
     {
-        ss << " [" << AchievementMgr::GetCriteriaProgressMaxCounter(criEntry) << "]";
+        ss << " [" << AchievementMgr::GetCriteriaProgressMaxCounter(criEntry, achEntry) << "]";
 
         if (target && target->GetAchievementMgr().IsCompletedCriteria(criEntry, achEntry))
             ss << GetMangosString(LANG_COMPLETE);
@@ -1356,7 +1346,9 @@ bool ChatHandler::HandleAchievementAddCommand(char* args)
             if (mgr.IsCompletedCriteria(*itr, achEntry))
                 continue;
 
-            uint32 maxValue = AchievementMgr::GetCriteriaProgressMaxCounter(*itr);
+            uint32 maxValue = AchievementMgr::GetCriteriaProgressMaxCounter(*itr, achEntry);
+            if (maxValue == std::numeric_limits<uint32>::max())
+                maxValue = 1;                               // Exception for counter like achievements, set them only to 1
             mgr.SetCriteriaProgress(*itr, achEntry, maxValue, AchievementMgr::PROGRESS_SET);
         }
     }
@@ -1431,7 +1423,9 @@ bool ChatHandler::HandleAchievementCriteriaAddCommand(char* args)
 
     LocaleConstant loc = GetSessionDbcLocale();
 
-    uint32 maxValue = AchievementMgr::GetCriteriaProgressMaxCounter(criEntry);
+    uint32 maxValue = AchievementMgr::GetCriteriaProgressMaxCounter(criEntry, achEntry);
+    if (maxValue == std::numeric_limits<uint32>::max())
+        maxValue = 1;                                       // Exception for counter like achievements, set them only to 1
 
     AchievementMgr& mgr = target->GetAchievementMgr();
 
@@ -1496,7 +1490,9 @@ bool ChatHandler::HandleAchievementCriteriaRemoveCommand(char* args)
 
     LocaleConstant loc = GetSessionDbcLocale();
 
-    uint32 maxValue = AchievementMgr::GetCriteriaProgressMaxCounter(criEntry);
+    uint32 maxValue = AchievementMgr::GetCriteriaProgressMaxCounter(criEntry, achEntry);
+    if (maxValue == std::numeric_limits<uint32>::max())
+        maxValue = 1;                                       // Exception for counter like achievements, set them only to 1
 
     AchievementMgr& mgr = target->GetAchievementMgr();
 
@@ -4426,22 +4422,6 @@ bool ChatHandler::HandleExploreCheatCommand(char* args)
     return true;
 }
 
-bool ChatHandler::HandleHoverCommand(char* args)
-{
-    uint32 flag;
-    if (!ExtractOptUInt32(&args, flag, 1))
-        return false;
-
-    m_session->GetPlayer()->SetHover(flag);
-
-    if (flag)
-        SendSysMessage(LANG_HOVER_ENABLED);
-    else
-        SendSysMessage(LANG_HOVER_DISABLED);
-
-    return true;
-}
-
 void ChatHandler::HandleCharacterLevel(Player* player, ObjectGuid player_guid, uint32 oldlevel, uint32 newlevel)
 {
     if(player)
@@ -5725,7 +5705,7 @@ bool ChatHandler::HandleBanInfoCharacterCommand(char* args)
     if (!ExtractPlayerTarget(&args, &target, &target_guid))
         return false;
 
-    uint32 accountid = target ? target->GetSession()->GetAccountId() : sObjectMgr.GetPlayerAccountIdByGUID(target_guid);
+    uint32 accountid = target ? target->GetSession()->GetAccountId() : sAccountMgr.GetPlayerAccountIdByGUID(target_guid);
 
     std::string accountname;
     if (!sAccountMgr.GetName(accountid,accountname))
@@ -6096,7 +6076,7 @@ bool ChatHandler::HandlePDumpLoadCommand(char *args)
 
             ObjectGuid guid = ObjectGuid(HIGHGUID_PLAYER, lowguid);
 
-            if (sObjectMgr.GetPlayerAccountIdByGUID(guid))
+            if (sAccountMgr.GetPlayerAccountIdByGUID(guid))
             {
                 PSendSysMessage(LANG_CHARACTER_GUID_IN_USE, lowguid);
                 SetSentErrorMessage(true);
@@ -6155,7 +6135,7 @@ bool ChatHandler::HandlePDumpWriteCommand(char *args)
             return false;
         }
 
-        guid = sObjectMgr.GetPlayerGuidByName(name);
+        guid = sAccountMgr.GetPlayerGuidByName(name);
         if (!guid)
         {
             PSendSysMessage(LANG_PLAYER_NOT_FOUND);
@@ -6168,7 +6148,7 @@ bool ChatHandler::HandlePDumpWriteCommand(char *args)
     else
         guid = ObjectGuid(HIGHGUID_PLAYER, lowguid);
 
-    if (!sObjectMgr.GetPlayerAccountIdByGUID(guid))
+    if (!sAccountMgr.GetPlayerAccountIdByGUID(guid))
     {
         PSendSysMessage(LANG_PLAYER_NOT_FOUND);
         SetSentErrorMessage(true);
@@ -6203,73 +6183,75 @@ bool ChatHandler::HandleMovegensCommand(char* /*args*/)
         return false;
     }
 
-    PSendSysMessage(LANG_MOVEGENS_LIST,(unit->GetTypeId()==TYPEID_PLAYER ? "Player" : "Creature" ),unit->GetGUIDLow());
+    PSendSysMessage(LANG_MOVEGENS_LIST,unit->GetObjectGuid().GetString().c_str());
 
-    MotionMaster* mm = unit->GetMotionMaster();
+    UnitStateMgr& statemgr = unit->GetUnitStateMgr();
+
     float x,y,z;
-    mm->GetDestination(x,y,z);
-    for(MotionMaster::const_iterator itr = mm->begin(); itr != mm->end(); ++itr)
+    for (int32 i = UNIT_ACTION_PRIORITY_IDLE; i != UNIT_ACTION_PRIORITY_END; ++i)
     {
-        switch((*itr)->GetMovementGeneratorType())
+        ActionInfo* actionInfo = statemgr.GetAction(UnitActionPriority(i));
+        if (!actionInfo)
+            continue;
+
+        UnitActionPtr action = actionInfo->Action();
+
+        PSendSysMessage(LANG_MOVEGENS_DEFAULT, i, action->Name());
+
+        switch(action->GetMovementGeneratorType())
         {
-            case IDLE_MOTION_TYPE:          SendSysMessage(LANG_MOVEGENS_IDLE);          break;
-            case RANDOM_MOTION_TYPE:        SendSysMessage(LANG_MOVEGENS_RANDOM);        break;
-            case WAYPOINT_MOTION_TYPE:      SendSysMessage(LANG_MOVEGENS_WAYPOINT);      break;
-            case CONFUSED_MOTION_TYPE:      SendSysMessage(LANG_MOVEGENS_CONFUSED);      break;
+            case IDLE_MOTION_TYPE:
+            case RANDOM_MOTION_TYPE:
+            case WAYPOINT_MOTION_TYPE:
+            case CONFUSED_MOTION_TYPE:
+            case FLIGHT_MOTION_TYPE:
+            case FLEEING_MOTION_TYPE:
+            case DISTRACT_MOTION_TYPE:
+            case EFFECT_MOTION_TYPE:
+                break;
             case CHASE_MOTION_TYPE:
             {
                 Unit* target = NULL;
                 if(unit->GetTypeId()==TYPEID_PLAYER)
-                    target = static_cast<ChaseMovementGenerator<Player> const*>(*itr)->GetTarget();
+                    target = static_cast<ChaseMovementGenerator<Player> const*>(&*action)->GetTarget();
                 else
-                    target = static_cast<ChaseMovementGenerator<Creature> const*>(*itr)->GetTarget();
+                    target = static_cast<ChaseMovementGenerator<Creature> const*>(&*action)->GetTarget();
 
-                if (!target)
-                    SendSysMessage(LANG_MOVEGENS_CHASE_NULL);
-                else if (target->GetTypeId()==TYPEID_PLAYER)
-                    PSendSysMessage(LANG_MOVEGENS_CHASE_PLAYER,target->GetName(),target->GetGUIDLow());
-                else
-                    PSendSysMessage(LANG_MOVEGENS_CHASE_CREATURE,target->GetName(),target->GetGUIDLow());
+                PSendSysMessage(LANG_MOVEGENS_CHASE_TARGET,target ? target->GetObjectGuid().GetString().c_str() : "<NULL>");
                 break;
             }
             case FOLLOW_MOTION_TYPE:
             {
                 Unit* target = NULL;
                 if(unit->GetTypeId()==TYPEID_PLAYER)
-                    target = static_cast<FollowMovementGenerator<Player> const*>(*itr)->GetTarget();
+                    target = static_cast<FollowMovementGenerator<Player> const*>(&*action)->GetTarget();
                 else
-                    target = static_cast<FollowMovementGenerator<Creature> const*>(*itr)->GetTarget();
+                    target = static_cast<FollowMovementGenerator<Creature> const*>(&*action)->GetTarget();
 
-                if (!target)
-                    SendSysMessage(LANG_MOVEGENS_FOLLOW_NULL);
-                else if (target->GetTypeId()==TYPEID_PLAYER)
-                    PSendSysMessage(LANG_MOVEGENS_FOLLOW_PLAYER,target->GetName(),target->GetGUIDLow());
-                else
-                    PSendSysMessage(LANG_MOVEGENS_FOLLOW_CREATURE,target->GetName(),target->GetGUIDLow());
+                PSendSysMessage(LANG_MOVEGENS_FOLLOW_TARGET,target ? target->GetObjectGuid().GetString().c_str() : "<NULL>");
                 break;
             }
             case HOME_MOTION_TYPE:
                 if(unit->GetTypeId()==TYPEID_UNIT)
                 {
+                    ((Creature*)unit)->GetRespawnCoord(x,y,z);
                     PSendSysMessage(LANG_MOVEGENS_HOME_CREATURE,x,y,z);
                 }
                 else
                     SendSysMessage(LANG_MOVEGENS_HOME_PLAYER);
                 break;
-            case FLIGHT_MOTION_TYPE:   SendSysMessage(LANG_MOVEGENS_FLIGHT);  break;
             case POINT_MOTION_TYPE:
             {
+                static_cast<PointMovementGenerator<Creature> const*>(&*action)->GetDestination(x,y,z);
                 PSendSysMessage(LANG_MOVEGENS_POINT,x,y,z);
                 break;
             }
-            case FLEEING_MOTION_TYPE:  SendSysMessage(LANG_MOVEGENS_FEAR);    break;
-            case DISTRACT_MOTION_TYPE: SendSysMessage(LANG_MOVEGENS_DISTRACT);  break;
-            case EFFECT_MOTION_TYPE: SendSysMessage(LANG_MOVEGENS_EFFECT);  break;
             default:
-                PSendSysMessage(LANG_MOVEGENS_UNKNOWN,(*itr)->GetMovementGeneratorType());
+                PSendSysMessage(LANG_MOVEGENS_UNKNOWN,action->Name());
                 break;
         }
     }
+
     return true;
 }
 
