@@ -6613,6 +6613,10 @@ void Unit::AttackedBy(Unit *attacker)
         attacker->SetInCombatWith(this);
     }
 
+    // do not pet reaction for self inflicted damage (like environmental)
+    if (attacker == this)
+        return;
+
     // trigger pet AI reaction
     if (attacker->IsHostileTo(this))
     {
