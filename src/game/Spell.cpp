@@ -1754,6 +1754,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 case 62978:                                 // Summon Guardian (Ulduar - Yogg Saron)
                 case 63018:                                 // Searing Light nonhero
                 case 63024:                                 // Gravity Bomb (XT-002)
+                case 63342:                                 // Focused Eyebeam Summon Trigger (Kologarn)
                 case 63387:                                 // Rapid Burst
                 case 63545:                                 // Icicle Hodir(trigger spell from 62227)
                 case 63713:                                 // Dominate Mind (Ulduar - Yogg Saron)
