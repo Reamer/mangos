@@ -6304,7 +6304,7 @@ SpellCastResult Spell::CheckCast(bool strict)
                     InstanceTemplate const* instance = ObjectMgr::GetInstanceTemplate(m_caster->GetMapId());
                     if(!instance)
                         return SPELL_FAILED_TARGET_NOT_IN_INSTANCE;
-                    if ( instance->levelMin > target->getLevel() )
+                    if ( instance->levelMin >= target->getLevel() )
                         return SPELL_FAILED_LOWLEVEL;
                     if ( instance->levelMax && instance->levelMax < target->getLevel() )
                         return SPELL_FAILED_HIGHLEVEL;
