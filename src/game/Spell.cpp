@@ -1818,7 +1818,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 case 61693:                                 // Arcane Storm (Malygos)
                 case 62477:                                 // Icicle (Hodir 25man)
                 case 63981:                                 // StoneGrip H
-                case 64598:                                 // Cosmic Smash (Algalon 25man) 
+                case 64598:                                 // Cosmic Smash (Algalon 25man)
                 case 70814:                                 // Bone Slice (Icecrown Citadel, Lord Marrowgar, heroic)
                 case 72095:                                 // Frozen Orb (Vault of Archavon, Toravon encounter, heroic)
                     unMaxTargets = 3;
