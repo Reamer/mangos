@@ -10144,6 +10144,12 @@ void Aura::HandleAuraControlVehicle(bool apply, bool Real)
                 caster->GetVehicle()->RemovePassenger(caster, false);
             else
                 caster->_ExitVehicle();
+            // we have an Accessory
+            if (caster->GetCreatorGuid() == target->GetObjectGuid() && caster->GetTypeId() == TYPEID_UNIT)
+            {
+                caster->AddObjectToRemoveList();
+                return;
+            }
         }
 
         // some SPELL_AURA_CONTROL_VEHICLE auras have a dummy effect on the player - remove them
