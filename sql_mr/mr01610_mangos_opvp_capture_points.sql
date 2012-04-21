@@ -79,11 +79,12 @@ delete from gossip_menu where entry in (7723);
 insert into gossip_menu (entry, text_id) values
 (7723,9431);
 -- Alliance & horde - stores the text and the script id
-delete from gossip_menu_option where menu_id in (30001,30002);
+delete from gossip_menu_option where menu_id in (7723,7724);
 insert into gossip_menu_option (menu_id, id, option_icon, option_text, option_id, npc_option_npcflag, action_script_id) values
-(7724,0,0,'[PH] Zangarmarsh PvP Banner',1,1,@CREATURE+1),
+(7724,1,1,'I have marks to redeem!',3,128,0),
+(7724,0,0,'[PH] Zangarmarsh PvP Banner',1,1,@CREATURE*10+1),
 (7723,1,1,'I have marks to redeem!',3,128,0),
-(7723,0,0,'[PH] Zangarmarsh PvP Banner',1,1,@CREATURE+2);
+(7723,0,0,'[PH] Zangarmarsh PvP Banner',1,1,@CREATURE*10+2);
 -- Alliance & horde - stores the gossip script
 delete from gossip_scripts where id in (@CREATURE*10+1,@CREATURE*10+2);
 insert into gossip_scripts(id, delay, command, datalong, datalong2, comments) values
