@@ -504,7 +504,8 @@ void Spell::FillTargetMap()
         {
             // Check if same target, but handle i.e. AreaAuras different
             if (m_spellInfo->EffectImplicitTargetA[i] == m_spellInfo->EffectImplicitTargetA[j] && m_spellInfo->EffectImplicitTargetB[i] == m_spellInfo->EffectImplicitTargetB[j]
-                && !IsAreaAuraEffect(m_spellInfo->Effect[i]) && !IsAreaAuraEffect(m_spellInfo->Effect[j]))
+                && !IsAreaAuraEffect(m_spellInfo->Effect[i]) && !IsAreaAuraEffect(m_spellInfo->Effect[j])
+                && m_spellInfo->Effect[j] != 0)
                 // Add further conditions here if required
             {
                 effToIndex[i] = j;                          // effect i has same targeting list as effect j
@@ -682,8 +683,14 @@ void Spell::FillTargetMap()
                 default:
                     switch(m_spellInfo->EffectImplicitTargetB[i])
                     {
-                        case 0:
+                        case TARGET_NONE:
                         case TARGET_EFFECT_SELECT:
+                            if (m_spellInfo->SpellVisual[0] == 12295)
+                            {
+                                sLog.outError("------------------------------------------");
+                                sLog.outError("Next SetTarget");
+                                sLog.outError("------------------------------------------");
+                            }
                             SetTargetMap(SpellEffectIndex(i), m_spellInfo->EffectImplicitTargetA[i], tmpUnitLists[i /*==effToIndex[i]*/]);
                             break;
                         case TARGET_SCRIPT_COORDINATES:         // B case filled in CheckCast but we need fill unit list base at A case
@@ -696,6 +703,13 @@ void Spell::FillTargetMap()
                     }
                     break;
             }
+        }
+        if (m_spellInfo->SpellVisual[0] == 12295)
+        {
+            sLog.outError("------------------------------------------");
+            sLog.outError("Test");
+            sLog.outError("Verwusten Targetlistengrosse: %u", tmpUnitLists[effToIndex[i]].size());
+            sLog.outError("------------------------------------------");
         }
 
         if (tmpUnitLists[effToIndex[i]].size() == 1 && *tmpUnitLists[effToIndex[i]].begin() == m_caster->getVictim())
@@ -2273,6 +2287,12 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                     m_targets.setUnitTarget(pUnitTarget);
                     m_spellFlags |= SPELL_FLAG_REDIRECTED;
                     targetUnitMap.push_back(pUnitTarget);
+                }
+                if (m_spellInfo->SpellVisual[0] == 12295)
+                {
+                    sLog.outError("------------------------------------------");
+                    sLog.outError("Ein Target wurde hinzugefuegt");
+                    sLog.outError("------------------------------------------");
                 }
             }
             else
@@ -8454,6 +8474,12 @@ void Spell::CancelGlobalCooldown()
 
 bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
 {
+    if (m_spellInfo->SpellVisual[0] == 12295)
+    {
+        sLog.outError("------------------------------------------");
+        sLog.outError("In Custom");
+        sLog.outError("------------------------------------------");
+    }
     float radius;
 
     if (m_spellInfo->EffectRadiusIndex[i])
@@ -9835,6 +9861,12 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
             return false;
         }
         default:
+                if (m_spellInfo->SpellVisual[0] == 12295)
+    {
+        sLog.outError("------------------------------------------");
+        sLog.outError("In Custom false");
+        sLog.outError("------------------------------------------");
+    }
             return false;
     }
     return true;
