@@ -12786,4 +12786,5 @@ void Spell::EffectUntrainTalents(SpellEffectIndex eff_idx)
     Player* pTarget = (Player*)unitTarget;
 
     pTarget->resetTalents(true);
+    pTarget->SendTalentsInfoData(false);
 }
