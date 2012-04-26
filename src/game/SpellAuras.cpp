@@ -2518,9 +2518,9 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                     {
                         if (target && target->GetTypeId() == TYPEID_UNIT)
                         {
-                            pTarget->RemoveAurasDueToSpell(SPELL_FREEZE);
-                            pTarget->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-                            ((Creature*)pTarget)->SetInCombatWithZone();
+                            target->RemoveAurasDueToSpell(SPELL_FREEZE);
+                            target->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                            ((Creature*)target)->SetInCombatWithZone();
                         }
                         break;
                     }
