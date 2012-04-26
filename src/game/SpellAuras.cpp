@@ -2516,7 +2516,7 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                     case 47669:                             // Awaken Subboss (Gortok - Utgarde Pinnacle)
                     case 47670:                             // Awaken Gortok
                     {
-                        if (target && target->GetTypeId() == TYPID_UNIT)
+                        if (target && target->GetTypeId() == TYPEID_UNIT)
                         {
                             pTarget->RemoveAurasDueToSpell(SPELL_FREEZE);
                             pTarget->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
