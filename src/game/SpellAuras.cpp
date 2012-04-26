@@ -2513,6 +2513,17 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                         target->CastSpell(target, 47189, true, NULL, this);
                         // allow script to process further (text)
                         break;
+                    case 47669:                             // Awaken Subboss (Gortok - Utgarde Pinnacle)
+                    case 47670:                             // Awaken Gortok
+                    {
+                        if (target && target->GetTypeId() == TYPID_UNIT)
+                        {
+                            pTarget->RemoveAurasDueToSpell(SPELL_FREEZE);
+                            pTarget->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                            ((Creature*)pTarget)->SetInCombatWithZone();
+                        }
+                        break;
+                    }
                     case 47795:                             // Cold Cleanse
                     {
                         if (Unit* Caster = GetCaster())
