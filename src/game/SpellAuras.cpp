@@ -10175,10 +10175,20 @@ void Aura::HandleAuraLinked(bool apply, bool Real)
 
     if (apply)
     {
+        bool definitelyNormalspell = false;
+        switch (spellInfo->Id)
+        {
+            case 64224:
+            case 64225:
+                definitelyNormalspell = true;
+                break;
+            default:
+                break;
+        }
         if (pCaster && pCaster->GetTypeId() == TYPEID_PLAYER &&
             pTarget->GetObjectGuid().IsVehicle() &&
             spellInfo->AttributesEx  &  SPELL_ATTR_EX_HIDDEN_AURA &&
-            spellInfo->Attributes &  SPELL_ATTR_HIDE_IN_COMBAT_LOG)
+            spellInfo->Attributes &  SPELL_ATTR_HIDE_IN_COMBAT_LOG && !definitelyNormalspell)
         {
             float bonus = ((float)((Player*)pCaster)->GetEquipGearScore(false, false) - (float)sWorld.getConfig(CONFIG_UINT32_GEAR_CALC_BASE))
                                  / (float)sWorld.getConfig(CONFIG_UINT32_GEAR_CALC_BASE);
@@ -10202,7 +10212,7 @@ void Aura::HandleAuraLinked(bool apply, bool Real)
         }
         // Ebon Plague and Crypt Fever - set basepoints for linked aura increasing disease damage taken
         else if (GetSpellProto()->SpellFamilyName == SPELLFAMILY_DEATHKNIGHT &&
-            (GetSpellProto()->SpellIconID == 264 || GetSpellProto()->SpellIconID == 1933))
+            (GetSpellProto()->SpellIconID == 264 || GetSpellProto()->SpellIconID == 1933) && !definitelyNormalspell)
         {
             int32 bp0 = GetModifier()->m_amount;
             if (pCaster)
