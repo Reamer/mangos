@@ -287,17 +287,19 @@ void Spell::EffectInstaKill(SpellEffectIndex /*eff_idx*/)
 
 void Spell::EffectEnvironmentalDMG(SpellEffectIndex eff_idx)
 {
-    uint32 absorb = 0;
-    uint32 resist = 0;
-
     // Note: this hack with damage replace required until GO casting not implemented
     // environment damage spells already have around enemies targeting but this not help in case nonexistent GO casting support
     // currently each enemy selected explicitly and self cast damage, we prevent apply self casted spell bonuses/etc
+    DamageInfo damageInfo = DamageInfo(m_caster,m_caster,m_spellInfo);
+    damageInfo.damage     = damage;
+    damageInfo.damageType = SELF_DAMAGE;
+
     damage = m_spellInfo->CalculateSimpleValue(eff_idx);
 
-    m_caster->CalculateDamageAbsorbAndResist(m_caster, GetSpellSchoolMask(m_spellInfo), SPELL_DIRECT_DAMAGE, damage, &absorb, &resist);
+    m_caster->CalculateDamageAbsorbAndResist(m_caster, &damageInfo);
 
-    m_caster->SendSpellNonMeleeDamageLog(m_caster, m_spellInfo->Id, damage, GetSpellSchoolMask(m_spellInfo), absorb, resist, false, 0, false);
+    m_caster->SendSpellNonMeleeDamageLog(&damageInfo);
+
     if (m_caster->GetTypeId() == TYPEID_PLAYER)
         ((Player*)m_caster)->EnvironmentalDamage(DAMAGE_FIRE, damage);
 }
@@ -1020,6 +1022,7 @@ void Spell::EffectSchoolDMG(SpellEffectIndex effect_idx)
                         // Lookup for Deadly poison (only attacker applied)
                         Unit::AuraList const& auras = unitTarget->GetAurasByType(SPELL_AURA_PERIODIC_DAMAGE);
                         for(Unit::AuraList::const_iterator itr = auras.begin(); itr!=auras.end(); ++itr)
+                        {
                             if ((*itr)->GetSpellProto()->SpellFamilyName==SPELLFAMILY_ROGUE &&
                                 (*itr)->GetSpellProto()->SpellFamilyFlags.test<CF_ROGUE_DEADLY_POISON>() &&
                                 (*itr)->GetCasterGuid() == m_caster->GetObjectGuid())
@@ -1027,6 +1030,7 @@ void Spell::EffectSchoolDMG(SpellEffectIndex effect_idx)
                                 poison = *itr;
                                 break;
                             }
+                        }
                         // count consumed deadly poison doses at target
                         if (poison)
                         {
@@ -1287,15 +1291,6 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     }
 
                     m_caster->CastSpell(m_caster,spell_id,true,NULL);
-                    return;
-                }
-                case 8593:                                  // Symbol of life (restore creature to life)
-                case 31225:                                 // Shimmering Vessel (restore creature to life)
-                {
-                    if (!unitTarget || unitTarget->GetTypeId() != TYPEID_UNIT)
-                        return;
-
-                    ((Creature*)unitTarget)->SetDeathState(JUST_ALIVED);
                     return;
                 }
                 case 9976:                                  // Polly Eats the E.C.A.C.
@@ -3715,7 +3710,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     if (!unitTarget)
                         return;
 
-                    m_caster->CastSpell(unitTarget, 21887, true);
+                    m_caster->CastSpell(unitTarget, 21887, true); // spell mod
                     return;
                 }
                 // Last Stand
@@ -4655,7 +4650,7 @@ void Spell::EffectTriggerSpell(SpellEffectIndex effIndex)
     if (spellInfo->EquippedItemClass >=0 && m_caster->GetTypeId()==TYPEID_PLAYER)
     {
         // main hand weapon required
-        if (spellInfo->AttributesEx3 & SPELL_ATTR_EX3_MAIN_HAND)
+        if (spellInfo->HasAttribute(SPELL_ATTR_EX3_MAIN_HAND))
         {
             Item* item = ((Player*)m_caster)->GetWeaponForAttack(BASE_ATTACK, true, false);
 
@@ -4669,7 +4664,7 @@ void Spell::EffectTriggerSpell(SpellEffectIndex effIndex)
         }
 
         // offhand hand weapon required
-        if (spellInfo->AttributesEx3 & SPELL_ATTR_EX3_REQ_OFFHAND)
+        if (spellInfo->HasAttribute(SPELL_ATTR_EX3_REQ_OFFHAND))
         {
             Item* item = ((Player*)m_caster)->GetWeaponForAttack(OFF_ATTACK, true, false);
 
@@ -5494,10 +5489,10 @@ void Spell::DoCreateItem(SpellEffectIndex eff_idx, uint32 itemtype)
     ItemPosCountVec dest;
     uint32 no_space = 0;
     InventoryResult msg = player->CanStoreNewItem( NULL_BAG, NULL_SLOT, dest, newitemid, num_to_add, &no_space );
-    if ( msg != EQUIP_ERR_OK )
+    if (msg != EQUIP_ERR_OK)
     {
         // convert to possible store amount
-        if ( msg == EQUIP_ERR_INVENTORY_FULL || msg == EQUIP_ERR_CANT_CARRY_MORE_OF_THIS )
+        if (msg == EQUIP_ERR_INVENTORY_FULL || msg == EQUIP_ERR_CANT_CARRY_MORE_OF_THIS)
             num_to_add -= no_space;
         else
         {
@@ -6314,7 +6309,7 @@ void Spell::EffectDispel(SpellEffectIndex eff_idx)
                 if (!itr->second->IsPositive())
                     positive = false;
                 else
-                    positive = (itr->second->GetSpellProto()->AttributesEx & SPELL_ATTR_EX_NEGATIVE)==0;
+                    positive = !itr->second->GetSpellProto()->HasAttribute(SPELL_ATTR_EX_NEGATIVE);
 
                 // do not remove positive auras if friendly target
                 //               negative auras if non-friendly target
@@ -8355,7 +8350,7 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
 
                     // TODO likely that this spell should have m_caster as Original caster, but conflicts atm with TARGET_ALL_FRIENDLY_UNITS_AROUND_CASTER
                     unitTarget->CastSpell(unitTarget, 39968, true);
-                    break;
+                    return;
                 }
                 case 40486:                                 // Eject (Black Temple - Bloodboil)
                 {
@@ -8366,7 +8361,7 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                         return;
 
                     m_caster->getThreatManager().modifyThreatPercent(unitTarget, -40);
-                    break;
+                    return;
                 }
                 case 41055:                                 // Copy Weapon
                 {
@@ -8552,7 +8547,6 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     }
 
                     // Teleport target to the spectral realm, add debuff and force faction
-                    unitTarget->CastSpell(unitTarget, 44852, true);
                     unitTarget->CastSpell(unitTarget, 46019, true);
                     unitTarget->CastSpell(unitTarget, 46021, true);
                     return;
@@ -9272,8 +9266,6 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     if (!unitTarget || m_caster->GetTypeId() != TYPEID_UNIT)
                         return;
 
-                    unitTarget->RemoveAurasDueToSpell(54852);    // make Stun away from Collossus
-
                     ((Creature*)m_caster)->ForcedDespawn(3000);
                     m_caster->CastSpell(unitTarget, 54878, true); // Set Scale 0.1 And Stun
                     return;
@@ -9621,42 +9613,6 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     m_caster->GetMotionMaster()->MoveFollow(unitTarget, PET_FOLLOW_DIST, unitTarget->GetAngle(m_caster));
                     break;
                 }
-                case 62003:                                 // Algalon - Black Hole Spawn
-                {
-                    if (!unitTarget)
-                        return;
-
-                    // Apply aura which causes black hole phase/1 sec to hostile targets
-                    unitTarget->CastSpell(m_caster, 62185, true);
-                    return;
-                }
-                case 62168:                                 // Algalon - Black Hole Damage
-                {
-                    if (!unitTarget)
-                        return;
-                    unitTarget->CastSpell(unitTarget, 62169, true);
-                    return;
-                }
-                case 64122:
-                case 65108:                                 // Algalon - Collapsing start explosion to summon black hole
-                {
-                    if (!unitTarget)
-                        return;
-
-                    // Cast Black hole spawn
-                    m_caster->CastSpell(m_caster, 62189, true);
-                    return;
-                }
-                case 62705:                                 // Auto-repair
-                {
-                    if (!unitTarget)
-                        return;
-                    unitTarget->SetHealth(unitTarget->GetMaxHealth());
-                    if (VehicleKit* vehicle = unitTarget->GetVehicleKit())
-                        if (Unit* seat = vehicle->GetPassenger(1))
-                            seat->ModifyPower(POWER_ENERGY,50);
-                    break;
-                }
                 case 62707:                                 // Grab (Ulduar: Ignis)
                 case 63535:                                 // Grab heroic
                 {
@@ -9678,7 +9634,7 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     }
                     break;
                 }
-                case 63633:                                 // Summon Rubble (Kologarm)
+                case 63633:                                 // Summon Rubble (Kologarn)
                 {
                     if (!unitTarget)
                         return;
@@ -9759,7 +9715,7 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                 }
                 case 64466:                                 // Empowering Shadows (Ulduar - Yogg Saron)
                 {
-                    if (!unitTarget)    // ScriptTarget - Target: Yogg Saron
+                    if (!unitTarget)
                         return;
 
                     // effect back to caster (Immortal Guardian)
@@ -9785,6 +9741,39 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                             unitTarget->RemoveSpellAuraHolder(holder);
                     break;
                 }
+                case 65238:                                 // Shattered Illusion (Ulduar - Yogg Saron)
+                {
+                    if (!unitTarget)
+                        return;
+
+                    unitTarget->RemoveAurasDueToSpell(m_spellInfo->EffectBasePoints[eff_idx]);
+                    return;
+                }
+                case 62003:                                 // Algalon - Black Hole Spawn
+                {
+                    if (!unitTarget)
+                        return;
+
+                    // Apply aura which causes black hole phase/1 sec to hostile targets
+                    unitTarget->CastSpell(m_caster, 62185, true);
+                }
+                case 62168:                                 // Algalon - Black Hole Damage
+                {
+                    if (!unitTarget)
+                        return;
+                    unitTarget->CastSpell(unitTarget, 62169, true);
+                    return;
+                }
+                case 64122:
+                case 65108:                                 // Algalon - Collapsing start explosion to summon black hole
+                {
+                    if (!unitTarget)
+                        return;
+
+                    // Cast Black hole spawn
+                    m_caster->CastSpell(m_caster, 62189, true);
+                    return;
+                }
                 case 65044:                                 // Flames Ulduar
                 {
                     if (!unitTarget)
@@ -9793,14 +9782,6 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     if (unitTarget->HasAura(62297))
                         unitTarget->RemoveAurasDueToSpell(62297);   // Remove Hodir's Fury
                     break;
-                }
-                case 65238:                                 // Shattered Illusion (Ulduar - Yogg Saron)
-                {
-                    if (!unitTarget)
-                        return;
-
-                    unitTarget->RemoveAurasDueToSpell(64173);
-                    return;
                 }
                 case 65917:                                 // Magic Rooster
                 {
@@ -10756,6 +10737,7 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
 
                 return;
             }
+            break;
         }
         case SPELLFAMILY_POTION:
         {
@@ -11516,7 +11498,7 @@ void Spell::EffectLeapBack(SpellEffectIndex eff_idx)
     if (unitTarget->IsTaxiFlying())
         return;
 
-    m_caster->KnockBackFrom(unitTarget,float(m_spellInfo->EffectMiscValue[eff_idx])/10,float(damage)/10);
+    m_caster->KnockBackFrom(unitTarget, float(m_spellInfo->EffectMiscValue[eff_idx])/10, float(damage)/10);
 }
 
 void Spell::EffectReputation(SpellEffectIndex eff_idx)
@@ -11782,7 +11764,7 @@ void Spell::EffectKnockBack(SpellEffectIndex eff_idx)
         if (m_caster->HasAura(62126)) // Glyph of Blast Wave
             return;
 
-    unitTarget->KnockBackFrom(m_caster,float(m_spellInfo->EffectMiscValue[eff_idx])/10,float(damage)/10);
+    unitTarget->KnockBackFrom(m_caster, float(m_spellInfo->EffectMiscValue[eff_idx])/10, float(damage)/10);
 }
 
 void Spell::EffectSendTaxi(SpellEffectIndex eff_idx)
@@ -11805,7 +11787,7 @@ void Spell::EffectPlayerPull(SpellEffectIndex eff_idx)
     if (damage && dist > damage)
         dist = float(damage);
 
-    unitTarget->KnockBackFrom(m_caster,-dist,float(m_spellInfo->EffectMiscValue[eff_idx])/30);
+    unitTarget->KnockBackFrom(m_caster, -dist, float(m_spellInfo->EffectMiscValue[eff_idx])/30);
 }
 
 void Spell::EffectDispelMechanic(SpellEffectIndex eff_idx)
@@ -12216,7 +12198,7 @@ void Spell::EffectStealBeneficialBuff(SpellEffectIndex eff_idx)
         if (holder && (1<<holder->GetSpellProto()->Dispel) & dispelMask)
         {
             // Need check for passive? this
-            if (holder->IsPositive() && !holder->IsPassive() && !(holder->GetSpellProto()->AttributesEx4 & SPELL_ATTR_EX4_NOT_STEALABLE))
+            if (holder->IsPositive() && !holder->IsPassive() && !holder->GetSpellProto()->HasAttribute(SPELL_ATTR_EX4_NOT_STEALABLE))
                 steal_list.push_back(holder);
         }
     }

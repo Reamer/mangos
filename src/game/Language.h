@@ -788,9 +788,7 @@ enum MangosStrings
     LANG_BG_AV_H_NEAR_LOSE              = 788,
     LANG_BG_AV_H_GENERAL_DEAD           = 789,
     LANG_BG_AV_A_GENERAL_DEAD           = 790,
-
-
-    // Room for batleground/arena strings 791-799 not used
+    // Room for battleground/arena strings 791-799 not used
 
     // in game strings
     //                                  = 800, not used
@@ -810,7 +808,8 @@ enum MangosStrings
     LANG_GUILD_MEMBER                   = 814,
     LANG_GUILD_INITIATE                 = 815,
     LANG_FAIL_ENTER_SPECTRAL_REALM      = 816,
-    // Room for in-game strings           817-999 not used
+    LANG_NO_FLY_ZONE                    = 817,
+    // Room for in-game strings           818-999 not used
 
     // Level 4 (CLI only commands)
     LANG_COMMAND_EXIT                   = 1000,

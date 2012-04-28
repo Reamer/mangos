@@ -516,13 +516,14 @@ void BattleGround::Update(uint32 diff)
             SetStatus(STATUS_IN_PROGRESS);
             SetStartDelayTime(m_StartDelayTimes[BG_STARTING_EVENT_FOURTH]);
 
-            //remove preparation
+            // remove preparation
             if (isArena())
             {
                 //TODO : add arena sound PlaySoundToAll(SOUND_ARENA_START);
 
                 // remove auras with duration lower than 30s and arena preparation
-                for(BattleGroundPlayerMap::const_iterator itr = m_Players.begin(); itr != m_Players.end(); ++itr)
+                for (BattleGroundPlayerMap::const_iterator itr = m_Players.begin(); itr != m_Players.end(); ++itr)
+                {
                     if (Player *plr = sObjectMgr.GetPlayer(itr->first))
                     {
                         // BG Status packet
@@ -533,7 +534,9 @@ void BattleGround::Update(uint32 diff)
                         plr->GetSession()->SendPacket(&status);
 
                         plr->RemoveAurasDueToSpell(SPELL_ARENA_PREPARATION);
+                        plr->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_PLAY_ARENA, plr->GetMapId(), GetArenaType());
                     }
+                }
 
                 //Announce Arena starting
                 if (sWorld.getConfig(CONFIG_BOOL_ARENA_QUEUE_ANNOUNCER_START))
@@ -919,7 +922,7 @@ void BattleGround::EndBattleGround(Team winner)
                 if (member)
                 {
                     plr->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_RATED_ARENA, member->personal_rating);
-                    plr->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_ARENA, 1);
+                    plr->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_ARENA, plr->GetMapId(), GetArenaType());
                 }
 
                 winner_arena_team->MemberWon(plr,loser_rating);
@@ -1979,8 +1982,6 @@ void BattleGround::HandleKillPlayer( Player *player, Player *killer )
         UpdatePlayerScore(killer, SCORE_HONORABLE_KILLS, 1);
         UpdatePlayerScore(killer, SCORE_KILLING_BLOWS, 1);
 
-        killer->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_GET_KILLING_BLOWS, 1);
-        killer->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HONORABLE_KILL, 1, 0, killer);
         killer->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HONORABLE_KILL_AT_AREA, 1);
 
         for(BattleGroundPlayerMap::const_iterator itr = m_Players.begin(); itr != m_Players.end(); ++itr)
@@ -1995,7 +1996,6 @@ void BattleGround::HandleKillPlayer( Player *player, Player *killer )
                 UpdatePlayerScore(plr, SCORE_HONORABLE_KILLS, 1);
 
                 plr->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_SPECIAL_PVP_KILL, 1);
-                plr->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HONORABLE_KILL, 1, 0, plr);
                 plr->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HONORABLE_KILL_AT_AREA, 1);
             }
         }

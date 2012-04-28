@@ -157,6 +157,7 @@ bool Group::Create(ObjectGuid guid, const char * name)
         CharacterDatabase.BeginTransaction();
         CharacterDatabase.PExecute("DELETE FROM groups WHERE groupId ='%u'", m_Guid.GetCounter());
         CharacterDatabase.PExecute("DELETE FROM group_member WHERE groupId ='%u'", m_Guid.GetCounter());
+
         CharacterDatabase.PExecute("INSERT INTO groups (groupId,leaderGuid,lootMethod,looterGuid,lootThreshold,icon1,icon2,icon3,icon4,icon5,icon6,icon7,icon8,groupType,difficulty,raiddifficulty) "
             "VALUES ('%u','%u','%u','%u','%u','" UI64FMTD "','" UI64FMTD "','" UI64FMTD "','" UI64FMTD "','" UI64FMTD "','" UI64FMTD "','" UI64FMTD "','" UI64FMTD "','%u','%u','%u')",
             m_Guid.GetCounter(), m_leaderGuid.GetCounter(), uint32(m_lootMethod),
@@ -2067,6 +2068,10 @@ void Group::RewardGroupAtKill(Unit* pVictim, Player* player_tap)
 
             if(!pGroupGuy->IsAtGroupRewardDistance(pVictim))
                 continue;                               // member (alive or dead) or his corpse at req. distance
+            if (pVictim->GetTypeId()==TYPEID_UNIT)
+                if (CreatureInfo const* normalInfo = ObjectMgr::GetCreatureTemplate(pVictim->GetEntry()))
+                    if(uint32 normalType = normalInfo->type)
+                        pGroupGuy->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_KILL_CREATURE_TYPE, normalType, xp);
 
             RewardGroupAtKill_helper(pGroupGuy, pVictim, count, PvP, group_rate, sum_level, is_dungeon, not_gray_member_with_max_level, member_with_max_level, xp);
         }
@@ -2076,6 +2081,12 @@ void Group::RewardGroupAtKill(Unit* pVictim, Player* player_tap)
             // member (alive or dead) or his corpse at req. distance
             if(player_tap->IsAtGroupRewardDistance(pVictim))
                 RewardGroupAtKill_helper(player_tap, pVictim, count, PvP, group_rate, sum_level, is_dungeon, not_gray_member_with_max_level, member_with_max_level, xp);
+
+            if (pVictim->GetTypeId()==TYPEID_UNIT)
+                if (CreatureInfo const* normalInfo = ObjectMgr::GetCreatureTemplate(pVictim->GetEntry()))
+                    if(uint32 normalType = normalInfo->type)
+                        player_tap->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_KILL_CREATURE_TYPE, normalType, xp);
+            player_tap->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_GET_KILLING_BLOWS, 1, 0, pVictim);
         }
     }
 }
