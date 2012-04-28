@@ -1707,8 +1707,8 @@ void Unit::CalculateMeleeDamage(Unit *pVictim, uint32 damage, DamageInfo* damage
     // Add melee damage bonus
     damage = MeleeDamageBonusDone(damageInfo->target, damage, damageInfo->attackType);
     damage = damageInfo->target->MeleeDamageBonusTaken(this, damage, damageInfo->attackType);
-    // Calculate armor reduction
 
+    // Calculate armor reduction
     uint32 armor_affected_damage = CalcNotIgnoreDamageReduction(damage, damageInfo->SchoolMask());
     damageInfo->damage = damage - armor_affected_damage + CalcArmorReducedDamage(damageInfo->target, armor_affected_damage);
     damageInfo->cleanDamage += damage - damageInfo->damage;
@@ -2286,8 +2286,8 @@ void Unit::CalculateDamageAbsorbAndResist(Unit *pCaster, SpellSchoolMask schoolM
                     reflectTriggeredBy->SetInUse(true);     // lock aura from final deletion until processing
                     break;
                 }
-                if (spellProto->Id == 39228 || // Argussian Compass
-                    spellProto->Id == 60218)   // Essence of Gossamer
+                if (spellProto->Id == 39228 ||              // Argussian Compass
+                    spellProto->Id == 60218)                // Essence of Gossamer
                 {
                     // Max absorb stored in 1 dummy effect
                     int32 max_absorb = spellProto->CalculateSimpleValue(EFFECT_INDEX_1);
@@ -2323,9 +2323,9 @@ void Unit::CalculateDamageAbsorbAndResist(Unit *pCaster, SpellSchoolMask schoolM
                 if (spellProto->SpellIconID == 2109)
                 {
                     if (!preventDeathSpell &&
-                        GetTypeId()==TYPEID_PLAYER &&           // Only players
+                        GetTypeId()==TYPEID_PLAYER &&       // Only players
                         !((Player*)this)->HasSpellCooldown(31231) &&
-                                                                // Only if no cooldown
+                                                            // Only if no cooldown
                         roll_chance_i((*i)->GetModifier()->m_amount))
                                                                 // Only if roll
                     {
@@ -2534,7 +2534,7 @@ void Unit::CalculateDamageAbsorbAndResist(Unit *pCaster, SpellSchoolMask schoolM
     // Cast back reflect damage spell
     if (canReflect && reflectSpell)
     {
-        CastCustomSpell(pCaster,  reflectSpell, &reflectDamage, NULL, NULL, true, NULL, reflectTriggeredBy);
+        CastCustomSpell(pCaster, reflectSpell, &reflectDamage, NULL, NULL, true, NULL, reflectTriggeredBy);
         reflectTriggeredBy->SetInUse(false);                // free lock from deletion
     }
 
