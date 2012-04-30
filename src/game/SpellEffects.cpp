@@ -9458,6 +9458,14 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     }
                     return;
                 }
+                case 62042:                                 // Stormhammer (Thorim)
+                {
+                    if (!unitTarget)
+                        return;
+                    
+                    unitTarget->CastSpell(unitTarget, 62470, true,0,0,m_caster->GetObjectGuid());
+                    return;
+                }
                 case 62428:                                 // Load into Catapult
                 {
                     if (!unitTarget)
