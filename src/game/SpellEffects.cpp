@@ -4677,8 +4677,8 @@ void Spell::EffectTriggerSpell(SpellEffectIndex effIndex)
                 return;
         }
     }
-    else if (spellInfo->Targets & TARGET_FLAG_DEST_LOCATION &&
-         m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION)
+    else if ((spellInfo->Targets & TARGET_FLAG_DEST_LOCATION) &&
+         (m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION))
     {
         // Init dest coordinates
         float x,y,z;
@@ -4726,7 +4726,7 @@ void Spell::EffectTriggerMissileSpell(SpellEffectIndex effect_idx)
     if (m_caster->GetTypeId() == TYPEID_PLAYER)
         ((Player*)m_caster)->RemoveSpellCooldown(triggered_spell_id);
 
-    if (m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION || m_caster == unitTarget )
+    if ((m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION) || m_caster == unitTarget )
     {
         // Init dest coordinates
         float x,y,z;
@@ -6397,7 +6397,7 @@ void Spell::EffectDispel(SpellEffectIndex eff_idx)
                 data << uint32(dispelledHolder->GetId());   // Spell Id
                 data << uint8(0);                           // 0 - dispelled !=0 cleansed
 
-                if (dispelledHolder->GetSpellProto()->AttributesEx7 & SPELL_ATTR_EX7_DISPEL_CHARGES && dispelledHolder->GetAuraCharges() > 1)
+                if (dispelledHolder->GetSpellProto()->HasAttribute(SPELL_ATTR_EX7_DISPEL_CHARGES) && dispelledHolder->GetAuraCharges() > 1)
                 {
                     if (dispelledHolder->DropAuraCharge())
                         unitTarget->RemoveSpellAuraHolder(dispelledHolder, AURA_REMOVE_BY_DISPEL);
@@ -6917,7 +6917,7 @@ void Spell::EffectEnchantItemPerm(SpellEffectIndex eff_idx)
     }
 
     // Using enchant stored on scroll does not increase enchanting skill! (Already granted on scroll creation)
-    if (!(m_CastItem && m_CastItem->GetProto()->Flags & ITEM_FLAG_ENCHANT_SCROLL))
+    if (!(m_CastItem && (m_CastItem->GetProto()->Flags & ITEM_FLAG_ENCHANT_SCROLL)))
         p_caster->UpdateCraftSkill(m_spellInfo->Id);
 
     if (item_owner!=p_caster && p_caster->GetSession()->GetSecurity() > SEC_PLAYER && sWorld.getConfig(CONFIG_BOOL_GM_LOG_TRADE) )
@@ -7738,7 +7738,7 @@ void Spell::EffectInterruptCast(SpellEffectIndex eff_idx)
                     interruptible = true;
                     break;
                 default:
-                    interruptible = false;
+                    break;
             }
             // check if we can interrupt spell
             if (((curSpellInfo->InterruptFlags & SPELL_INTERRUPT_FLAG_INTERRUPT) && curSpellInfo->PreventionType == SPELL_PREVENTION_TYPE_SILENCE) || interruptible)
@@ -9025,7 +9025,8 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
 
                         if (pSummon->GetSummonerGuid().IsPlayer())
                         {
-                            if (Player* pSummoner = sObjectMgr.GetPlayer(pSummon->GetSummonerGuid()))
+                            Player* pSummoner = sObjectMgr.GetPlayer(pSummon->GetSummonerGuid());
+                            if (pSummoner)
                                 pSummoner->CastSpell(pSummoner, m_spellInfo->CalculateSimpleValue(eff_idx), true);
                         }
                     }
@@ -9284,7 +9285,8 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                 // Glyph of Starfire
                 case 54846:
                 {
-                    if (Aura* aura = unitTarget->GetAura<SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_DRUID, CF_DRUID_MOONFIRE>(m_caster->GetObjectGuid()))
+                    Aura* aura = unitTarget->GetAura<SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_DRUID, CF_DRUID_MOONFIRE>(m_caster->GetObjectGuid());
+                    if (aura)
                     {
                         uint32 countMin = aura->GetAuraMaxDuration();
                         uint32 countMax = GetSpellMaxDuration(aura->GetSpellProto());
@@ -12203,7 +12205,7 @@ void Spell::EffectStealBeneficialBuff(SpellEffectIndex eff_idx)
     for(Unit::SpellAuraHolderMap::const_iterator itr = auras.begin(); itr != auras.end(); ++itr)
     {
         SpellAuraHolderPtr holder = itr->second;
-        if (holder && (1<<holder->GetSpellProto()->Dispel) & dispelMask)
+        if (holder && ((1<<holder->GetSpellProto()->Dispel) & dispelMask))
         {
             // Need check for passive? this
             if (holder->IsPositive() && !holder->IsPassive() && !holder->GetSpellProto()->HasAttribute(SPELL_ATTR_EX4_NOT_STEALABLE))
