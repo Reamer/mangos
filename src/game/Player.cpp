@@ -19996,7 +19996,7 @@ void Player::LeaveAllArenaTeams(ObjectGuid guid)
         Field *fields = result->Fetch();
         if (uint32 at_id = fields[0].GetUInt32())
         {
-            ArenaTeam * at = sObjectMgr.GetArenaTeamById(at_id);
+            ArenaTeam* at = sObjectMgr.GetArenaTeamById(at_id);
             if (at)
                 at->DelMember(guid);
         }
@@ -20702,7 +20702,7 @@ uint32 Player::GetMaxPersonalArenaRatingRequirement(uint32 minarenaslot)
     uint32 max_personal_rating = 0;
     for(int i = minarenaslot; i < MAX_ARENA_SLOT; ++i)
     {
-        ArenaTeam * at = sObjectMgr.GetArenaTeamById(GetArenaTeamId(i));
+        ArenaTeam* at = sObjectMgr.GetArenaTeamById(GetArenaTeamId(i));
         if (at)
         {
             uint32 p_rating = GetArenaPersonalRating(i);

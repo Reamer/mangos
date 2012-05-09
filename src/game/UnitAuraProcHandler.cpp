@@ -542,7 +542,7 @@ SpellAuraProcResult Unit::HandleSpellCritChanceAuraProc(Unit *pVictim, DamageInf
             break;
         }
         default:
-        	break;
+            break;
     }
 
     // processed charge only counting case
@@ -5101,8 +5101,8 @@ SpellAuraProcResult Unit::HandleRemoveByDamageProc(Unit* pVictim, DamageInfo* da
 
     if (procSpell && triggeredByAura->GetModifier()->m_auraname == SPELL_AURA_MOD_STEALTH)
     {
-            if ((procSpell->HasAttribute(SPELL_ATTR_EX_NOT_BREAK_STEALTH) && procSpell->HasAttribute(SPELL_ATTR_EX_NO_THREAT)) ||
-                (procSpell->HasAttribute(SPELL_ATTR_EX2_UNK28)))
+            if (procSpell->HasAttribute(SPELL_ATTR_EX_NOT_BREAK_STEALTH) || procSpell->HasAttribute(SPELL_ATTR_EX_NO_THREAT) ||
+                procSpell->HasAttribute(SPELL_ATTR_EX2_UNK28))
             return SPELL_AURA_PROC_FAILED;
     }
 
