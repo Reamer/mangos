@@ -31,8 +31,6 @@
 #include <limits>
 #include <cmath>
 
-#include "LockedVector.h"
-
 #define MAX_STACK_SIZE 64
 
 #ifdef _MSC_VER
@@ -44,8 +42,6 @@
 using G3D::Vector3;
 using G3D::AABox;
 using G3D::Ray;
-
-typedef ACE_Based::LockedVector<uint32> BIHVector;
 
 static inline uint32 floatToRawIntBits(float f)
 {
@@ -103,9 +99,9 @@ class BIH
                 getBounds(primitives[i], dat.primBound[i]);
                 bounds.merge(dat.primBound[i]);
             }
-            BIHVector tempTree;
+            std::vector<uint32> tempTree;
             BuildStats stats;
-            buildHierarchy(tempTree.getSource(), dat, stats);
+            buildHierarchy(tempTree, dat, stats);
             if (printStats)
                 stats.printStats();
 
@@ -340,8 +336,8 @@ class BIH
         bool readFromFile(FILE *rf);
 
     protected:
-        BIHVector tree;
-        BIHVector objects;
+        std::vector<uint32> tree;
+        std::vector<uint32> objects;
         AABox bounds;
 
         struct buildData
