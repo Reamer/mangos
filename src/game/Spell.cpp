@@ -7847,6 +7847,10 @@ bool Spell::CheckTarget( Unit* target, SpellEffectIndex eff )
             return false;
     }
 
+    // HACK for Thorim
+    if (eff == EFFECT_INDEX_2 && m_spellInfo->Id == 62466)
+        return true;
+
      // check right target                                                                                       // should activ for spells 72034, 72096
     if (m_spellInfo->AttributesEx3 & SPELL_ATTR_EX3_TARGET_ONLY_PLAYER && target->GetTypeId() != TYPEID_PLAYER /*&& m_spellInfo->EffectImplicitTargetA[eff] != TARGET_SCRIPT*/)
         return false;
@@ -8853,7 +8857,7 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
             if (i == EFFECT_INDEX_0)
                 return false;
             UnitList temptargetUnitMap;
-            FillAreaTargets(temptargetUnitMap, radius, PUSH_IN_FRONT_30, SPELL_TARGETS_ALL);
+            FillAreaTargets(temptargetUnitMap, radius, PUSH_IN_FRONT_90, SPELL_TARGETS_ALL);
             for (UnitList::const_iterator itr = temptargetUnitMap.begin(); itr != temptargetUnitMap.end(); ++itr)
             {
                 if ((*itr)->GetTypeId() ==TYPEID_PLAYER || (*itr)->GetEntry() == 32780)
