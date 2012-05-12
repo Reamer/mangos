@@ -2530,7 +2530,6 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                         // allow script to process further (text)
                         break;
                     case 47669:                             // Awaken Subboss (Gortok - Utgarde Pinnacle)
-                    case 47670:                             // Awaken Gortok
                     {
                         if (target && target->GetTypeId() == TYPEID_UNIT)
                         {
