@@ -20,6 +20,7 @@
 #include "TargetedMovementGenerator.h"
 #include "Errors.h"
 #include "Creature.h"
+#include "CreatureAI.h"
 #include "Player.h"
 #include "World.h"
 #include "movement/MoveSplineInit.h"
@@ -307,7 +308,10 @@ void ChaseMovementGenerator<T>::Finalize(T &owner)
     if (owner.GetTypeId() == TYPEID_UNIT && !((Creature*)&owner)->IsPet() && owner.isAlive())
     {
         if (!owner.isInCombat() || ( this->i_target.getTarget() && !this->i_target.getTarget()->isInAccessablePlaceFor(&owner)))
-            owner.GetMotionMaster()->MoveTargetedHome();
+        {
+            if (((Creature*)&owner)->AI())
+                ((Creature*)&owner)->AI()->EnterEvadeMode();
+        }
     }
 }
 
