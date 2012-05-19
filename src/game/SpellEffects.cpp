@@ -6599,7 +6599,7 @@ void Spell::DoSummonWild(SpellEffectIndex eff_idx, uint32 forceFaction)
         {
             float ox, oy, oz;
             m_caster->GetPosition(ox, oy, oz);
-            m_caster->GetTerrain()->CheckPathAccurate(ox,oy,oz, px, py, pz, sWorld.getConfig(CONFIG_BOOL_CHECK_GO_IN_PATH) ? m_caster : NULL );
+            m_caster->GetTerrain()->getHitPosition(ox,oy,oz, px, py, pz, px, py, pz, m_caster->GetPhaseMask(),-0.1f);
             m_caster->UpdateAllowedPositionZ(px,py,pz);
         }
 
@@ -12044,7 +12044,7 @@ void Spell::EffectTransmitted(SpellEffectIndex eff_idx)
             }
 
             // finally, check LoS
-            if (!m_caster->IsWithinLOS(fx, fy, fz, false))
+            if (!m_caster->IsWithinLOS(fx, fy, fz))
             {
                 SendCastResult(SPELL_FAILED_LINE_OF_SIGHT);
                 SendChannelUpdate(0);

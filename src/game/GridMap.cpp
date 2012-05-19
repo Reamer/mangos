@@ -31,6 +31,7 @@
 #include "World.h"
 #include "Policies/SingletonImp.h"
 #include "Util.h"
+#include "vmap/GameObjectModel.h"
 
 char const* MAP_MAGIC         = "MAPS";
 char const* MAP_VERSION_MAGIC = "v1.2";
@@ -59,7 +60,8 @@ GridMap::GridMap()
     m_liquid_width  = 0;
     m_liquid_height = 0;
     m_liquidLevel = INVALID_HEIGHT_VALUE;
-    m_liquid_type = NULL;
+    m_liquidEntry = NULL;
+    m_liquidFlags = NULL;
     m_liquid_map  = NULL;
 }
 
@@ -128,8 +130,11 @@ void GridMap::unloadData()
     if (m_V8)
         delete[] m_V8;
 
-    if (m_liquid_type)
-        delete[] m_liquid_type;
+    if (m_liquidEntry)
+        delete[] m_liquidEntry;
+
+    if (m_liquidFlags)
+        delete[] m_liquidFlags;
 
     if (m_liquid_map)
         delete[] m_liquid_map;
@@ -137,7 +142,8 @@ void GridMap::unloadData()
     m_area_map = NULL;
     m_V9 = NULL;
     m_V8 = NULL;
-    m_liquid_type = NULL;
+    m_liquidEntry = NULL;
+    m_liquidFlags = NULL;
     m_liquid_map  = NULL;
     m_gridGetHeight = &GridMap::getHeightFromFlat;
 }
@@ -221,8 +227,11 @@ bool GridMap::loadGridMapLiquidData(FILE *in, uint32 offset, uint32 /*size*/)
 
     if (!(header.flags & MAP_LIQUID_NO_TYPE))
     {
-        m_liquid_type = new uint8 [16*16];
-        fread(m_liquid_type, sizeof(uint8), 16*16, in);
+        m_liquidEntry = new uint16[16*16];
+        fread(m_liquidEntry, sizeof(uint16), 16*16, in);
+
+        m_liquidFlags = new uint8[16*16];
+        fread(m_liquidFlags, sizeof(uint8), 16*16, in);
     }
 
     if (!(header.flags & MAP_LIQUID_NO_HEIGHT))
@@ -491,21 +500,21 @@ float GridMap::getLiquidLevel(float x, float y)
 
 uint8 GridMap::getTerrainType(float x, float y)
 {
-    if (!m_liquid_type)
+    if (!m_liquidFlags)
         return (uint8)m_liquidType;
 
     x = 16 * (32 - x/SIZE_OF_GRIDS);
     y = 16 * (32 - y/SIZE_OF_GRIDS);
     int lx = (int)x & 15;
     int ly = (int)y & 15;
-    return m_liquid_type[lx*16 + ly];
+    return m_liquidFlags[lx*16 + ly];
 }
 
 // Get water state on map
 GridMapLiquidStatus GridMap::getLiquidStatus(float x, float y, float z, uint8 ReqLiquidType, GridMapLiquidData *data)
 {
     // Check water type (if no water return)
-    if (!m_liquid_type && !m_liquidType)
+    if (!m_liquidFlags && !m_liquidType)
         return LIQUID_MAP_NO_WATER;
 
     // Get cell
@@ -516,7 +525,40 @@ GridMapLiquidStatus GridMap::getLiquidStatus(float x, float y, float z, uint8 Re
     int y_int = (int)cy & (MAP_RESOLUTION-1);
 
     // Check water type in cell
-    uint8 type = m_liquid_type ? m_liquid_type[(x_int>>3)*16 + (y_int>>3)] : m_liquidType;
+    int idx = (x_int>>3)*16 + (y_int>>3);
+    uint8 type = m_liquidFlags ? m_liquidFlags[idx] : m_liquidType;
+    uint32 entry = 0;
+    if (m_liquidEntry)
+    {
+        if (LiquidTypeEntry const* liquidEntry = sLiquidTypeStore.LookupEntry(m_liquidEntry[idx]))
+        {
+            entry = liquidEntry->Id;
+            type &= MAP_LIQUID_TYPE_DARK_WATER;
+            uint32 liqTypeIdx = liquidEntry->Type;
+            if (entry < 21)
+            {
+                if (AreaTableEntry const* area = sAreaStore.LookupEntry(getArea(x, y)))
+                {
+                    uint32 overrideLiquid = area->LiquidTypeOverride[liquidEntry->Type];
+                    if (!overrideLiquid && area->zone)
+                    {
+                        area = GetAreaEntryByAreaID(area->zone);
+                        if (area)
+                            overrideLiquid = area->LiquidTypeOverride[liquidEntry->Type];
+                    }
+
+                    if (LiquidTypeEntry const* liq = sLiquidTypeStore.LookupEntry(overrideLiquid))
+                    {
+                        entry = overrideLiquid;
+                        liqTypeIdx = liq->Type;
+                    }
+                }
+            }
+
+            type |= 1 << liqTypeIdx;
+        }
+    }
+
     if (type == 0)
         return LIQUID_MAP_NO_WATER;
 
@@ -547,7 +589,8 @@ GridMapLiquidStatus GridMap::getLiquidStatus(float x, float y, float z, uint8 Re
     // All ok in water -> store data
     if (data)
     {
-        data->type  = type;
+        data->entry = entry;
+        data->type_flags = type;
         data->level = liquid_level;
         data->depth_level = ground_level;
     }
@@ -781,13 +824,14 @@ float TerrainInfo::GetHeight(float x, float y, float z, bool pUseVmaps, float ma
     else
         vmapHeight = VMAP_INVALID_HEIGHT_VALUE;
 
+/* I thing not need with dynmaicVMaps
     //hack for LK frozen throne true height
     if (GetAreaId(x,y,z) == 4859)
     {
         mapHeight  += 200.0f;
         vmapHeight += 200.0f;
     }
-
+*/
     // mapHeight set for any above raw ground Z or <= INVALID_HEIGHT
     // vmapheight set for any under Z value or <= INVALID_HEIGHT
 
@@ -944,8 +988,9 @@ GridMapLiquidStatus TerrainInfo::getLiquidStatus(float x, float y, float z, uint
 {
     GridMapLiquidStatus result = LIQUID_MAP_NO_WATER;
     VMAP::IVMapManager* vmgr = VMAP::VMapFactory::createOrGetVMapManager();
-    float liquid_level, ground_level;
-    uint32 liquid_type;
+    float liquid_level = INVALID_HEIGHT_VALUE;
+    float ground_level = INVALID_HEIGHT_VALUE;
+    uint32 liquid_type = 0;
 
     ground_level = GetHeight(x,y,z,true,DEFAULT_WATER_SEARCH);
     if (vmgr->GetLiquidLevel(GetMapId(), x, y, z, ReqLiquidType, liquid_level, ground_level, liquid_type))
@@ -957,9 +1002,39 @@ GridMapLiquidStatus TerrainInfo::getLiquidStatus(float x, float y, float z, uint
             // All ok in water -> store data
             if (data)
             {
-                data->type  = liquid_type;
+                // hardcoded in client like this
+                if (GetMapId() == 530 && liquid_type == 2)
+                    liquid_type = 15;
+
+                uint32 liquidFlagType = 0;
+                if (LiquidTypeEntry const* liq = sLiquidTypeStore.LookupEntry(liquid_type))
+                    liquidFlagType = liq->Type;
+
+                if (liquid_type && liquid_type < 21)
+                {
+                    if (AreaTableEntry const* area = GetAreaEntryByAreaFlagAndMap(GetAreaFlag(x, y, z), GetMapId()))
+                    {
+                        uint32 overrideLiquid = area->LiquidTypeOverride[liquidFlagType];
+                        if (!overrideLiquid && area->zone)
+                        {
+                            area = GetAreaEntryByAreaID(area->zone);
+                            if (area)
+                                overrideLiquid = area->LiquidTypeOverride[liquidFlagType];
+                        }
+
+                        if (LiquidTypeEntry const* liq = sLiquidTypeStore.LookupEntry(overrideLiquid))
+                        {
+                            liquid_type = overrideLiquid;
+                            liquidFlagType = liq->Type;
+                        }
+                    }
+                }
+
                 data->level = liquid_level;
                 data->depth_level = ground_level;
+
+                data->entry = liquid_type;
+                data->type_flags = 1 << liquidFlagType;
             }
 
             // For speed check as int values
@@ -983,7 +1058,12 @@ GridMapLiquidStatus TerrainInfo::getLiquidStatus(float x, float y, float z, uint
         if (map_result != LIQUID_MAP_NO_WATER && (map_data.level > ground_level))
         {
             if (data)
+            {
+                // hardcoded in client like this
+                if (GetMapId() == 530 && map_data.entry == 2)
+                    map_data.entry = 15;
                 *data = map_data;
+            }
             return map_result;
         }
     }
@@ -1491,4 +1571,50 @@ void TerrainManager::GetZoneAndAreaIdByAreaFlag(uint32& zoneid, uint32& areaid, 
 
     areaid = entry ? entry->ID : 0;
     zoneid = entry ? (( entry->zone != 0 ) ? entry->zone : entry->ID) : 0;
+}
+
+bool Terrain::isInLineOfSight(float x1, float y1, float z1, float x2, float y2, float z2, uint32 phasemask) const
+{
+    return VMAP::VMapFactory::createOrGetVMapManager()->isInLineOfSight(GetMapId(), x1, y1, z1, x2, y2, z2)
+        && m_dyn_tree.isInLineOfSight(x1, y1, z1, x2, y2, z2, phasemask);
+}
+
+bool Terrain::getHitPosition(float x1, float y1, float z1, float x2, float y2, float z2, float& rx, float& ry, float& rz, uint32 phasemask, float modifyDist) const
+{
+    bool result = false;
+    // at first check all static objects
+    result = result || VMAP::VMapFactory::createOrGetVMapManager()->getObjectHitPos(GetMapId(), x1, y1, z1, x2, y2, z2, rx, ry, rz, modifyDist);
+    // at second all dynamic objects, if static check has an hit, then we can calculate only to this point and NOT to end, because we need the ne closely hit point
+    result = result || m_dyn_tree.getObjectHitPos(phasemask, x1, y1, z1, rx, ry, rz, rx, ry, rz, modifyDist);
+    return result;
+}
+
+float Terrain::GetHeight(uint32 phasemask, float x, float y, float z, bool pCheckVMap/*=true*/, float maxSearchDist/*=DEFAULT_HEIGHT_SEARCH*/) const
+{
+    return std::max<float>(m_info.GetHeight(x,y,z,pCheckVMap,maxSearchDist), m_dyn_tree.getHeight(x, y,z,maxSearchDist, phasemask));
+}
+
+void Terrain::Insert(const GameObjectModel& mdl)
+{
+    m_dyn_tree.insert(mdl);
+}
+
+void Terrain::Remove(const GameObjectModel& mdl)
+{
+    m_dyn_tree.remove(mdl);
+}
+
+bool Terrain::Contains(const GameObjectModel& mdl) const
+{
+    return m_dyn_tree.contains(mdl);
+}
+
+void Terrain::Balance()
+{
+    m_dyn_tree.balance();
+}
+
+void Terrain::Update(uint32 diff)
+{
+    m_dyn_tree.update(diff);
 }

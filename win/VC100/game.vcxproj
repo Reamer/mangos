@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug_NoPCH|Win32">
@@ -516,6 +516,8 @@
     <ClCompile Include="..\..\src\game\UpdateData.cpp" />
     <ClCompile Include="..\..\src\game\Vehicle.cpp" />
     <ClCompile Include="..\..\src\game\VehicleHandler.cpp" />
+    <ClCompile Include="..\..\src\game\vmap\DynamicTree.cpp" />
+    <ClCompile Include="..\..\src\game\vmap\GameObjectModel.cpp" />
     <ClCompile Include="..\..\src\game\VoiceChatHandler.cpp" />
     <ClCompile Include="..\..\src\game\warden\WardenBase.cpp" />
     <ClCompile Include="..\..\src\game\warden\WardenDataStorage.cpp" />
@@ -703,6 +705,10 @@
     <ClInclude Include="..\..\src\game\UpdateFields.h" />
     <ClInclude Include="..\..\src\game\UpdateMask.h" />
     <ClInclude Include="..\..\src\game\Vehicle.h" />
+    <ClInclude Include="..\..\src\game\vmap\BIHWrap.h" />
+    <ClInclude Include="..\..\src\game\vmap\DynamicTree.h" />
+    <ClInclude Include="..\..\src\game\vmap\GameObjectModel.h" />
+    <ClInclude Include="..\..\src\game\vmap\RegularGrid.h" />
     <ClInclude Include="..\..\src\game\warden\WardenBase.h" />
     <ClInclude Include="..\..\src\game\warden\WardenDataStorage.h" />
     <ClInclude Include="..\..\src\game\warden\WardenMac.h" />

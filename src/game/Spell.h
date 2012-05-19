@@ -760,8 +760,16 @@ namespace MaNGOS
                     }
                     break;
                 case PUSH_DEST_CENTER:
-                    i_centerX = i_spell.m_targets.m_destX;
-                    i_centerY = i_spell.m_targets.m_destY;
+                    if (i_spell.m_targets.m_destX + i_spell.m_targets.m_destY > 0)
+                    {
+                        i_centerX = i_spell.m_targets.m_destX;
+                        i_centerY = i_spell.m_targets.m_destY;
+                    }
+                    else
+                    {
+                        i_centerX = i_spell.m_targets.m_srcX;
+                        i_centerY = i_spell.m_targets.m_srcY;
+                    }
                     break;
                 case PUSH_TARGET_CENTER:
                     if (Unit* target = i_spell.m_targets.getUnitTarget())

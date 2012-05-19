@@ -39,11 +39,15 @@
 #include "BattleGroundAV.h"
 #include "Util.h"
 #include "ScriptMgr.h"
+#include "vmap/GameObjectModel.h"
+#include "vmap/DynamicTree.h"
 #include <G3D/Quat.h>
+
 
 GameObject::GameObject() : WorldObject(),
     m_goInfo(NULL),
-    m_displayInfo(NULL)
+    m_displayInfo(NULL),
+    m_model(NULL)
 {
     m_objectType |= TYPEMASK_GAMEOBJECT;
     m_objectTypeId = TYPEID_GAMEOBJECT;
@@ -70,6 +74,7 @@ GameObject::GameObject() : WorldObject(),
 
 GameObject::~GameObject()
 {
+    delete m_model;
 }
 
 void GameObject::AddToWorld()
@@ -77,7 +82,11 @@ void GameObject::AddToWorld()
     ///- Register the gameobject for guid lookup
     if(!IsInWorld())
         GetMap()->GetObjectsStore().insert<GameObject>(GetObjectGuid(), (GameObject*)this);
-
+    bool startOpen = (GetGoType() == GAMEOBJECT_TYPE_DOOR || GetGoType() == GAMEOBJECT_TYPE_BUTTON ? GetGOInfo()->door.startOpen : false);
+    if (m_model)
+        GetMap()->GetTerrain()->Insert(*m_model);
+    if (startOpen)
+        EnableCollision(false);
     Object::AddToWorld();
 }
 
@@ -97,7 +106,9 @@ void GameObject::RemoveFromWorld()
                     GetGuidStr().c_str(), m_spellId, GetGOInfo()->GetLinkedGameObjectEntry(), owner_guid.GetString().c_str());
             }
         }
-
+        if (m_model)
+            if (GetMap()->GetTerrain()->Contains(*m_model))
+                GetMap()->GetTerrain()->Remove(*m_model);
         GetMap()->GetObjectsStore().erase<GameObject>(GetObjectGuid(), (GameObject*)NULL);
     }
 
@@ -152,6 +163,7 @@ bool GameObject::Create(uint32 guidlow, uint32 name_id, Map *map, uint32 phaseMa
     SetEntry(goinfo->id);
     SetDisplayId(goinfo->displayId);
 
+    m_model = GameObjectModel::construct(*this);
     // GAMEOBJECT_BYTES_1, index at 0, 1, 2 and 3
     SetGoState(go_state);
     SetGoType(GameobjectTypes(goinfo->type));
@@ -2232,10 +2244,80 @@ bool GameObject::IsFriendlyTo(Unit const* unit) const
     return tester_faction->IsFriendlyTo(*target_faction);
 }
 
+void GameObject::SetLootState(LootState state)
+{
+    m_lootState = state;
+    if (m_model)
+    {
+        // startOpen determines whether we are going to add or remove the LoS on activation
+        bool startOpen = (GetGoType() == GAMEOBJECT_TYPE_DOOR || GetGoType() == GAMEOBJECT_TYPE_BUTTON ? GetGOInfo()->door.startOpen : false);
+
+        if (GetGoState() == GO_NOT_READY)
+            startOpen = !startOpen;
+
+        if (state == GO_ACTIVATED || state == GO_JUST_DEACTIVATED)
+            EnableCollision(startOpen);
+        else if (state == GO_READY)
+            EnableCollision(!startOpen);
+    }
+}
+
+void GameObject::SetGoState(GOState state)
+{
+    SetByteValue(GAMEOBJECT_BYTES_1, 0, state);
+    if (m_model)
+    {
+        if (!IsInWorld())
+            return;
+
+        // startOpen determines whether we are going to add or remove the LoS on activation
+        bool startOpen = (GetGoType() == GAMEOBJECT_TYPE_DOOR || GetGoType() == GAMEOBJECT_TYPE_BUTTON ? GetGOInfo()->door.startOpen : false);
+
+        if (GetGoState() == GO_NOT_READY)
+            startOpen = !startOpen;
+
+        if (state == GO_STATE_ACTIVE || state == GO_STATE_ACTIVE_ALTERNATIVE)
+            EnableCollision(startOpen);
+       else if (state == GO_STATE_READY)
+            EnableCollision(!startOpen);
+    }
+}
+
 void GameObject::SetDisplayId(uint32 modelId)
 {
     SetUInt32Value(GAMEOBJECT_DISPLAYID, modelId);
     m_displayInfo = sGameObjectDisplayInfoStore.LookupEntry(modelId);
+    UpdateModel();
+}
+
+void GameObject::SetPhaseMask(uint32 newPhaseMask, bool update)
+{
+    WorldObject::SetPhaseMask(newPhaseMask, update);
+    EnableCollision(true);
+}
+
+void GameObject::EnableCollision(bool enable)
+{
+    if (!m_model)
+        return;
+
+    /*if (enable && !GetMap()->Contains(*m_model))
+        GetMap()->Insert(*m_model);*/
+
+    m_model->enable(enable ? GetPhaseMask() : 0);
+}
+
+void GameObject::UpdateModel()
+{
+    if (!IsInWorld())
+        return;
+    if (m_model)
+        if (GetMap()->GetTerrain()->Contains(*m_model))
+            GetMap()->GetTerrain()->Remove(*m_model);
+    delete m_model;
+    m_model = GameObjectModel::construct(*this);
+    if (m_model)
+        GetMap()->GetTerrain()->Insert(*m_model);
 }
 
 void GameObject::StartGroupLoot(Group* group, uint32 timer)

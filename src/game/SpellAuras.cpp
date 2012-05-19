@@ -3381,7 +3381,7 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
             {
                 float x, y, z;
                 target->GetPosition(x, y, z);
-                z = target->GetTerrain()->GetHeight(x, y, z, true, MAX_FALL_DISTANCE);
+                z = target->GetTerrain()->GetHeight(target->GetPhaseMask(), x, y, z, true, MAX_FALL_DISTANCE);
                 target->GetMotionMaster()->Clear();
                 target->GetMotionMaster()->MovePoint(0, x, y, z);
                 return;
