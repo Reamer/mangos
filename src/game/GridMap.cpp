@@ -1573,6 +1573,81 @@ void TerrainManager::GetZoneAndAreaIdByAreaFlag(uint32& zoneid, uint32& areaid, 
     zoneid = entry ? (( entry->zone != 0 ) ? entry->zone : entry->ID) : 0;
 }
 
+float Terrain::GetWaterLevel(float x, float y, float z, float* pGround) const
+{
+    return m_info.GetWaterLevel(x,y,z,pGround);
+}
+
+float Terrain::GetWaterOrGroundLevel(float x, float y, float z, float* pGround, bool swim) const
+{
+    return m_info.GetWaterOrGroundLevel(x,y,z,pGround,swim);
+}
+
+bool Terrain::IsInWater(float x, float y, float z, GridMapLiquidData *data) const
+{
+    return m_info.IsInWater(x,y,z,data);
+}
+
+bool Terrain::IsAboveWater(float x, float y, float z, float* pWaterZ) const
+{
+    return m_info.IsAboveWater(x, y, z, pWaterZ);
+}
+
+bool Terrain::IsUnderWater(float x, float y, float z) const
+{
+    return m_info.IsUnderWater(x,y,z);
+}
+
+GridMapLiquidStatus Terrain::getLiquidStatus(float x, float y, float z, uint8 ReqLiquidType, GridMapLiquidData *data) const
+{
+    return m_info.getLiquidStatus(x, y, z,ReqLiquidType, data);
+}
+
+uint16 Terrain::GetAreaFlag(float x, float y, float z, bool *isOutdoors) const
+{
+    return m_info.GetAreaFlag(x,y,z,isOutdoors);
+}
+
+uint8 Terrain::GetTerrainType(float x, float y ) const
+{
+    return m_info.GetTerrainType(x, y);
+}
+
+uint32 Terrain::GetAreaId(float x, float y, float z) const
+{
+    return m_info.GetAreaId(x,y,z);
+}
+
+uint32 Terrain::GetZoneId(float x, float y, float z) const
+{
+    return m_info.GetZoneId(x,y,z);
+}
+
+void Terrain::GetZoneAndAreaId(uint32& zoneid, uint32& areaid, float x, float y, float z) const
+{
+    return m_info.GetZoneAndAreaId(zoneid, areaid, x, y, z);
+}
+
+bool Terrain::GetAreaInfo(float x, float y, float z, uint32 &mogpflags, int32 &adtId, int32 &rootId, int32 &groupId) const
+{
+    return m_info.GetAreaInfo(x, y, z,mogpflags, adtId, rootId, groupId);
+}
+
+bool Terrain::IsOutdoors(float x, float y, float z) const
+{
+    return m_info.IsOutdoors(x, y, z);
+}
+
+bool Terrain::IsNextZcoordOK(float x, float y, float oldZ, float maxDiff) const
+{
+    return m_info.IsNextZcoordOK(x, y, oldZ, maxDiff);
+}
+
+bool Terrain::CheckPath(float srcX, float srcY, float srcZ, float& dstX, float& dstY, float& dstZ) const
+{
+    return m_info.CheckPath(srcX, srcY, srcZ, dstX, dstY, dstZ);
+}
+
 bool Terrain::isInLineOfSight(float x1, float y1, float z1, float x2, float y2, float z2, uint32 phasemask) const
 {
     return VMAP::VMapFactory::createOrGetVMapManager()->isInLineOfSight(GetMapId(), x1, y1, z1, x2, y2, z2)
@@ -1617,4 +1692,14 @@ void Terrain::Balance()
 void Terrain::Update(uint32 diff)
 {
     m_dyn_tree.update(diff);
+}
+
+GridMap* Terrain::Load(const uint32 x, const uint32 y)
+{
+    return m_info.Load(x,y);
+}
+
+void Terrain::Unload(const uint32 x, const uint32 y)
+{
+    m_info.Unload(x,y);
 }

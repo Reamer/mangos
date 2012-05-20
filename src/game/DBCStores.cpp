@@ -122,7 +122,7 @@ DBCStorage <ItemSetEntry> sItemSetStore(ItemSetEntryfmt);
 DBCStorage <LFGDungeonEntry> sLFGDungeonStore(LFGDungeonEntryfmt);
 DBCStorage <LFGDungeonExpansionEntry> sLFGDungeonExpansionStore(LFGDungeonExpansionEntryfmt);
 LFGDungeonExpansionMap sLFGDungeonExpansionMap;
-
+DBCStorage <LiquidTypeEntry> sLiquidTypeStore(LiquidTypefmt);
 DBCStorage <LockEntry> sLockStore(LockEntryfmt);
 
 DBCStorage <MailTemplateEntry> sMailTemplateStore(MailTemplateEntryfmt);

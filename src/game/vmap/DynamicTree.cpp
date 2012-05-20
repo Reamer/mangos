@@ -185,7 +185,7 @@ bool DynamicMapTree::getObjectHitPos(uint32 phasemask, float x1, float y1, float
 {
     Vector3 pos1 = Vector3(x1, y1, z1);
     Vector3 pos2 = Vector3(x2, y2, z2);
-    Vector3 resP = Vector3(0.0f, 0.0f, 0.0f);
+    Vector3 resP = Vector3(x2, y2, z2);
     bool result = getObjectHitPos(phasemask, pos1, pos2, resP, pModifyDist);
     rx = resP.x;
     ry = resP.y;

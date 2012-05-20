@@ -281,7 +281,7 @@ private:
 };
 
 // proxy class that unites dynamic and static geometry
-class Terrain
+class MANGOS_DLL_SPEC Terrain
 {
 public:
 
@@ -292,54 +292,26 @@ public:
 
     uint32 GetMapId() const { return m_info.GetMapId(); }
 
-    float GetWaterLevel(float x, float y, float z, float* pGround = NULL) const
-    {
-        return m_info.GetWaterLevel(x,y,z,pGround);
-    }
+    float GetWaterLevel(float x, float y, float z, float* pGround = NULL) const;
+    float GetWaterOrGroundLevel(float x, float y, float z, float* pGround = NULL, bool swim = false) const;
 
-    float GetWaterOrGroundLevel(float x, float y, float z, float* pGround = NULL, bool swim = false) const
-    {
-        return m_info.GetWaterOrGroundLevel(x,y,z,pGround,swim);
-    }
+    bool IsInWater(float x, float y, float z, GridMapLiquidData *data = 0) const;
+    bool IsAboveWater(float x, float y, float z, float* pWaterZ = NULL) const;
+    bool IsUnderWater(float x, float y, float z) const;
 
-    bool IsInWater(float x, float y, float z, GridMapLiquidData *data = 0) const { return m_info.IsInWater(x,y,z,data);}
-    bool IsAboveWater(float x, float y, float z, float* pWaterZ = NULL) const { return m_info.IsAboveWater(x, y, z, pWaterZ);}
-    bool IsUnderWater(float x, float y, float z) const { return m_info.IsUnderWater(x,y,z);}
+    GridMapLiquidStatus getLiquidStatus(float x, float y, float z, uint8 ReqLiquidType, GridMapLiquidData *data = 0) const;
 
-    GridMapLiquidStatus getLiquidStatus(float x, float y, float z, uint8 ReqLiquidType, GridMapLiquidData *data = 0) const
-    {
-        return m_info.getLiquidStatus(x, y, z,ReqLiquidType, data);
-    }
+    uint16 GetAreaFlag(float x, float y, float z, bool *isOutdoors=0) const;
+    uint8 GetTerrainType(float x, float y ) const;
 
-    uint16 GetAreaFlag(float x, float y, float z, bool *isOutdoors=0) const { return m_info.GetAreaFlag(x,y,z,isOutdoors);}
-    uint8 GetTerrainType(float x, float y ) const { return m_info.GetTerrainType(x, y);}
+    uint32 GetAreaId(float x, float y, float z) const;
+    uint32 GetZoneId(float x, float y, float z) const;
 
-    uint32 GetAreaId(float x, float y, float z) const { return m_info.GetAreaId(x,y,z);}
-    uint32 GetZoneId(float x, float y, float z) const { return m_info.GetZoneId(x,y,z);}
-
-    void GetZoneAndAreaId(uint32& zoneid, uint32& areaid, float x, float y, float z) const
-    {
-        return m_info.GetZoneAndAreaId(zoneid, areaid, x, y, z);
-    }
-
-    bool GetAreaInfo(float x, float y, float z, uint32 &mogpflags, int32 &adtId, int32 &rootId, int32 &groupId) const
-    {
-        return m_info.GetAreaInfo(x, y, z,mogpflags, adtId, rootId, groupId);
-    }
-
-    bool IsOutdoors(float x, float y, float z) const
-    {
-        return m_info.IsOutdoors(x, y, z);
-    }
-
-    bool IsNextZcoordOK(float x, float y, float oldZ, float maxDiff = 5.0f) const
-    {
-        return m_info.IsNextZcoordOK(x, y, oldZ, maxDiff);
-    }
-    bool CheckPath(float srcX, float srcY, float srcZ, float& dstX, float& dstY, float& dstZ) const
-    {
-        return m_info.CheckPath(srcX, srcY, srcZ, dstX, dstY, dstZ);
-    }
+    void GetZoneAndAreaId(uint32& zoneid, uint32& areaid, float x, float y, float z) const;
+    bool GetAreaInfo(float x, float y, float z, uint32 &mogpflags, int32 &adtId, int32 &rootId, int32 &groupId) const;
+    bool IsOutdoors(float x, float y, float z) const;
+    bool IsNextZcoordOK(float x, float y, float oldZ, float maxDiff = 5.0f) const;
+    bool CheckPath(float srcX, float srcY, float srcZ, float& dstX, float& dstY, float& dstZ) const;
     //bool CheckPathAccurate(float srcX, float srcY, float srcZ, float& dstX, float& dstY, float& dstZ, Unit* mover = NULL, bool onlyLOS = false) const
     //{
         //return m_info.CheckPathAccurate(srcX, srcY, srcZ, dstX, dstY, dstZ, mover, onlyLOS);
@@ -358,8 +330,8 @@ public:
 protected:
     friend class Map;
     //load/unload terrain data
-    GridMap * Load(const uint32 x, const uint32 y) { return m_info.Load(x,y);}
-    void Unload(const uint32 x, const uint32 y) { m_info.Unload(x,y);}
+    GridMap * Load(const uint32 x, const uint32 y);
+    void Unload(const uint32 x, const uint32 y);
 
 private:
     TerrainInfo& m_info;
