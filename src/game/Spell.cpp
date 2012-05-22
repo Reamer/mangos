@@ -9872,12 +9872,6 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
             return false;
         }
         default:
-                if (m_spellInfo->SpellVisual[0] == 12295)
-    {
-        sLog.outError("------------------------------------------");
-        sLog.outError("In Custom false");
-        sLog.outError("------------------------------------------");
-    }
             return false;
     }
     return true;
