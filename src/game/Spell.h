@@ -439,7 +439,7 @@ class Spell
 
         bool CheckTarget( Unit* target, SpellEffectIndex eff );
         bool CheckTargetBeforeLimitation(Unit* target);
-        bool CanAutoCast(Unit* target);
+        SpellCastResult CanAutoCast(Unit* target);
 
         static void MANGOS_DLL_SPEC SendCastResult(Player* caster, SpellEntry const* spellInfo, uint8 cast_count, SpellCastResult result);
         void SendCastResult(SpellCastResult result);
@@ -685,7 +685,7 @@ enum ReplenishType
 
 namespace MaNGOS
 {
-    struct MANGOS_DLL_DECL SpellNotifierPlayer
+    struct MANGOS_DLL_DECL SpellNotifierPlayer              // Currently unused. When put to use this one requires handling for source-location (smilar to below)
     {
         Spell::UnitList &i_data;
         Spell &i_spell;
@@ -732,6 +732,7 @@ namespace MaNGOS
         bool i_playerControlled;
         float i_centerX;
         float i_centerY;
+        float i_centerZ;
 
         float GetCenterX() const { return i_centerX; }
         float GetCenterY() const { return i_centerY; }
@@ -772,6 +773,7 @@ namespace MaNGOS
                     break;
                 default:
                     sLog.outError("SpellNotifierCreatureAndPlayer: unsupported PUSH_* case %u.", i_push_type);
+                    break;
             }
         }
 

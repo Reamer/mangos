@@ -4001,7 +4001,7 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(Unit *pVictim, DamageIn
                 if (!procSpell)
                     return SPELL_AURA_PROC_FAILED;
                 // only allow melee finishing move to proc
-                if (!(procSpell->AttributesEx & SPELL_ATTR_EX_REQ_TARGET_COMBO_POINTS) || procSpell->Id == 26679)
+                if (!procSpell->HasAttribute(SPELL_ATTR_EX_REQ_TARGET_COMBO_POINTS) || procSpell->Id == 26679)
                     return SPELL_AURA_PROC_FAILED;
                 trigger_spell_id = 70802;
                 target = this;

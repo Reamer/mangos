@@ -169,6 +169,7 @@ bool TargetedMovementGeneratorMedium<T,D>::Update(T &owner, const uint32 & time_
                     break;
                 default:
                     owner.StopMoving();
+                    break;
             }
         }
         return true;

@@ -82,11 +82,13 @@ void GameObject::AddToWorld()
     ///- Register the gameobject for guid lookup
     if(!IsInWorld())
         GetMap()->GetObjectsStore().insert<GameObject>(GetObjectGuid(), (GameObject*)this);
+
     bool startOpen = (GetGoType() == GAMEOBJECT_TYPE_DOOR || GetGoType() == GAMEOBJECT_TYPE_BUTTON ? GetGOInfo()->door.startOpen : false);
     if (m_model)
         GetMap()->GetTerrain()->Insert(*m_model);
     if (startOpen)
         EnableCollision(false);
+
     Object::AddToWorld();
 }
 
@@ -106,9 +108,11 @@ void GameObject::RemoveFromWorld()
                     GetGuidStr().c_str(), m_spellId, GetGOInfo()->GetLinkedGameObjectEntry(), owner_guid.GetString().c_str());
             }
         }
+
         if (m_model)
             if (GetMap()->GetTerrain()->Contains(*m_model))
                 GetMap()->GetTerrain()->Remove(*m_model);
+
         GetMap()->GetObjectsStore().erase<GameObject>(GetObjectGuid(), (GameObject*)NULL);
     }
 

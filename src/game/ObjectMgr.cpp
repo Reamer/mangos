@@ -9063,7 +9063,7 @@ void ObjectMgr::LoadGossipMenuItems(std::set<uint32>& gossipScriptSet)
             if (itr->first)
                 menu_ids.insert(itr->first);
 
-        for(uint32 i = 1; i < sGOStorage.MaxEntry; ++i)
+        for (uint32 i = 1; i < sGOStorage.MaxEntry; ++i)
             if (GameObjectInfo const* gInfo = sGOStorage.LookupEntry<GameObjectInfo>(i))
                 if (uint32 menuid = gInfo->GetGossipMenuId())
                     menu_ids.erase(menuid);
@@ -9077,7 +9077,7 @@ void ObjectMgr::LoadGossipMenuItems(std::set<uint32>& gossipScriptSet)
     // prepare menuid -> CreatureInfo map for fast access
     typedef  std::multimap<uint32, const CreatureInfo*> Menu2CInfoMap;
     Menu2CInfoMap menu2CInfoMap;
-    for(uint32 i = 1;  i < sCreatureStorage.MaxEntry; ++i)
+    for (uint32 i = 1;  i < sCreatureStorage.MaxEntry; ++i)
         if (CreatureInfo const* cInfo = sCreatureStorage.LookupEntry<CreatureInfo>(i))
             if (cInfo->GossipMenuId)
                 menu2CInfoMap.insert(Menu2CInfoMap::value_type(cInfo->GossipMenuId, cInfo));

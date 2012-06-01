@@ -96,7 +96,7 @@ void CreatureLinkingMgr::LoadFromDB()
             continue;
 
         // Store db-guid for master of whom pTmp is spawn dependend (only non-local bosses)
-        if (tmp.searchRange == 0 && tmp.linkingFlag & (FLAG_CANT_SPAWN_IF_BOSS_DEAD | FLAG_CANT_SPAWN_IF_BOSS_ALIVE))
+        if (tmp.searchRange == 0 && (tmp.linkingFlag & (FLAG_CANT_SPAWN_IF_BOSS_DEAD | FLAG_CANT_SPAWN_IF_BOSS_ALIVE)))
         {
             if (QueryResult* guid_result = WorldDatabase.PQuery("SELECT guid FROM creature WHERE id=%u AND map=%u LIMIT 1", tmp.masterId, tmp.mapId))
             {
@@ -205,7 +205,7 @@ bool CreatureLinkingMgr::IsSpawnedByLinkedMob(Creature* pCreature)
 {
     CreatureLinkingInfo const* pInfo = CreatureLinkingMgr::GetLinkedTriggerInformation(pCreature);
 
-    return pInfo && pInfo->linkingFlag & (FLAG_CANT_SPAWN_IF_BOSS_DEAD | FLAG_CANT_SPAWN_IF_BOSS_ALIVE) && (pInfo->masterDBGuid || pInfo->searchRange);
+    return pInfo && (pInfo->linkingFlag & (FLAG_CANT_SPAWN_IF_BOSS_DEAD | FLAG_CANT_SPAWN_IF_BOSS_ALIVE)) && (pInfo->masterDBGuid || pInfo->searchRange);
 }
 
 // This gives the information of a linked NPC (describes action when its ActionTrigger triggers)
@@ -290,13 +290,13 @@ void CreatureLinkingHolder::DoCreatureLinkingEvent(CreatureLinkingEvent eventTyp
 
     switch (eventType)
     {
-        case LINKING_EVENT_AGGRO: eventFlagFilter = EVENT_MASK_ON_AGGRO;     reverseEventFlagFilter = FLAG_TO_AGGRO_ON_AGGRO;   break;
-        case LINKING_EVENT_EVADE: eventFlagFilter = EVENT_MASK_ON_EVADE;     reverseEventFlagFilter = FLAG_TO_RESPAWN_ON_EVADE; break;
-        case LINKING_EVENT_DIE: eventFlagFilter = EVENT_MASK_ON_DIE;         reverseEventFlagFilter = 0;                        break;
+        case LINKING_EVENT_AGGRO:   eventFlagFilter = EVENT_MASK_ON_AGGRO;   reverseEventFlagFilter = FLAG_TO_AGGRO_ON_AGGRO;   break;
+        case LINKING_EVENT_EVADE:   eventFlagFilter = EVENT_MASK_ON_EVADE;   reverseEventFlagFilter = FLAG_TO_RESPAWN_ON_EVADE; break;
+        case LINKING_EVENT_DIE:     eventFlagFilter = EVENT_MASK_ON_DIE;     reverseEventFlagFilter = 0;                        break;
         case LINKING_EVENT_RESPAWN: eventFlagFilter = EVENT_MASK_ON_RESPAWN; reverseEventFlagFilter = FLAG_FOLLOW;              break;
     }
 
-    // Process Slaves
+    // Process Slaves (by entry)
     HolderMapBounds bounds = m_holderMap.equal_range(pSource->GetEntry());
     // Get all holders for this boss
     for (HolderMap::iterator itr = bounds.first; itr != bounds.second; ++itr)
@@ -386,17 +386,17 @@ void CreatureLinkingHolder::ProcessSlave(CreatureLinkingEvent eventType, Creatur
             }
             break;
         case LINKING_EVENT_EVADE:
-            if (flag & FLAG_DESPAWN_ON_EVADE && pSlave->isAlive())
+            if ((flag & FLAG_DESPAWN_ON_EVADE) && pSlave->isAlive())
                 pSlave->ForcedDespawn();
-            if (flag & FLAG_RESPAWN_ON_EVADE && !pSlave->isAlive())
+            if ((flag & FLAG_RESPAWN_ON_EVADE) && !pSlave->isAlive())
                 pSlave->Respawn();
             break;
         case LINKING_EVENT_DIE:
-            if (flag & FLAG_SELFKILL_ON_DEATH && pSlave->isAlive())
+            if ((flag & FLAG_SELFKILL_ON_DEATH) && pSlave->isAlive())
                 pSlave->DealDamage(pSlave, pSlave->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
-            if (flag & FLAG_DESPAWN_ON_DEATH && pSlave->isAlive())
+            if ((flag & FLAG_DESPAWN_ON_DEATH) && pSlave->isAlive())
                 pSlave->ForcedDespawn();
-            if (flag & FLAG_RESPAWN_ON_DEATH && !pSlave->isAlive())
+            if ((flag & FLAG_RESPAWN_ON_DEATH) && !pSlave->isAlive())
                 pSlave->Respawn();
             break;
         case LINKING_EVENT_RESPAWN:
@@ -406,10 +406,10 @@ void CreatureLinkingHolder::ProcessSlave(CreatureLinkingEvent eventType, Creatur
                 if (!pSlave->isAlive() && pSlave->GetRespawnTime() > time(NULL))
                     pSlave->Respawn();
             }
-            else if (flag & FLAG_DESPAWN_ON_RESPAWN && pSlave->isAlive())
+            else if ((flag & FLAG_DESPAWN_ON_RESPAWN) && pSlave->isAlive())
                 pSlave->ForcedDespawn();
 
-            if (flag & FLAG_FOLLOW && pSlave->isAlive() && !pSlave->isInCombat())
+            if ((flag & FLAG_FOLLOW) && pSlave->isAlive() && !pSlave->isInCombat())
                 SetFollowing(pSlave, pSource);
 
             break;

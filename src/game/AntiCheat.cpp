@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 /dev/rsa for MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2010-2012 /dev/rsa for MangosR2 <http://github.com/MangosR2>
  * based on Xeross code
  *
  * This program is free software; you can redistribute it and/or modify
@@ -655,8 +655,8 @@ bool AntiCheat::CheckFly()
     if (GetMover()->GetTerrain()->IsUnderWater(m_currentmovementInfo->GetPos()->x, m_currentmovementInfo->GetPos()->y, m_currentmovementInfo->GetPos()->z - 2.0f))
         return true;
 
-    float ground_z = GetMover()->GetTerrain()->GetHeight(GetPlayer()->GetPhaseMask(), GetPlayer()->GetPositionX(),GetPlayer()->GetPositionY(),MAX_HEIGHT);
-    float floor_z  = GetMover()->GetTerrain()->GetHeight(GetPlayer()->GetPhaseMask(), GetPlayer()->GetPositionX(),GetPlayer()->GetPositionY(),GetPlayer()->GetPositionZ());
+    float ground_z = GetMover()->GetTerrain()->GetHeight(GetPlayer()->GetPhaseMask(),GetPlayer()->GetPositionX(),GetPlayer()->GetPositionY(),MAX_HEIGHT);
+    float floor_z  = GetMover()->GetTerrain()->GetHeight(GetPlayer()->GetPhaseMask(),GetPlayer()->GetPositionX(),GetPlayer()->GetPositionY(),GetPlayer()->GetPositionZ());
     float map_z    = ((floor_z <= (INVALID_HEIGHT+5.0f)) ? ground_z : floor_z);
 
     if (map_z + m_currentConfig->checkFloatParam[0] > GetPlayer()->GetPositionZ() && map_z > (INVALID_HEIGHT + m_currentConfig->checkFloatParam[0] + 5.0f))

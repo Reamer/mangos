@@ -1249,8 +1249,9 @@ inline Unit* CreatureEventAI::GetTargetByType(uint32 Target, Unit* pActionInvoke
         case TARGET_T_ACTION_INVOKER:
             return pActionInvoker;
         default:
-            return NULL;
-    };
+            break;
+    }
+    return NULL;
 }
 
 Unit* CreatureEventAI::DoSelectLowestHpFriendly(float range, uint32 MinHPDiff)

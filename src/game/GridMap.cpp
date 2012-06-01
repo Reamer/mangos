@@ -988,11 +988,12 @@ GridMapLiquidStatus TerrainInfo::getLiquidStatus(float x, float y, float z, uint
 {
     GridMapLiquidStatus result = LIQUID_MAP_NO_WATER;
     VMAP::IVMapManager* vmgr = VMAP::VMapFactory::createOrGetVMapManager();
+
     float liquid_level = INVALID_HEIGHT_VALUE;
     float ground_level = INVALID_HEIGHT_VALUE;
     uint32 liquid_type = 0;
-
     ground_level = GetHeight(x,y,z,true,DEFAULT_WATER_SEARCH);
+
     if (vmgr->GetLiquidLevel(GetMapId(), x, y, z, ReqLiquidType, liquid_level, ground_level, liquid_type))
     {
         // DEBUG_LOG("getLiquidStatus(): vmap liquid level: %f ground: %f type: %u", liquid_level, ground_level, liquid_type);
@@ -1084,8 +1085,8 @@ bool TerrainInfo::IsInWater(float x, float y, float pZ, GridMapLiquidData *data,
             return false;
         else if (status & LIQUID_MAP_WATER_WALK)
             return false;
-        else if (status & LIQUID_MAP_IN_WATER ||
-                 status & LIQUID_MAP_UNDER_WATER )
+        else if ((status & LIQUID_MAP_IN_WATER) ||
+                 (status & LIQUID_MAP_UNDER_WATER))
             {
                 if (liquid_ptr && (liquid_ptr->level - liquid_ptr->depth_level > min_depth)) // avoid water with depth < 2
                     return true;
@@ -1442,7 +1443,7 @@ bool TerrainInfo::CheckPathAccurate(float srcX, float srcY, float srcZ, float& d
             ++goodCount;
         }
 
-        DEBUG_FILTER_LOG(LOG_FILTER_PLAYER_MOVES,"TerrainInfo::CheckPathAccurate test data %f %f %f good=%u, errors=%u vmap=%u",tstX,tstY,tstZ, goodCount, errorsCount, vmaperrorsCount);
+//        DEBUG_FILTER_LOG(LOG_FILTER_PLAYER_MOVES,"TerrainInfo::CheckPathAccurate test data %f %f %f good=%u, errors=%u vmap=%u",tstX,tstY,tstZ, goodCount, errorsCount, vmaperrorsCount);
 
         if (!errorsCount)
         {

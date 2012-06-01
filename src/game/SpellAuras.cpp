@@ -820,7 +820,7 @@ void Aura::AreaAuraUpdate(uint32 diff)
                 if (i_target->GetTypeId() == TYPEID_PLAYER && ((Player*)i_target)->IsBeingTeleportedFar())
                     continue;
 
-                if (GetSpellProto()->AttributesEx3 & SPELL_ATTR_EX3_TARGET_ONLY_PLAYER && i_target->GetTypeId() != TYPEID_PLAYER)
+                if (GetSpellProto()->HasAttribute(SPELL_ATTR_EX3_TARGET_ONLY_PLAYER) && i_target->GetTypeId() != TYPEID_PLAYER)
                     continue;
 
                 if (i_target->IsImmuneToSpell(GetSpellProto()))
@@ -1056,7 +1056,7 @@ bool Aura::CanProcFrom(SpellEntry const *spell, uint32 procFlag, uint32 EventPro
             else if ((EventProcEx & (PROC_EX_NORMAL_HIT|PROC_EX_CRITICAL_HIT) & procEx) && !active)
                     return false;
             // Custom procs with aura apply/fade (must fit in aura mask, if exists, independent from SchoolMask)
-            else if (procFlag & PROC_FLAG_ON_AURA_APPLY || procFlag & PROC_FLAG_ON_AURA_FADE)
+            else if ((procFlag & PROC_FLAG_ON_AURA_APPLY) || (procFlag & PROC_FLAG_ON_AURA_FADE))
                     if (mask && !isAffectedOnSpell(spell))
                         return false;
         }
@@ -1091,7 +1091,7 @@ void Aura::ReapplyAffectedPassiveAuras( Unit* target, bool owner_mode )
 
             // permanent passive or permanent area aura
             // passive spells can be affected only by own or owner spell mods)
-            if ((itr->second->IsPermanent() && (owner_mode && itr->second->IsPassive() || itr->second->IsAreaAura())) &&
+            if ((itr->second->IsPermanent() && ((owner_mode && itr->second->IsPassive()) || itr->second->IsAreaAura())) &&
                 // non deleted and not same aura (any with same spell id)
                 itr->second->GetId() != GetId() &&
                 // and affected by aura
@@ -1245,6 +1245,7 @@ bool Aura::IsEffectStacking()
             {
                 return false;
             }
+            break;
         case SPELL_AURA_MOD_ATTACKER_SPELL_HIT_CHANCE:                  // Misery / Imp. Faerie Fire (must find triggered aura / spell not implemented?)
             if (spellProto->SpellFamilyName == SPELLFAMILY_PRIEST &&
                 spellProto->SpellIconID == 2211)                        // Misery
@@ -3161,6 +3162,7 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                     }
                     return;
                 }
+                break;
             }
             case 47795:                                     // Cold Cleanse
             {
@@ -3206,6 +3208,7 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                         }
                     }
                 }
+                break;
             }
             case 49356:                                     // Flesh Decay - Tharonja
             {
@@ -4043,7 +4046,7 @@ void Aura::HandleAuraModShapeshift(bool apply, bool Real)
                 uint32 aurMechMask = GetAllSpellMechanicMask(aurSpellInfo);
 
                 // If spell that caused this aura has Croud Control or Daze effect
-                if ((aurMechMask & MECHANIC_NOT_REMOVED_BY_SHAPESHIFT &&
+                if (((aurMechMask & MECHANIC_NOT_REMOVED_BY_SHAPESHIFT) &&
                     // some non-Daze spells that have MECHANIC_DAZE
                     aurSpellInfo->Id != 18118 &&    // Aftermath
                     !aurSpellInfo->IsFitToFamily<SPELLFAMILY_PALADIN, CF_PALADIN_AVENGERS_SHIELD>()) ||
@@ -5881,29 +5884,29 @@ void Aura::HandleAuraModSchoolImmunity(bool apply, bool Real)
     target->ApplySpellImmune(GetId(), IMMUNITY_SCHOOL, m_modifier.m_miscvalue, apply);
 
     // remove all flag auras (they are positive, but they must be removed when you are immune)
-    if ( GetSpellProto()->AttributesEx & SPELL_ATTR_EX_DISPEL_AURAS_ON_IMMUNITY
-        && GetSpellProto()->AttributesEx2 & SPELL_ATTR_EX2_DAMAGE_REDUCED_SHIELD )
+    if (GetSpellProto()->HasAttribute(SPELL_ATTR_EX_DISPEL_AURAS_ON_IMMUNITY)
+        && GetSpellProto()->HasAttribute(SPELL_ATTR_EX2_DAMAGE_REDUCED_SHIELD))
         target->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_IMMUNE_OR_LOST_SELECTION);
 
     // TODO: optimalize this cycle - use RemoveAurasWithInterruptFlags call or something else
-    if ( Real && apply
-        && GetSpellProto()->AttributesEx & SPELL_ATTR_EX_DISPEL_AURAS_ON_IMMUNITY
-        && IsPositiveSpell(GetId()) )                       //Only positive immunity removes auras
+    if (Real && apply &&
+        GetSpellProto()->HasAttribute(SPELL_ATTR_EX_DISPEL_AURAS_ON_IMMUNITY) &&
+        IsPositiveSpell(GetId()))                       //Only positive immunity removes auras
     {
         std::set<uint32> toRemoveSpellList;
         uint32 school_mask = m_modifier.m_miscvalue;
         Unit::SpellAuraHolderMap& Auras = target->GetSpellAuraHolderMap();
-        for(Unit::SpellAuraHolderMap::iterator iter = Auras.begin(); iter != Auras.end(); ++iter)
+        for (Unit::SpellAuraHolderMap::iterator iter = Auras.begin(); iter != Auras.end(); ++iter)
         {
             if (!iter->second || iter->second->IsDeleted())
                 continue;
 
             SpellEntry const* spell = iter->second->GetSpellProto();
 
-            if((GetSpellSchoolMask(spell) & school_mask)//Check for school mask
-                && !( spell->Attributes & SPELL_ATTR_UNAFFECTED_BY_INVULNERABILITY)   //Spells unaffected by invulnerability
+            if ((GetSpellSchoolMask(spell) & school_mask)//Check for school mask
+                && !spell->HasAttribute(SPELL_ATTR_UNAFFECTED_BY_INVULNERABILITY)   //Spells unaffected by invulnerability
                 && !iter->second->IsPositive()                //Don't remove positive spells
-                && spell->Id != GetId() )               //Don't remove self
+                && spell->Id != GetId())                //Don't remove self
             {
                 toRemoveSpellList.insert(iter->second->GetId());
             }
@@ -6344,6 +6347,7 @@ void Aura::HandleAuraPeriodicDummy(bool apply, bool Real)
                     return;
                 }
             }
+            break;
         }
         case SPELLFAMILY_ROGUE:
         {
@@ -6368,6 +6372,7 @@ void Aura::HandleAuraPeriodicDummy(bool apply, bool Real)
                 default:
                     break;
             }
+            break;
         }
         case SPELLFAMILY_WARLOCK:
         {
@@ -6383,6 +6388,7 @@ void Aura::HandleAuraPeriodicDummy(bool apply, bool Real)
                     }
                 break;
             }
+            break;
         }
         case SPELLFAMILY_HUNTER:
         {
@@ -7418,8 +7424,8 @@ void Aura::HandleModCastingSpeed(bool apply, bool /*Real*/)
         bool bIsPositive = amount > 0;
 
         // don't apply weaker aura
-        if(bIsPositive && amount < target->m_modSpellSpeedPctPos ||
-            !bIsPositive && amount > target->m_modSpellSpeedPctNeg)
+        if((bIsPositive && amount < target->m_modSpellSpeedPctPos) ||
+            (!bIsPositive && amount > target->m_modSpellSpeedPctNeg))
         {
             return;
         }
@@ -7518,8 +7524,8 @@ void Aura::HandleModMeleeSpeedPct(bool apply, bool /*Real*/)
     {
         bool bIsPositive = m_modifier.m_amount > 0;
 
-        if(bIsPositive && m_modifier.m_amount < target->m_modAttackSpeedPct[NONSTACKING_POS_MOD_MELEE] ||
-            !bIsPositive && m_modifier.m_amount > target->m_modAttackSpeedPct[NONSTACKING_NEG_MOD_MELEE])
+        if((bIsPositive && m_modifier.m_amount < target->m_modAttackSpeedPct[NONSTACKING_POS_MOD_MELEE]) ||
+            (!bIsPositive && m_modifier.m_amount > target->m_modAttackSpeedPct[NONSTACKING_NEG_MOD_MELEE]))
             return;
 
         float amount = float(m_modifier.m_amount);
@@ -7980,7 +7986,7 @@ void Aura::HandleShapeshiftBoosts(bool apply)
             if (((Player*)target)->HasSpell(17007))
             {
                 SpellEntry const *spellInfo = sSpellStore.LookupEntry(24932);
-                if (spellInfo && spellInfo->Stances & (1<<(form-1)))
+                if (spellInfo && (spellInfo->Stances & (1<<(form-1))))
                     target->CastSpell(target, 24932, true, NULL, this);
             }
 
@@ -8609,7 +8615,7 @@ void Aura::PeriodicTick()
 
             // Calculate armor mitigation if it is a physical spell
             // But not for bleed mechanic spells
-            if (GetSpellSchoolMask(spellProto) & SPELL_SCHOOL_MASK_NORMAL &&
+            if ((GetSpellSchoolMask(spellProto) & SPELL_SCHOOL_MASK_NORMAL) &&
                 GetEffectMechanic(spellProto, m_effIndex) != MECHANIC_BLEED)
             {
                 uint32 pdamageReductedArmor = pCaster->CalcArmorReducedDamage(target, damageInfo.damage);
@@ -9898,6 +9904,7 @@ void Aura::PeriodicDummyTick()
             switch (spell->Id)
             {
                 case 48018:
+                {
                     GameObject* obj = target->GetGameObject(spell->Id);
                     if (!obj)
                     {
@@ -9911,6 +9918,10 @@ void Aura::PeriodicDummyTick()
                         target->CastSpell(target, 62388, true);
                     else
                         target->RemoveAurasDueToSpell(62388);
+                    break;
+                }
+                default:
+                    break;
             }
             break;
         case SPELLFAMILY_ROGUE:
@@ -10241,8 +10252,8 @@ void Aura::HandleAuraLinked(bool apply, bool Real)
         }
         if (pCaster && pCaster->GetTypeId() == TYPEID_PLAYER &&
             pTarget->GetObjectGuid().IsVehicle() &&
-            spellInfo->AttributesEx  &  SPELL_ATTR_EX_HIDDEN_AURA &&
-            spellInfo->Attributes &  SPELL_ATTR_HIDE_IN_COMBAT_LOG && !definitelyNormalspell)
+            spellInfo->HasAttribute(SPELL_ATTR_EX_HIDDEN_AURA) &&
+            spellInfo->HasAttribute(SPELL_ATTR_HIDE_IN_COMBAT_LOG) && !definitelyNormalspell)
         {
             float bonus = ((float)((Player*)pCaster)->GetEquipGearScore(false, false) - (float)sWorld.getConfig(CONFIG_UINT32_GEAR_CALC_BASE))
                                  / (float)sWorld.getConfig(CONFIG_UINT32_GEAR_CALC_BASE);
@@ -10638,7 +10649,7 @@ void SpellAuraHolder::CleanupsBeforeDelete()
 
 Aura* SpellAuraHolder::GetAuraByEffectIndex(SpellEffectIndex index)
 {
-    if (m_auraFlags & (1 << index) && !m_aurasStorage.empty())
+    if ((m_auraFlags & (1 << index)) && !m_aurasStorage.empty())
     {
         AuraStorage::iterator itr = m_aurasStorage.find(index);
         if (itr != m_aurasStorage.end())
@@ -10649,7 +10660,7 @@ Aura* SpellAuraHolder::GetAuraByEffectIndex(SpellEffectIndex index)
 
 Aura const* SpellAuraHolder::GetAura(SpellEffectIndex index) const
 {
-    if (m_auraFlags & (1 << index) && !m_aurasStorage.empty())
+    if ((m_auraFlags & (1 << index)) && !m_aurasStorage.empty())
     {
         AuraStorage::const_iterator itr = m_aurasStorage.find(index);
         if (itr != m_aurasStorage.end())
@@ -10705,7 +10716,7 @@ void SpellAuraHolder::_AddSpellAuraHolder()
         }
     }
 
-    uint8 flags = GetAuraFlags() | ((GetCasterGuid() == GetTarget()->GetObjectGuid()) ? AFLAG_NOT_CASTER : AFLAG_NONE) | ((GetSpellMaxDuration(m_spellProto) > 0 && !(m_spellProto->AttributesEx5 & SPELL_ATTR_EX5_NO_DURATION)) ? AFLAG_DURATION : AFLAG_NONE) | (IsPositive() ? AFLAG_POSITIVE : AFLAG_NEGATIVE);
+    uint8 flags = GetAuraFlags() | ((GetCasterGuid() == GetTarget()->GetObjectGuid()) ? AFLAG_NOT_CASTER : AFLAG_NONE) | ((GetSpellMaxDuration(m_spellProto) > 0 && !m_spellProto->HasAttribute(SPELL_ATTR_EX5_NO_DURATION)) ? AFLAG_DURATION : AFLAG_NONE) | (IsPositive() ? AFLAG_POSITIVE : AFLAG_NEGATIVE);
     SetAuraFlags(flags);
 
     SetAuraLevel(caster ? caster->getLevel() : sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL));
@@ -10725,7 +10736,7 @@ void SpellAuraHolder::_AddSpellAuraHolder()
         //*****************************************************
 
         // Sitdown on apply aura req seated
-        if (m_spellProto->AuraInterruptFlags & AURA_INTERRUPT_FLAG_NOT_SEATED && !m_target->IsSitState())
+        if ((m_spellProto->AuraInterruptFlags & AURA_INTERRUPT_FLAG_NOT_SEATED) && !m_target->IsSitState())
             m_target->SetStandState(UNIT_STAND_STATE_SIT);
 
         // register aura diminishing on apply
@@ -11617,8 +11628,6 @@ void SpellAuraHolder::HandleSpellSpecificBoosts(bool apply)
                 else
                     return;
             }
-            else
-                return;
             break;
         }
         case SPELLFAMILY_PRIEST:
@@ -12630,7 +12639,7 @@ uint32 Aura::CalculateCrowdControlBreakDamage()
 
     // auras with this attribute not have damage cap
     if (GetSpellProto()->HasAttribute(SPELL_ATTR_EX_BREAKABLE_BY_ANY_DAMAGE) &&
-        (GetSpellProto()->AuraInterruptFlags & AURA_INTERRUPT_FLAG_DIRECT_DAMAGE ||
+        ((GetSpellProto()->AuraInterruptFlags & AURA_INTERRUPT_FLAG_DIRECT_DAMAGE) ||
         (GetSpellProto()->HasAttribute(SPELL_ATTR_BREAKABLE_BY_DAMAGE) && !GetSpellProto()->HasAttribute(SPELL_ATTR_STOP_ATTACK_TARGET))))
         return 0;
 

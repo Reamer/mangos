@@ -4646,7 +4646,7 @@ void Spell::EffectTriggerSpell(SpellEffectIndex effIndex)
     }
 
     // normal case
-    SpellEntry const *spellInfo = sSpellStore.LookupEntry( triggered_spell_id );
+    SpellEntry const* spellInfo = sSpellStore.LookupEntry(triggered_spell_id);
     if (!spellInfo)
     {
         sLog.outError("EffectTriggerSpell of spell %u: triggering unknown spell id %i", m_spellInfo->Id,triggered_spell_id);
@@ -5043,7 +5043,7 @@ void Spell::EffectApplyAura(SpellEffectIndex eff_idx)
 
     // Mixology - increase effect and duration of alchemy spells which the caster has
     if (m_spellInfo->SpellFamilyName == SPELLFAMILY_POTION &&
-        !(m_spellInfo->AttributesEx4 & SPELL_ATTR_EX4_UNK21) &&         // unaffected by Mixology
+        !m_spellInfo->HasAttribute(SPELL_ATTR_EX4_UNK21) &&             // unaffected by Mixology
         caster->GetTypeId() == TYPEID_PLAYER && caster->HasAura(53042)) // has Mixology passive
     {
         SpellSpecific spellSpec = GetSpellSpecific(aur->GetSpellProto()->Id);
@@ -5163,8 +5163,8 @@ void Spell::EffectPowerDrain(SpellEffectIndex eff_idx)
     if (drain_power == POWER_MANA && m_caster != unitTarget)
     {
         float manaMultiplier = m_spellInfo->EffectMultipleValue[eff_idx];
-        if (manaMultiplier==0)
-            manaMultiplier = 1;
+        if (fabs(manaMultiplier) < M_NULL_F)
+            manaMultiplier = 1.0f;
 
         if (Player *modOwner = m_caster->GetSpellModOwner())
             modOwner->ApplySpellMod(m_spellInfo->Id, SPELLMOD_MULTIPLE_VALUE, manaMultiplier);
@@ -6761,7 +6761,7 @@ void Spell::DoSummonVehicle(SpellEffectIndex eff_idx, uint32 forceFaction)
 
     if (m_caster->hasUnitState(UNIT_STAT_ON_VEHICLE))
     {
-        if (m_spellInfo->Attributes & SPELL_ATTR_HIDDEN_CLIENTSIDE)
+        if (m_spellInfo->HasAttribute(SPELL_ATTR_HIDDEN_CLIENTSIDE))
             m_caster->RemoveSpellsCausingAura(SPELL_AURA_CONTROL_VEHICLE);
         else
             return;
@@ -11349,7 +11349,7 @@ void Spell::EffectDismissPet(SpellEffectIndex /*eff_idx*/)
     Pet* pet = m_caster->GetPet();
 
     // not let dismiss dead pet
-    if (!pet||!pet->isAlive())
+    if (!pet || !pet->isAlive())
         return;
 
     pet->Unsummon(PET_SAVE_NOT_IN_SLOT, m_caster);
