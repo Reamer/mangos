@@ -250,8 +250,6 @@ public:
     //THIS METHOD IS NOT THREAD-SAFE!!!! AND IT SHOULDN'T BE THREAD-SAFE!!!!
     void CleanUpGrids(const uint32 diff);
 
-protected:
-    friend class Terrain;
     //load/unload terrain data
     GridMap * Load(const uint32 x, const uint32 y);
     void Unload(const uint32 x, const uint32 y);
@@ -281,41 +279,11 @@ private:
 };
 
 // proxy class that unites dynamic and static geometry
-class MANGOS_DLL_SPEC Terrain
+class MANGOS_DLL_SPEC Terrain : public TerrainInfo
 {
 public:
-
-    explicit Terrain(TerrainInfo* terrain) : m_info(*terrain) {}
-
-    void AddRef() { m_info.AddRef();}
-    bool Release() { return m_info.Release();}
-
-    uint32 GetMapId() const { return m_info.GetMapId(); }
-
-    float GetWaterLevel(float x, float y, float z, float* pGround = NULL) const;
-    float GetWaterOrGroundLevel(float x, float y, float z, float* pGround = NULL, bool swim = false) const;
-
-    bool IsInWater(float x, float y, float z, GridMapLiquidData *data = 0) const;
-    bool IsAboveWater(float x, float y, float z, float* pWaterZ = NULL) const;
-    bool IsUnderWater(float x, float y, float z) const;
-
-    GridMapLiquidStatus getLiquidStatus(float x, float y, float z, uint8 ReqLiquidType, GridMapLiquidData *data = 0) const;
-
-    uint16 GetAreaFlag(float x, float y, float z, bool *isOutdoors=0) const;
-    uint8 GetTerrainType(float x, float y ) const;
-
-    uint32 GetAreaId(float x, float y, float z) const;
-    uint32 GetZoneId(float x, float y, float z) const;
-
-    void GetZoneAndAreaId(uint32& zoneid, uint32& areaid, float x, float y, float z) const;
-    bool GetAreaInfo(float x, float y, float z, uint32 &mogpflags, int32 &adtId, int32 &rootId, int32 &groupId) const;
-    bool IsOutdoors(float x, float y, float z) const;
-    bool IsNextZcoordOK(float x, float y, float oldZ, float maxDiff = 5.0f) const;
-    bool CheckPath(float srcX, float srcY, float srcZ, float& dstX, float& dstY, float& dstZ) const;
-    //bool CheckPathAccurate(float srcX, float srcY, float srcZ, float& dstX, float& dstY, float& dstZ, Unit* mover = NULL, bool onlyLOS = false) const
-    //{
-        //return m_info.CheckPathAccurate(srcX, srcY, srcZ, dstX, dstY, dstZ, mover, onlyLOS);
-    //}
+    Terrain(uint32 mapid) : TerrainInfo(mapid){};
+    ~Terrain();
 
     float GetHeight(uint32 phasemask, float x, float y, float z, bool pCheckVMap=true, float maxSearchDist=DEFAULT_HEIGHT_SEARCH) const;
     bool isInLineOfSight(float x1, float y1, float z1, float x2, float y2, float z2, uint32 phasemask) const;
@@ -326,15 +294,7 @@ public:
     bool Contains(const GameObjectModel& mdl) const;
     void Balance();
     void Update(uint32 diff);
-
-protected:
-    friend class Map;
-    //load/unload terrain data
-    GridMap * Load(const uint32 x, const uint32 y);
-    void Unload(const uint32 x, const uint32 y);
-
 private:
-    TerrainInfo& m_info;
     DynamicMapTree m_dyn_tree;
 };
 
@@ -342,11 +302,11 @@ private:
 //class for managing TerrainData object and all sort of geometry querying operations
 class MANGOS_DLL_DECL TerrainManager : public MaNGOS::Singleton<TerrainManager, MaNGOS::ClassLevelLockable<TerrainManager, ACE_Thread_Mutex> >
 {
-    typedef UNORDERED_MAP<uint32,  TerrainInfo *> TerrainDataMap;
+    typedef UNORDERED_MAP<uint32,  Terrain*> TerrainDataMap;
     friend class MaNGOS::OperatorNew<TerrainManager>;
 
 public:
-    TerrainInfo * LoadTerrain(const uint32 mapId);
+    Terrain * LoadTerrain(const uint32 mapId);
     void UnloadTerrain(const uint32 mapId);
 
     void Update(const uint32 diff);
@@ -354,7 +314,7 @@ public:
 
     uint16 GetAreaFlag(uint32 mapid, float x, float y, float z) const
     {
-        TerrainInfo *pData = const_cast<TerrainManager*>(this)->LoadTerrain(mapid);
+        Terrain* pData = const_cast<TerrainManager*>(this)->LoadTerrain(mapid);
         return pData->GetAreaFlag(x, y, z);
     }
     uint32 GetAreaId(uint32 mapid, float x, float y, float z) const

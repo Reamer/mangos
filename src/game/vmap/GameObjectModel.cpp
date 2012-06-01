@@ -130,7 +130,7 @@ bool GameObjectModel::initialize(const GameObject& go, const GameObjectDisplayIn
 
 GameObjectModel* GameObjectModel::construct(const GameObject & go)
 {
-    const GameObjectDisplayInfoEntry * info = sGameObjectDisplayInfoStore.LookupEntry(go.GetDisplayId());
+    const GameObjectDisplayInfoEntry* info = sGameObjectDisplayInfoStore.LookupEntry(go.GetDisplayId());
     if (!info)
         return NULL;
 

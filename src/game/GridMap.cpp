@@ -1494,15 +1494,15 @@ TerrainManager::~TerrainManager()
         delete it->second;
 }
 
-TerrainInfo * TerrainManager::LoadTerrain(const uint32 mapId)
+Terrain * TerrainManager::LoadTerrain(const uint32 mapId)
 {
     Guard _guard(*this);
 
-    TerrainInfo * ptr = NULL;
+    Terrain* ptr = NULL;
     TerrainDataMap::const_iterator iter = i_TerrainMap.find(mapId);
     if(iter == i_TerrainMap.end())
     {
-        ptr = new TerrainInfo(mapId);
+        ptr = new Terrain(mapId);
         i_TerrainMap[mapId] = ptr;
     }
     else
@@ -1521,7 +1521,7 @@ void TerrainManager::UnloadTerrain(const uint32 mapId)
     TerrainDataMap::iterator iter = i_TerrainMap.find(mapId);
     if(iter != i_TerrainMap.end())
     {
-        TerrainInfo * ptr = (*iter).second;
+        Terrain * ptr = (*iter).second;
         //lets check if this object can be actually freed
         if(ptr->IsReferenced() == false)
         {
@@ -1573,82 +1573,9 @@ void TerrainManager::GetZoneAndAreaIdByAreaFlag(uint32& zoneid, uint32& areaid, 
     areaid = entry ? entry->ID : 0;
     zoneid = entry ? (( entry->zone != 0 ) ? entry->zone : entry->ID) : 0;
 }
-
-float Terrain::GetWaterLevel(float x, float y, float z, float* pGround) const
+Terrain::~Terrain()
 {
-    return m_info.GetWaterLevel(x,y,z,pGround);
 }
-
-float Terrain::GetWaterOrGroundLevel(float x, float y, float z, float* pGround, bool swim) const
-{
-    return m_info.GetWaterOrGroundLevel(x,y,z,pGround,swim);
-}
-
-bool Terrain::IsInWater(float x, float y, float z, GridMapLiquidData *data) const
-{
-    return m_info.IsInWater(x,y,z,data);
-}
-
-bool Terrain::IsAboveWater(float x, float y, float z, float* pWaterZ) const
-{
-    return m_info.IsAboveWater(x, y, z, pWaterZ);
-}
-
-bool Terrain::IsUnderWater(float x, float y, float z) const
-{
-    return m_info.IsUnderWater(x,y,z);
-}
-
-GridMapLiquidStatus Terrain::getLiquidStatus(float x, float y, float z, uint8 ReqLiquidType, GridMapLiquidData *data) const
-{
-    return m_info.getLiquidStatus(x, y, z,ReqLiquidType, data);
-}
-
-uint16 Terrain::GetAreaFlag(float x, float y, float z, bool *isOutdoors) const
-{
-    return m_info.GetAreaFlag(x,y,z,isOutdoors);
-}
-
-uint8 Terrain::GetTerrainType(float x, float y ) const
-{
-    return m_info.GetTerrainType(x, y);
-}
-
-uint32 Terrain::GetAreaId(float x, float y, float z) const
-{
-    return m_info.GetAreaId(x,y,z);
-}
-
-uint32 Terrain::GetZoneId(float x, float y, float z) const
-{
-    return m_info.GetZoneId(x,y,z);
-}
-
-void Terrain::GetZoneAndAreaId(uint32& zoneid, uint32& areaid, float x, float y, float z) const
-{
-    return m_info.GetZoneAndAreaId(zoneid, areaid, x, y, z);
-}
-
-bool Terrain::GetAreaInfo(float x, float y, float z, uint32 &mogpflags, int32 &adtId, int32 &rootId, int32 &groupId) const
-{
-    return m_info.GetAreaInfo(x, y, z,mogpflags, adtId, rootId, groupId);
-}
-
-bool Terrain::IsOutdoors(float x, float y, float z) const
-{
-    return m_info.IsOutdoors(x, y, z);
-}
-
-bool Terrain::IsNextZcoordOK(float x, float y, float oldZ, float maxDiff) const
-{
-    return m_info.IsNextZcoordOK(x, y, oldZ, maxDiff);
-}
-
-bool Terrain::CheckPath(float srcX, float srcY, float srcZ, float& dstX, float& dstY, float& dstZ) const
-{
-    return m_info.CheckPath(srcX, srcY, srcZ, dstX, dstY, dstZ);
-}
-
 bool Terrain::isInLineOfSight(float x1, float y1, float z1, float x2, float y2, float z2, uint32 phasemask) const
 {
     return VMAP::VMapFactory::createOrGetVMapManager()->isInLineOfSight(GetMapId(), x1, y1, z1, x2, y2, z2)
@@ -1657,9 +1584,8 @@ bool Terrain::isInLineOfSight(float x1, float y1, float z1, float x2, float y2, 
 
 bool Terrain::getHitPosition(float x1, float y1, float z1, float x2, float y2, float z2, float& rx, float& ry, float& rz, uint32 phasemask, float modifyDist) const
 {
-    bool result = false;
     // at first check all static objects
-    result = result || VMAP::VMapFactory::createOrGetVMapManager()->getObjectHitPos(GetMapId(), x1, y1, z1, x2, y2, z2, rx, ry, rz, modifyDist);
+    bool result = VMAP::VMapFactory::createOrGetVMapManager()->getObjectHitPos(GetMapId(), x1, y1, z1, x2, y2, z2, rx, ry, rz, modifyDist);
     // at second all dynamic objects, if static check has an hit, then we can calculate only to this point and NOT to end, because we need the ne closely hit point
     result = result || m_dyn_tree.getObjectHitPos(phasemask, x1, y1, z1, rx, ry, rz, rx, ry, rz, modifyDist);
     return result;
@@ -1667,7 +1593,7 @@ bool Terrain::getHitPosition(float x1, float y1, float z1, float x2, float y2, f
 
 float Terrain::GetHeight(uint32 phasemask, float x, float y, float z, bool pCheckVMap/*=true*/, float maxSearchDist/*=DEFAULT_HEIGHT_SEARCH*/) const
 {
-    return std::max<float>(m_info.GetHeight(x,y,z,pCheckVMap,maxSearchDist), m_dyn_tree.getHeight(x, y,z,maxSearchDist, phasemask));
+    return std::max<float>(GetHeight(x,y,z,pCheckVMap,maxSearchDist), m_dyn_tree.getHeight(x, y,z,maxSearchDist, phasemask));
 }
 
 void Terrain::Insert(const GameObjectModel& mdl)
@@ -1695,12 +1621,3 @@ void Terrain::Update(uint32 diff)
     m_dyn_tree.update(diff);
 }
 
-GridMap* Terrain::Load(const uint32 x, const uint32 y)
-{
-    return m_info.Load(x,y);
-}
-
-void Terrain::Unload(const uint32 x, const uint32 y)
-{
-    m_info.Unload(x,y);
-}

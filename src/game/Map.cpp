@@ -55,11 +55,11 @@ Map::~Map()
     }
 
     // unload instance specific navigation data
-    MMAP::MMapFactory::createOrGetMMapManager()->unloadMapInstance(m_TerrainData.GetMapId(), GetInstanceId());
+    MMAP::MMapFactory::createOrGetMMapManager()->unloadMapInstance(m_TerrainData->GetMapId(), GetInstanceId());
 
     //release reference count
-    if(m_TerrainData.Release())
-        sTerrainMgr.UnloadTerrain(m_TerrainData.GetMapId());
+    if(m_TerrainData->Release())
+        sTerrainMgr.UnloadTerrain(m_TerrainData->GetMapId());
 }
 
 void Map::LoadMapAndVMap(int gx,int gy)
@@ -67,7 +67,7 @@ void Map::LoadMapAndVMap(int gx,int gy)
     if(m_bLoadedGrids[gx][gx])
         return;
 
-    GridMap * pInfo = m_TerrainData.Load(gx, gy);
+    GridMap * pInfo = m_TerrainData->Load(gx, gy);
     if(pInfo)
         m_bLoadedGrids[gx][gy] = true;
 }
@@ -97,7 +97,7 @@ Map::Map(uint32 id, time_t expiry, uint32 InstanceId, uint8 SpawnMode)
     Map::InitVisibilityDistance();
 
     //add reference for TerrainData object
-    m_TerrainData.AddRef();
+    m_TerrainData->AddRef();
 
     MapPersistentState* persistentState = sMapPersistentStateMgr.AddPersistentState(i_mapEntry, GetInstanceId(), GetDifficulty(), 0, IsDungeon());
     persistentState->SetUsedByMapState(this);
@@ -841,7 +841,7 @@ bool Map::UnloadGrid(const uint32 &x, const uint32 &y, bool pForce)
     if(m_bLoadedGrids[gx][gy])
     {
         m_bLoadedGrids[gx][gy] = false;
-        m_TerrainData.Unload(gx, gy);
+        m_TerrainData->Unload(gx, gy);
     }
 
     DEBUG_LOG("Unloading grid[%u,%u] for map %u finished", x,y, i_id);
@@ -1090,7 +1090,7 @@ bool Map::ActiveObjectsNearGrid(uint32 x, uint32 y) const
 
     //we must find visible range in cells so we unload only non-visible cells...
     float viewDist = GetVisibilityDistance();
-    int cell_range = (int)ceilf(viewDist / SIZE_OF_GRID_CELL) + 1;
+    int cell_range = (int)ceil(viewDist / SIZE_OF_GRID_CELL) + 1;
 
     cell_min << cell_range;
     cell_min -= cell_range;

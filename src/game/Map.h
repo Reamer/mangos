@@ -253,8 +253,8 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
         uint32 GenerateLocalLowGuid(HighGuid guidhigh);
 
         //get corresponding TerrainData object for this particular map
-        const Terrain * GetTerrain() const { return &m_TerrainData; }
-        Terrain * GetTerrain() { return &m_TerrainData; }
+        const Terrain * GetTerrain() const { return m_TerrainData; }
+        Terrain * GetTerrain() { return m_TerrainData; }
 
         void CreateInstanceData(bool load);
         InstanceData* GetInstanceData() { return i_data; }
@@ -349,7 +349,7 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
         NGridType* i_grids[MAX_NUMBER_OF_GRIDS][MAX_NUMBER_OF_GRIDS];
 
         //Shared geodata object with map coord info...
-        Terrain m_TerrainData;
+        Terrain* m_TerrainData;
         bool m_bLoadedGrids[MAX_NUMBER_OF_GRIDS][MAX_NUMBER_OF_GRIDS];
 
         std::bitset<TOTAL_NUMBER_OF_CELLS_PER_MAP*TOTAL_NUMBER_OF_CELLS_PER_MAP> marked_cells;
