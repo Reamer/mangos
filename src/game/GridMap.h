@@ -249,7 +249,8 @@ public:
     //to destroy them dynamically, especially on highly populated servers
     //THIS METHOD IS NOT THREAD-SAFE!!!! AND IT SHOULDN'T BE THREAD-SAFE!!!!
     void CleanUpGrids(const uint32 diff);
-
+protected:
+    friend class Map;
     //load/unload terrain data
     GridMap * Load(const uint32 x, const uint32 y);
     void Unload(const uint32 x, const uint32 y);
