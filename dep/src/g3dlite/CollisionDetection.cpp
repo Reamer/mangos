@@ -601,7 +601,7 @@ float CollisionDetection::penetrationDepthForFixedSphereFixedBox(
         float distanceFromLow  = -halfExtent[a] - center[a];
         float distanceFromHigh = center[a] - halfExtent[a];
 
-        if (fabsf(distanceFromLow) < fabsf(distanceFromHigh)) {
+        if (fabs(distanceFromLow) < fabs(distanceFromHigh)) {
             distOutsideBox[a] = distanceFromLow;
         } else {
             distOutsideBox[a] = distanceFromHigh;
