@@ -1593,7 +1593,7 @@ bool Terrain::getHitPosition(float x1, float y1, float z1, float x2, float y2, f
 
 float Terrain::GetHeight(uint32 phasemask, float x, float y, float z, bool pCheckVMap/*=true*/, float maxSearchDist/*=DEFAULT_HEIGHT_SEARCH*/) const
 {
-    return std::max<float>(GetHeight(x,y,z,pCheckVMap,maxSearchDist), m_dyn_tree.getHeight(x, y,z,maxSearchDist, phasemask));
+    return std::max<float>(TerrainInfo::GetHeight(x,y,z,pCheckVMap,maxSearchDist), m_dyn_tree.getHeight(x, y,z,maxSearchDist, phasemask));
 }
 
 void Terrain::Insert(const GameObjectModel& mdl)
