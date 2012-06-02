@@ -1553,9 +1553,10 @@ void Creature::SetDeathState(DeathState s)
             case 33909:         // Kologarn 25
                 break;
             default:
-            // return, since we promote to CORPSE_FALLING. CORPSE_FALLING is promoted to CORPSE at next update.
-            if (CanFly())
-                GetMotionMaster()->MoveFall();
+                // return, since we promote to CORPSE_FALLING. CORPSE_FALLING is promoted to CORPSE at next update.
+                if (CanFly())
+                    GetMotionMaster()->MoveFall();
+                break;
         }
 
         Unit::SetDeathState(CORPSE);

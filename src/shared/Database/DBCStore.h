@@ -198,6 +198,7 @@ class DBCStorage
                                         break;
                                     default:
                                         validSqlColumn = false;
+                                        break;
                                 }
                                 if (validSqlColumn && (columnNumber != (sql->formatString->size()-1)))
                                     sqlColumnNumber++;

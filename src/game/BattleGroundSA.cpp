@@ -874,6 +874,7 @@ int32 BattleGroundSA::_GatesName(GameObject* obj)
         case BG_SA_GO_GATES_YELLOW_MOON:  return LANG_BG_SA_GATE_YELLOW_MOON;
         default:
             MANGOS_ASSERT(0);
+            break;
     }
     return 0;
 }
@@ -887,6 +888,7 @@ int32 BattleGroundSA::_GydName(uint8 gyd)
         case 2: return LANG_BG_SA_SOUTH_GRAVEYARD;
         default:
             MANGOS_ASSERT(0);
+            break;
     }
     return 0;
 }
