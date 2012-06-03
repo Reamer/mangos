@@ -1180,7 +1180,7 @@ bool WorldObject::IsWithinLOS(float ox, float oy, float oz) const
 {
     float x,y,z;
     GetPosition(x,y,z);
-    return GetMap()->GetTerrain()->isInLineOfSight(x, y, z+2.0f, ox, oy, oz+2.0f, GetPhaseMask());
+    return GetMap()->GetTerrain()->IsInLineOfSight(x, y, z+2.0f, ox, oy, oz+2.0f, GetPhaseMask());
 }
 
 bool WorldObject::GetDistanceOrder(WorldObject const* obj1, WorldObject const* obj2, bool is3D /* = true */) const
@@ -1642,7 +1642,7 @@ void WorldObject::SetMap(Map * map)
     m_InstanceId = map->GetInstanceId();
 }
 
-Terrain const* WorldObject::GetTerrain() const
+TerrainInfo const* WorldObject::GetTerrain() const
 {
     MANGOS_ASSERT(m_currMap);
     return m_currMap->GetTerrain();

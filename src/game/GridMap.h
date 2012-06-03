@@ -221,7 +221,7 @@ public:
 
     //TODO: move all terrain/vmaps data info query functions
     //from 'Map' class into this class
-    float GetHeight(float x, float y, float z, bool pCheckVMap=true, float maxSearchDist=DEFAULT_HEIGHT_SEARCH) const;
+    float GetHeight(uint32 phasemask, float x, float y, float z, bool pCheckVMap=true, float maxSearchDist=DEFAULT_HEIGHT_SEARCH) const;
     float GetWaterLevel(float x, float y, float z, float* pGround = NULL) const;
     float GetWaterOrGroundLevel(float x, float y, float z, float* pGround = NULL, bool swim = false) const;
     bool IsInWater(float x, float y, float z, GridMapLiquidData *data = 0, float min_depth = 2.0f) const;
@@ -241,14 +241,22 @@ public:
     bool IsOutdoors(float x, float y, float z) const;
 
     bool IsNextZcoordOK(float x, float y, float oldZ, float maxDiff = 5.0f) const;
-    bool CheckPath(float srcX, float srcY, float srcZ, float& dstX, float& dstY, float& dstZ) const;
-    bool CheckPathAccurate(float srcX, float srcY, float srcZ, float& dstX, float& dstY, float& dstZ, Unit* mover = NULL, bool onlyLOS = false) const;
 
     //this method should be used only by TerrainManager
     //to cleanup unreferenced GridMap objects - they are too heavy
     //to destroy them dynamically, especially on highly populated servers
     //THIS METHOD IS NOT THREAD-SAFE!!!! AND IT SHOULDN'T BE THREAD-SAFE!!!!
     void CleanUpGrids(const uint32 diff);
+
+    bool IsInLineOfSight(float x1, float y1, float z1, float x2, float y2, float z2, uint32 phasemask) const;
+    bool GetHitPosition(float srcX, float srcY, float srcZ, float& destX, float& destY, float& destZ, uint32 phasemask, float modifyDist) const;
+
+    void Insert(const GameObjectModel& mdl);
+    void Remove(const GameObjectModel& mdl);
+    bool Contains(const GameObjectModel& mdl) const;
+    void Balance();
+    void Update(uint32 diff);
+
 protected:
     friend class Map;
     //load/unload terrain data
@@ -261,11 +269,13 @@ private:
 
     GridMap * GetGrid( const float x, const float y );
     GridMap * LoadMapAndVMap(const uint32 x, const uint32 y );
+    float GetHeight(float x, float y, float z, bool pCheckVMap=true, float maxSearchDist=DEFAULT_HEIGHT_SEARCH) const;
 
     int RefGrid(const uint32& x, const uint32& y);
     int UnrefGrid(const uint32& x, const uint32& y);
 
     const uint32 m_mapId;
+    DynamicMapTree m_dyn_tree;
 
     GridMap *m_GridMaps[MAX_NUMBER_OF_GRIDS][MAX_NUMBER_OF_GRIDS];
     int16 m_GridRef[MAX_NUMBER_OF_GRIDS][MAX_NUMBER_OF_GRIDS];
@@ -279,35 +289,14 @@ private:
     LOCK_TYPE m_refMutex;
 };
 
-// proxy class that unites dynamic and static geometry
-class MANGOS_DLL_SPEC Terrain : public TerrainInfo
-{
-public:
-    Terrain(uint32 mapid) : TerrainInfo(mapid){};
-    ~Terrain();
-
-    float GetHeight(uint32 phasemask, float x, float y, float z, bool pCheckVMap=true, float maxSearchDist=DEFAULT_HEIGHT_SEARCH) const;
-    bool isInLineOfSight(float x1, float y1, float z1, float x2, float y2, float z2, uint32 phasemask) const;
-    bool getHitPosition(float x1, float y1, float z1, float x2, float y2, float z2, float& rx, float& ry, float& rz, uint32 phasemask, float modifyDist) const;
-
-    void Insert(const GameObjectModel& mdl);
-    void Remove(const GameObjectModel& mdl);
-    bool Contains(const GameObjectModel& mdl) const;
-    void Balance();
-    void Update(uint32 diff);
-private:
-    DynamicMapTree m_dyn_tree;
-};
-
-
 //class for managing TerrainData object and all sort of geometry querying operations
 class MANGOS_DLL_DECL TerrainManager : public MaNGOS::Singleton<TerrainManager, MaNGOS::ClassLevelLockable<TerrainManager, ACE_Thread_Mutex> >
 {
-    typedef UNORDERED_MAP<uint32,  Terrain*> TerrainDataMap;
+    typedef UNORDERED_MAP<uint32,  TerrainInfo*> TerrainDataMap;
     friend class MaNGOS::OperatorNew<TerrainManager>;
 
 public:
-    Terrain * LoadTerrain(const uint32 mapId);
+    TerrainInfo * LoadTerrain(const uint32 mapId);
     void UnloadTerrain(const uint32 mapId);
 
     void Update(const uint32 diff);
@@ -315,7 +304,7 @@ public:
 
     uint16 GetAreaFlag(uint32 mapid, float x, float y, float z) const
     {
-        Terrain* pData = const_cast<TerrainManager*>(this)->LoadTerrain(mapid);
+        TerrainInfo* pData = const_cast<TerrainManager*>(this)->LoadTerrain(mapid);
         return pData->GetAreaFlag(x, y, z);
     }
     uint32 GetAreaId(uint32 mapid, float x, float y, float z) const
