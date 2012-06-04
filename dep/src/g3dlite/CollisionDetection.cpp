@@ -690,7 +690,7 @@ float CollisionDetection::penetrationDepthForFixedSphereFixedBox(
             contactNormals.append(N);
 
             // Penetration depth:
-            depth = sphere.radius - sqrtf(d2);
+            depth = sphere.radius - sqrt(d2);
 
             // Compute the contact point from the penetration depth
             contactPoints.append(sphere.center + N * (sphere.radius - depth));

@@ -85,7 +85,7 @@ void GameObject::AddToWorld()
 
     bool startOpen = (GetGoType() == GAMEOBJECT_TYPE_DOOR || GetGoType() == GAMEOBJECT_TYPE_BUTTON ? GetGOInfo()->door.startOpen : false);
     if (m_model)
-        GetMap()->GetTerrain()->Insert(*m_model);
+        GetMap()->InsertGameObjectModel(*m_model);
     if (startOpen)
         EnableCollision(false);
 
@@ -110,8 +110,8 @@ void GameObject::RemoveFromWorld()
         }
 
         if (m_model)
-            if (GetMap()->GetTerrain()->Contains(*m_model))
-                GetMap()->GetTerrain()->Remove(*m_model);
+            if (GetMap()->ContainsGameObjectModel(*m_model))
+                GetMap()->RemoveGameObjectModel(*m_model);
 
         GetMap()->GetObjectsStore().erase<GameObject>(GetObjectGuid(), (GameObject*)NULL);
     }
@@ -2316,12 +2316,12 @@ void GameObject::UpdateModel()
     if (!IsInWorld())
         return;
     if (m_model)
-        if (GetMap()->GetTerrain()->Contains(*m_model))
-            GetMap()->GetTerrain()->Remove(*m_model);
+        if (GetMap()->ContainsGameObjectModel(*m_model))
+            GetMap()->RemoveGameObjectModel(*m_model);
     delete m_model;
     m_model = GameObjectModel::construct(*this);
     if (m_model)
-        GetMap()->GetTerrain()->Insert(*m_model);
+        GetMap()->InsertGameObjectModel(*m_model);
 }
 
 void GameObject::StartGroupLoot(Group* group, uint32 timer)

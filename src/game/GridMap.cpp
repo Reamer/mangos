@@ -1260,55 +1260,6 @@ bool TerrainInfo::IsNextZcoordOK(float x, float y, float oldZ, float maxDiff) co
     return ((fabs(GetHeight(x, y, oldZ, true) - oldZ) < maxDiff ) || (fabs(GetHeight(x, y, oldZ, false) - oldZ) < maxDiff ));
 }
 
-bool TerrainInfo::IsInLineOfSight(float srcX, float srcY, float srcZ, float destX, float destY, float destZ, uint32 phasemask) const
-{
-    return VMAP::VMapFactory::createOrGetVMapManager()->isInLineOfSight(GetMapId(), srcX, srcY, srcZ, destX, destY, destZ)
-        && m_dyn_tree.isInLineOfSight(srcX, srcY, srcZ, destX, destY, destZ, phasemask);
-}
-
-bool TerrainInfo::GetHitPosition(float srcX, float srcY, float srcZ, float& destX, float& destY, float& destZ, uint32 phasemask, float modifyDist) const
-{
-    // at first check all static objects
-    bool result0 = VMAP::VMapFactory::createOrGetVMapManager()->getObjectHitPos(GetMapId(), srcX, srcY, srcZ, destX, destY, destZ, destX, destY, destZ, modifyDist);
-    if (!result0)
-        DEBUG_LOG("TerrainInfo::GetHitPosition vmaps corrects gained! new coords is %f %f %f",destX,destY,destZ);
-    // at second all dynamic objects, if static check has an hit, then we can calculate only to this point and NOT to end, because we need closely hit point
-    bool result1 = m_dyn_tree.getObjectHitPos(phasemask, srcX, srcY, srcZ, destX, destY, destZ, destX, destY, destZ, modifyDist);
-    if (result1)
-        DEBUG_LOG("TerrainInfo::GetHitPosition vmaps corrects gained! new coords is %f %f %f",destX,destY,destZ);
-    return result0 && result1;
-}
-
-float TerrainInfo::GetHeight(uint32 phasemask, float x, float y, float z, bool pCheckVMap/*=true*/, float maxSearchDist/*=DEFAULT_HEIGHT_SEARCH*/) const
-{
-    return std::max<float>(GetHeight(x,y,z,pCheckVMap,maxSearchDist), m_dyn_tree.getHeight(x, y,z,maxSearchDist, phasemask));
-}
-
-void TerrainInfo::Insert(const GameObjectModel& mdl)
-{
-    m_dyn_tree.insert(mdl);
-}
-
-void TerrainInfo::Remove(const GameObjectModel& mdl)
-{
-    m_dyn_tree.remove(mdl);
-}
-
-bool TerrainInfo::Contains(const GameObjectModel& mdl) const
-{
-    return m_dyn_tree.contains(mdl);
-}
-
-void TerrainInfo::Balance()
-{
-    m_dyn_tree.balance();
-}
-
-void TerrainInfo::Update(uint32 diff)
-{
-    m_dyn_tree.update(diff);
-}
-
 //////////////////////////////////////////////////////////////////////////
 
 #define CLASS_LOCK MaNGOS::ClassLevelLockable<TerrainManager, ACE_Thread_Mutex>

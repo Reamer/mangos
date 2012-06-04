@@ -256,7 +256,6 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
 
         //get corresponding TerrainData object for this particular map
         const TerrainInfo * GetTerrain() const { return m_TerrainData; }
-        TerrainInfo * GetTerrain() { return m_TerrainData; }
 
         void CreateInstanceData(bool load);
         InstanceData* GetInstanceData() { return i_data; }
@@ -289,6 +288,14 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
         void SetBroken( bool _value = true ) { m_broken = _value; };
         void ForcedUnload();
 
+        // dynamic VMaps
+        float GetHeight(uint32 phasemask, float x, float y, float z, bool pCheckVMap=true, float maxSearchDist=DEFAULT_HEIGHT_SEARCH) const;
+        bool IsInLineOfSight(float x1, float y1, float z1, float x2, float y2, float z2, uint32 phasemask) const;
+        bool GetHitPosition(float srcX, float srcY, float srcZ, float& destX, float& destY, float& destZ, uint32 phasemask, float modifyDist) const;
+
+        void InsertGameObjectModel(const GameObjectModel& mdl);
+        void RemoveGameObjectModel(const GameObjectModel& mdl);
+        bool ContainsGameObjectModel(const GameObjectModel& mdl) const;
     private:
         void LoadMapAndVMap(int gx, int gy);
 
@@ -351,7 +358,8 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
         NGridType* i_grids[MAX_NUMBER_OF_GRIDS][MAX_NUMBER_OF_GRIDS];
 
         //Shared geodata object with map coord info...
-        TerrainInfo* m_TerrainData;
+        TerrainInfo* const m_TerrainData;
+        DynamicMapTree m_dyn_tree;
         bool m_bLoadedGrids[MAX_NUMBER_OF_GRIDS][MAX_NUMBER_OF_GRIDS];
 
         std::bitset<TOTAL_NUMBER_OF_CELLS_PER_MAP*TOTAL_NUMBER_OF_CELLS_PER_MAP> marked_cells;

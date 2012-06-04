@@ -6599,7 +6599,7 @@ void Spell::DoSummonWild(SpellEffectIndex eff_idx, uint32 forceFaction)
         {
             float ox, oy, oz;
             m_caster->GetPosition(ox, oy, oz);
-            m_caster->GetTerrain()->GetHitPosition(ox,oy,oz, px, py, pz, m_caster->GetPhaseMask(),-0.1f);
+            m_caster->GetMap()->GetHitPosition(ox,oy,oz, px, py, pz, m_caster->GetPhaseMask(),-0.1f);
             m_caster->UpdateAllowedPositionZ(px,py,pz);
         }
 

@@ -219,9 +219,7 @@ public:
 
     uint32 GetMapId() const { return m_mapId; }
 
-    //TODO: move all terrain/vmaps data info query functions
-    //from 'Map' class into this class
-    float GetHeight(uint32 phasemask, float x, float y, float z, bool pCheckVMap=true, float maxSearchDist=DEFAULT_HEIGHT_SEARCH) const;
+    float GetHeight(float x, float y, float z, bool pCheckVMap=true, float maxSearchDist=DEFAULT_HEIGHT_SEARCH) const;
     float GetWaterLevel(float x, float y, float z, float* pGround = NULL) const;
     float GetWaterOrGroundLevel(float x, float y, float z, float* pGround = NULL, bool swim = false) const;
     bool IsInWater(float x, float y, float z, GridMapLiquidData *data = 0, float min_depth = 2.0f) const;
@@ -248,15 +246,6 @@ public:
     //THIS METHOD IS NOT THREAD-SAFE!!!! AND IT SHOULDN'T BE THREAD-SAFE!!!!
     void CleanUpGrids(const uint32 diff);
 
-    bool IsInLineOfSight(float x1, float y1, float z1, float x2, float y2, float z2, uint32 phasemask) const;
-    bool GetHitPosition(float srcX, float srcY, float srcZ, float& destX, float& destY, float& destZ, uint32 phasemask, float modifyDist) const;
-
-    void Insert(const GameObjectModel& mdl);
-    void Remove(const GameObjectModel& mdl);
-    bool Contains(const GameObjectModel& mdl) const;
-    void Balance();
-    void Update(uint32 diff);
-
 protected:
     friend class Map;
     //load/unload terrain data
@@ -269,13 +258,11 @@ private:
 
     GridMap * GetGrid( const float x, const float y );
     GridMap * LoadMapAndVMap(const uint32 x, const uint32 y );
-    float GetHeight(float x, float y, float z, bool pCheckVMap=true, float maxSearchDist=DEFAULT_HEIGHT_SEARCH) const;
 
     int RefGrid(const uint32& x, const uint32& y);
     int UnrefGrid(const uint32& x, const uint32& y);
 
     const uint32 m_mapId;
-    DynamicMapTree m_dyn_tree;
 
     GridMap *m_GridMaps[MAX_NUMBER_OF_GRIDS][MAX_NUMBER_OF_GRIDS];
     int16 m_GridRef[MAX_NUMBER_OF_GRIDS][MAX_NUMBER_OF_GRIDS];

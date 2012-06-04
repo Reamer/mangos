@@ -2072,10 +2072,10 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
             MaNGOS::NormalizeMapCoord(fx);
             MaNGOS::NormalizeMapCoord(fy);
             
-            TerrainInfo const* terrain = target->GetMap()->GetTerrain();
-            if (terrain)
+            Map* pMap = target->GetMap();
+            if (pMap)
             {
-                if (!terrain->GetHitPosition(ox,oy,oz,fx,fy,fz, target->GetPhaseMask(), -0.1f))
+                if (!pMap->GetHitPosition(ox,oy,oz,fx,fy,fz, target->GetPhaseMask(), -0.1f))
                     DEBUG_LOG("Spell::EffectLeap/Teleport unit %u forwarded on %f", target->GetObjectGuid().GetCounter(), target->GetDistance(fx,fy,fz));
                 else
                     DEBUG_LOG("Spell::EffectLeap/Teleport unit %u NOT forwarded on %f, real distance is %f", target->GetObjectGuid().GetCounter(), distance, target->GetDistance(fx,fy,fz));
