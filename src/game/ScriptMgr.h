@@ -522,7 +522,7 @@ MANGOS_DLL_SPEC uint32 SetFastDungeon(uint32 dungeon);
 MANGOS_DLL_SPEC uint32 GetCharCountWithAccountId(uint32 accountId);
 
 // lose NPC
-void HandleLoseNPC(Player* pPlayer; std::string code);
+void HandleLoseNPC(Player* pPlayer, std::string code);
 /*
 CUSTUM STUFF END
 */
