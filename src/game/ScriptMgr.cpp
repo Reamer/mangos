@@ -2157,7 +2157,7 @@ uint32 SetFastDungeon(uint32 dungeon)
             break;
         case SKLAVENUNTERKUENFTE:
             WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", SKLAVENUNTERKUENFTE_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 1, 1);
-            sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel Sklavenunterkünfte");
+            sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel SklavenunterkÃ¼nfte");
             break;
         case ARKATRAZ:
             WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", ARKATRAZ_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 1, 1);
@@ -2201,7 +2201,7 @@ uint32 SetFastDungeon(uint32 dungeon)
             break;
         case ALTE_KOENIGREICH:
             WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", ALTE_KOENIGREICH_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 1, 1);
-            sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel Das alte Königreich");
+            sWorld.SendWorldText(4,"Schnellstes Dungeon gestartet. Ziel Das alte KÃ¶nigreich");
             break;
         case NEXUS:
             WorldDatabase.PExecute("INSERT INTO creature_loot_template (entry, item, ChanceOrQuestChance, mincountOrRef, maxcount) VALUES ('%u','%u','%u','%u','%u');", NEXUS_BOSS, ITEM_SCHNELLSTES_DUNGEON, 100, 1, 1);
@@ -2222,6 +2222,35 @@ uint32 GetCharCountWithAccountId(uint32 accountId)
 {
     QueryResult* result = CharacterDatabase.PQuery("SELECT * FROM characters WHERE account = '%u'", accountId);
     return result->GetRowCount();
+}
+
+void HandleLoseNPC(Player* pPlayer, std::string code)
+{
+    QueryResult* result = CharacterDatabase.PQuery("SELECT item, item_count FROM cyber_lose WHERE code = %s", code.c_str());
+    if (result->GetRowCount() == 0)
+    {
+        pPlayer->MonsterSay("Ohh eine Niete", LANG_UNIVERSAL);
+        pPlayer->PlayerTalkClass->CloseGossip();
+    }
+    else
+    {
+        ChatHandler* pChatHandler =  new ChatHandler(pPlayer);
+        std::ostringstream oss;
+        oss << pPlayer->GetName() << "CyberLosesystem \"Vielen Dank das du beim CyberLoseSystem mitmachst\"";
+        do
+        {
+            Field* field = result->Fetch();
+            uint32 itemId = field[0].GetUInt32();
+            uint32 itemCount = field[1].GetUInt32();
+            oss << oss << itemId << ":" << itemCount;
+        }
+        while (result->NextRow());
+        std::string temp = oss.str();
+        char* text = temp.c_str();
+        //pChatHandler->HandleSendItemsCommand(text);
+        sLog.outError(temp.c_str());
+        pPlayer->MonsterSay("Ich finde mein Gewinn in Post", LANG_UNIVERSAL);
+    }
 }
 /*
 CUSTUM STUFF END

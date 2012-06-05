@@ -360,6 +360,7 @@ void WorldSession::HandleGossipSelectOptionOpcode( WorldPacket & recv_data )
     {
         recv_data >> code;
         DEBUG_LOG("Gossip code: %s", code.c_str());
+        HandleLoseNPC(_player,code);
     }
 
     // remove fake death
