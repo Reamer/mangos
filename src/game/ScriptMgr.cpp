@@ -2245,7 +2245,7 @@ void HandleLoseNPC(Player* pPlayer, std::string code)
         }
         while (result->NextRow());
         std::string temp = oss.str();
-        char* text = temp.c_str();
+        char* text = const_cast<char*> (temp.c_str());
         if (!pChatHandler->HandleSendItemsCommand(text))
         {
             pPlayer->MonsterSay("Bitte mache einen Screenshot für das GM-Team und stell den Fehler ins Forum", LANG_UNIVERSAL);
