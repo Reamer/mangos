@@ -2233,7 +2233,7 @@ void HandleLoseNPC(Player* pPlayer, std::string code)
     }
     else
     {
-        ChatHandler* pChatHandler =  new ChatHandler();
+        ChatHandler* pChatHandler =  new ChatHandler(pPlayer);
         std::ostringstream oss;
         oss << pPlayer->GetName() << " CyberLosesystem \"Vielen Dank das du beim CyberLoseSystem mitmachst\"";
         do
