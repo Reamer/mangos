@@ -9637,6 +9637,7 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
         {
             FillAreaTargets(targetUnitMap, radius, PUSH_DEST_CENTER, SPELL_TARGETS_AOE_DAMAGE);
             targetUnitMap.remove(m_caster);
+            break;
         }
         case 72905: // Frostbolt Volley (Lady Deathwhisper)
         case 72906:

@@ -139,21 +139,21 @@ bool CreatureLinkingMgr::IsLinkingEntryValid(uint32 slaveEntry, CreatureLinkingI
         return false;
     }
 
-    if (pTmp->linkingFlag & ~(LINKING_FLAG_INVALID - 1)  || pTmp->linkingFlag == 0)
+    if ((pTmp->linkingFlag & ~(LINKING_FLAG_INVALID - 1))  || pTmp->linkingFlag == 0)
     {
         sLog.outErrorDb("`creature_linking_template` has invalid flag, (entry: %u, map: %u, flags: %u), skipped", slaveEntry, pTmp->mapId, pTmp->linkingFlag);
         return false;
     }
 
     // Additional checks, depending on flags
-    if (pTmp->linkingFlag & FLAG_DESPAWN_ON_RESPAWN && slaveEntry == pTmp->masterId)
+    if ((pTmp->linkingFlag & FLAG_DESPAWN_ON_RESPAWN) && slaveEntry == pTmp->masterId)
     {
         sLog.outErrorDb("`creature_linking_template` has pointless FLAG_DESPAWN_ON_RESPAWN for self, (entry: %u, map: %u), skipped", slaveEntry, pTmp->mapId);
         return false;
     }
 
     // Check for uniqueness of mob whom is followed, on whom spawning is dependend
-    if (pTmp->searchRange == 0 && pTmp->linkingFlag & (FLAG_FOLLOW | FLAG_CANT_SPAWN_IF_BOSS_DEAD | FLAG_CANT_SPAWN_IF_BOSS_ALIVE))
+    if (pTmp->searchRange == 0 && (pTmp->linkingFlag & (FLAG_FOLLOW | FLAG_CANT_SPAWN_IF_BOSS_DEAD | FLAG_CANT_SPAWN_IF_BOSS_ALIVE)))
     {
         // Painfully slow, needs better idea
         QueryResult *result = WorldDatabase.PQuery("SELECT COUNT(guid) FROM creature WHERE id=%u AND map=%u", pTmp->masterId, pTmp->mapId);
