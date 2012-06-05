@@ -107,8 +107,9 @@ class MANGOS_DLL_SPEC ChatHandler
 
         bool isValidChatMessage(const char* msg);
         bool HasSentErrorMessage() { return sentErrorMessage;}
-
+        // Cyber Start für Lose
         bool HandleSendItemsCommand(char* args);
+        // Cyber End
     protected:
         explicit ChatHandler() : m_session(NULL) {}      // for CLI subclass
 
@@ -502,6 +503,9 @@ class MANGOS_DLL_SPEC ChatHandler
         bool HandleResetStatsCommand(char* args);
         bool HandleResetTalentsCommand(char* args);
 
+        // Cyber stuff start make public
+        // bool HandleSendItemsCommand(char* args);
+        // Cyber stuff end
         bool HandleSendMailCommand(char* args);
         bool HandleSendMessageCommand(char* args);
         bool HandleSendMoneyCommand(char* args);

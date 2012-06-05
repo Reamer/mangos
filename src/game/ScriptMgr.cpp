@@ -2226,7 +2226,7 @@ uint32 GetCharCountWithAccountId(uint32 accountId)
 
 void HandleLoseNPC(Player* pPlayer, std::string code)
 {
-    QueryResult* result = CharacterDatabase.PQuery("SELECT itemID, itemCount FROM cyber_lose WHERE code = %s", code.c_str());
+    QueryResult* result = CharacterDatabase.PQuery("SELECT itemID, itemCount FROM cyber_lose WHERE code = \"%s\";", code.c_str());
     if (result->GetRowCount() == 0)
     {
         pPlayer->MonsterSay("Ohh eine Niete", LANG_UNIVERSAL);
