@@ -2230,7 +2230,6 @@ void HandleLoseNPC(Player* pPlayer, std::string code)
     if (result->GetRowCount() == 0)
     {
         pPlayer->MonsterSay("Ohh eine Niete", LANG_UNIVERSAL);
-        pPlayer->PlayerTalkClass->CloseGossip();
     }
     else
     {
@@ -2246,9 +2245,10 @@ void HandleLoseNPC(Player* pPlayer, std::string code)
         }
         while (result->NextRow());
         std::string temp = oss.str();
-        char* text = temp.c_str();
+        //char* text = temp.c_str();
         //pChatHandler->HandleSendItemsCommand(text);
-        sLog.outError(temp.c_str());
+        const char* text = temp.c_str();
+        sLog.outError(text);
         pPlayer->MonsterSay("Ich finde mein Gewinn in Post", LANG_UNIVERSAL);
     }
 }
