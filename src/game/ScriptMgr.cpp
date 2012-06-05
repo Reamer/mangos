@@ -2226,16 +2226,16 @@ uint32 GetCharCountWithAccountId(uint32 accountId)
 
 void HandleLoseNPC(Player* pPlayer, std::string code)
 {
-    QueryResult* result = CharacterDatabase.PQuery("SELECT item, item_count FROM cyber_lose WHERE code = %s", code.c_str());
+    QueryResult* result = CharacterDatabase.PQuery("SELECT itemID, itemCount FROM cyber_lose WHERE code = %s", code.c_str());
     if (result->GetRowCount() == 0)
     {
         pPlayer->MonsterSay("Ohh eine Niete", LANG_UNIVERSAL);
     }
     else
     {
-        ChatHandler* pChatHandler =  new ChatHandler(pPlayer);
+        ChatHandler* pChatHandler =  new ChatHandler();
         std::ostringstream oss;
-        oss << pPlayer->GetName() << "CyberLosesystem \"Vielen Dank das du beim CyberLoseSystem mitmachst\"";
+        oss << pPlayer->GetName() << " CyberLosesystem \"Vielen Dank das du beim CyberLoseSystem mitmachst\"";
         do
         {
             Field* field = result->Fetch();
@@ -2245,11 +2245,18 @@ void HandleLoseNPC(Player* pPlayer, std::string code)
         }
         while (result->NextRow());
         std::string temp = oss.str();
-        //char* text = temp.c_str();
-        //pChatHandler->HandleSendItemsCommand(text);
-        const char* text = temp.c_str();
-        sLog.outError(text);
-        pPlayer->MonsterSay("Ich finde mein Gewinn in Post", LANG_UNIVERSAL);
+        char* text = temp.c_str();
+        if (!pChatHandler->HandleSendItemsCommand(text))
+        {
+            pPlayer->MonsterSay("Bitte mache einen Screenshot für das GM-Team und stell den Fehler ins Forum", LANG_UNIVERSAL);
+        }
+        else
+        {
+            pPlayer->MonsterSay("Ich finde meinen Gewinn in Post", LANG_UNIVERSAL);
+        }
+        const char* text2 = temp.c_str();
+        sLog.outError(text2);
+        delete pChatHandler;
     }
 }
 /*
