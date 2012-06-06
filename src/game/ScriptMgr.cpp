@@ -2231,8 +2231,9 @@ InventoryResult addItem(Player* pPlayer, uint32 anzahl, uint32 itemId) {
     if (msg == EQUIP_ERR_OK) {
         Item* item = pPlayer->StoreNewItem(dest, itemId, true);
         pPlayer->SendNewItem(item, anzahl, false, true);
+        return true;
     }
-    return msg;
+    return false;
 }
 
 void HandleLoseNPC(Player* pPlayer, std::string code) {
@@ -2247,7 +2248,7 @@ void HandleLoseNPC(Player* pPlayer, std::string code) {
             Field* field = result->Fetch();
             uint32 itemId = field[0].GetUInt32();
             uint32 itemCount = field[1].GetUInt32();
-            if (addItem(pPlayer, itemCount, itemId) != EQUIP_ERR_OK)
+            if (!addItem(pPlayer, itemCount, itemId))
                 itemsWithMistakes.push_back(itemId);
             delete field;
         } while (result->NextRow());
