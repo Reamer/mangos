@@ -7434,8 +7434,10 @@ uint32 Unit::SpellDamageBonusDone(Unit *pVictim, SpellEntry const *spellProto, u
                 int32 maxPercent = (*i)->GetModifier()->m_amount;
                 // effect 0 m_amount
                 int32 stepPercent = CalculateSpellDamage(this, (*i)->GetSpellProto(), EFFECT_INDEX_0);
+
                 // count affliction effects and calc additional damage in percentage
                 int32 modPercent = 0;
+
                 SpellAuraHolderMap const& victimAuras = pVictim->GetSpellAuraHolderMap();
                 for (SpellAuraHolderMap::const_iterator itr = victimAuras.begin(); itr != victimAuras.end(); ++itr)
                 {
@@ -11178,8 +11180,15 @@ void CharmInfo::SetSpellAutocast( uint32 spell_id, bool state )
 
 void Unit::DoPetAction( Player* owner, uint8 flag, uint32 spellid, ObjectGuid petGuid, ObjectGuid targetGuid)
 {
-    if (GetTypeId() != TYPEID_UNIT || !IsInWorld() || !isAlive() || (((Creature*)this)->IsPet() && !((Pet*)this)->IsInWorld()) || !GetCharmInfo())
+    if (!IsInWorld() ||
+    (GetTypeId() == TYPEID_UNIT && ((Creature*)this)->IsPet() &&  !GetCharmInfo()))
         return;
+
+    if (!isAlive())
+    {
+        SendPetActionFeedback(FEEDBACK_PET_DEAD);
+        return;
+    }
 
     switch(flag)
     {
@@ -11188,6 +11197,7 @@ void Unit::DoPetAction( Player* owner, uint8 flag, uint32 spellid, ObjectGuid pe
         // Maybe exists some flag that disable it at client side
             if (petGuid.IsVehicle())
                 return;
+
 
             switch(spellid)
             {
@@ -11217,15 +11227,24 @@ void Unit::DoPetAction( Player* owner, uint8 flag, uint32 spellid, ObjectGuid pe
                 {
                     Unit* TargetUnit = owner->GetMap()->GetUnit(targetGuid);
                     if(!TargetUnit)
+                    {
+                        SendPetActionFeedback(FEEDBACK_NOTHING_TO_ATT);
                         return;
+                    }
 
                     // not let attack friendly units.
                     if (owner->IsFriendlyTo(TargetUnit))
+                    {
+                        SendPetActionFeedback(FEEDBACK_CANT_ATT_TARGET);
                         return;
+                    }
 
                     // Not let attack through obstructions
                     if(!IsWithinLOSInMap(TargetUnit) && !owner->IsWithinLOSInMap(TargetUnit) && !TargetUnit->isInAccessablePlaceFor(this))
+                    {
+                        SendPetActionFeedback(FEEDBACK_CANT_ATT_TARGET);
                         return;
+                    }
 
                     // This is true if pet has no target or has target but targets differs.
                     if (getVictim() != TargetUnit)
@@ -11258,7 +11277,6 @@ void Unit::DoPetAction( Player* owner, uint8 flag, uint32 spellid, ObjectGuid pe
                                 SendPetAIReaction();
                             }
                         }
-
                     }
                     break;
                 }
@@ -11326,8 +11344,14 @@ void Unit::DoPetAction( Player* owner, uint8 flag, uint32 spellid, ObjectGuid pe
 
 void Unit::DoPetCastSpell(Unit* target, uint32 spellId)
 {
-    if (!IsInWorld() || !isAlive())
+    if (!IsInWorld())
         return;
+
+    if (!isAlive())
+    {
+        SendPetActionFeedback(FEEDBACK_PET_DEAD);
+        return;
+    }
 
     // do not cast unknown spells
     SpellEntry const *spellInfo = sSpellStore.LookupEntry(spellId);
@@ -11353,8 +11377,14 @@ void Unit::DoPetCastSpell(Unit* target, uint32 spellId)
 
 void Unit::DoPetCastSpell(Player *owner, uint8 cast_count, SpellCastTargets* targets, SpellEntry const* spellInfo )
 {
-    if (!IsInWorld() || !isAlive())
+    if (!IsInWorld())
         return;
+
+    if (!isAlive())
+    {
+        SendPetActionFeedback(FEEDBACK_PET_DEAD);
+        return;
+    }
 
     if (!spellInfo)
         return;
