@@ -2224,41 +2224,47 @@ uint32 GetCharCountWithAccountId(uint32 accountId)
     return result->GetRowCount();
 }
 
-void HandleLoseNPC(Player* pPlayer, std::string code)
-{
-    QueryResult* result = CharacterDatabase.PQuery("SELECT itemID, itemCount FROM cyber_lose WHERE code = \"%s\";", code.c_str());
-    if (result->GetRowCount() == 0)
-    {
-        pPlayer->MonsterSay("Ohh eine Niete", LANG_UNIVERSAL);
+InventoryResult addItem(Player* pPlayer, uint32 anzahl, uint32 itemId) {
+    ItemPosCountVec dest;
+    InventoryResult msg = pPlayer->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest,
+            itemId, anzahl);
+    if (msg == EQUIP_ERR_OK) {
+        Item* item = pPlayer->StoreNewItem(dest, itemId, true);
+        pPlayer->SendNewItem(item, anzahl, false, true);
     }
-    else
-    {
-        ChatHandler* pChatHandler =  new ChatHandler(pPlayer);
-        std::ostringstream oss;
-        oss << pPlayer->GetName() << " CyberLosesystem \"Vielen Dank das du beim CyberLoseSystem mitmachst\"";
-        do
-        {
+    return msg;
+}
+
+void HandleLoseNPC(Player* pPlayer, std::string code) {
+    QueryResult* result = CharacterDatabase.PQuery(
+            "SELECT itemID, itemCount FROM cyber_lose WHERE code = \"%s\";",
+            code.c_str());
+    if (!result) {
+        pPlayer->MonsterSay("Ohh eine Niete", LANG_UNIVERSAL);
+    } else {
+        std::list<uint32> itemsWithMistakes;
+        do {
             Field* field = result->Fetch();
             uint32 itemId = field[0].GetUInt32();
             uint32 itemCount = field[1].GetUInt32();
-            oss << oss << itemId << ":" << itemCount;
+            if (addItem(pPlayer, itemCount, itemId) != EQUIP_ERR_OK)
+                itemsWithMistakes.push_back(itemId);
+            delete field;
+        } while (result->NextRow());
+
+        if (!itemsWithMistakes.empty()) {
+            pPlayer->MonsterSay("Ohh es gab Probleme beim Hinzufügen von Gegenständen. Ich sollte mein Inventar überprüfen",LANG_UNIVERSAL);
+            pPlayer->MonsterSay("Bei folgenden Gegenständen gab es Probleme:",LANG_UNIVERSAL);
+            for (uint32 itemId = itemsWithMistakes.begin(); itemId != itemsWithMistakes.end(); ++itemId) {
+                std::ostringstream oss;
+                oss << itemId;
+                pPlayer->MonsterSay(oss.str().c_str(), LANG_UNIVERSAL);
+            }
         }
-        while (result->NextRow());
-        std::string temp = oss.str();
-        char* text = const_cast<char*> (temp.c_str());
-        if (!pChatHandler->HandleSendItemsCommand(text))
-        {
-            pPlayer->MonsterSay("Bitte mache einen Screenshot für das GM-Team und stell den Fehler ins Forum", LANG_UNIVERSAL);
-        }
-        else
-        {
-            pPlayer->MonsterSay("Ich finde meinen Gewinn in Post", LANG_UNIVERSAL);
-        }
-        const char* text2 = temp.c_str();
-        sLog.outError(text2);
-        delete pChatHandler;
+        itemsWithMistakes.clear();
     }
 }
+
 /*
-CUSTUM STUFF END
-*/
+ CUSTUM STUFF END
+ */
