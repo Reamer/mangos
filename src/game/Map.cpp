@@ -2256,7 +2256,7 @@ bool Map::GetHitPosition(float srcX, float srcY, float srcZ, float& destX, float
 
 float Map::GetHeight(uint32 phasemask, float x, float y, float z, bool pCheckVMap/*=true*/, float maxSearchDist/*=DEFAULT_HEIGHT_SEARCH*/) const
 {
-    return std::max<float>(m_TerrainData->GetHeight(x,y,z,pCheckVMap,maxSearchDist), m_dyn_tree.getHeight(x, y,z,maxSearchDist, phasemask));
+    return std::max<float>(m_TerrainData->GetHeightTerrainInfo(x,y,z,pCheckVMap,maxSearchDist), m_dyn_tree.getHeight(x, y,z,maxSearchDist, phasemask));
 }
 
 void Map::InsertGameObjectModel(const GameObjectModel& mdl)

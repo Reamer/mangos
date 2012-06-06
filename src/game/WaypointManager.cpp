@@ -153,7 +153,7 @@ void WaypointManager::Load()
 
                 if (result1)
                 {
-                    node.z = sTerrainMgr.LoadTerrain(result1->Fetch()[1].GetUInt32())->GetHeight(1, node.x, node.y, node.z);
+                    node.z = sTerrainMgr.LoadTerrain(result1->Fetch()[1].GetUInt32())->GetHeightTerrainInfo(node.x, node.y, node.z);
                     delete result1;
                 }
 
