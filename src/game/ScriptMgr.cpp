@@ -2241,7 +2241,7 @@ void HandleLoseNPC(Player* pPlayer, std::string code) {
             "SELECT itemID, itemCount FROM cyber_lose WHERE code = \"%s\";",
             code.c_str());
     if (!result) {
-        pPlayer->MonsterSay("Ohh eine Niete", LANG_UNIVERSAL);
+        pPlayer->MonsterSay("Ich sollte meinen Code überprüfen.", LANG_UNIVERSAL);
     } else {
         std::list<uint32> itemsWithMistakes;
         do {
@@ -2249,18 +2249,24 @@ void HandleLoseNPC(Player* pPlayer, std::string code) {
             uint32 itemId = field[0].GetUInt32();
             uint32 itemCount = field[1].GetUInt32();
             if (!addItem(pPlayer, itemCount, itemId))
+            {
                 itemsWithMistakes.push_back(itemId);
+            }
+            else
+            {
+                // TODO: delete from DB
+            }
             delete field;
         } while (result->NextRow());
 
         if (!itemsWithMistakes.empty()) {
             pPlayer->MonsterSay("Ohh es gab Probleme beim Hinzufügen von Gegenständen. Ich sollte mein Inventar überprüfen",LANG_UNIVERSAL);
             pPlayer->MonsterSay("Bei folgenden Gegenständen gab es Probleme:",LANG_UNIVERSAL);
-            /*for (std::list<uint32>::iterator itemId = itemsWithMistakes.begin(); itemId != itemsWithMistakes.end(); ++itemId) {
+            for (std::list<uint32>::const_iterator itemId = itemsWithMistakes.begin(); itemId != itemsWithMistakes.end(); ++itemId) {
                 std::ostringstream oss;
-                oss << itemId;
+                oss << *itemId;
                 pPlayer->MonsterSay(oss.str().c_str(), LANG_UNIVERSAL);
-            }*/
+            }
         }
         itemsWithMistakes.clear();
     }
