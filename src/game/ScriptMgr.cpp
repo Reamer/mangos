@@ -2256,7 +2256,7 @@ void HandleLoseNPC(Player* pPlayer, std::string code) {
         if (!itemsWithMistakes.empty()) {
             pPlayer->MonsterSay("Ohh es gab Probleme beim Hinzufügen von Gegenständen. Ich sollte mein Inventar überprüfen",LANG_UNIVERSAL);
             pPlayer->MonsterSay("Bei folgenden Gegenständen gab es Probleme:",LANG_UNIVERSAL);
-            for (uint32 itemId = itemsWithMistakes.begin(); itemId != itemsWithMistakes.end(); ++itemId) {
+            for (std::list<uint32>::iterator itemId = itemsWithMistakes.begin(); itemId != itemsWithMistakes.end(); ++itemId) {
                 std::ostringstream oss;
                 oss << itemId;
                 pPlayer->MonsterSay(oss.str().c_str(), LANG_UNIVERSAL);
