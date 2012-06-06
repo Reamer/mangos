@@ -188,6 +188,10 @@ void WorldSession::HandleCharEnum(QueryResult * result)
         delete result;
     }
 
+    static SqlStatementID updAccount;
+    SqlStatement stmt = LoginDatabase.CreateStatement(updAccount, "UPDATE account SET active_realm_id = ? WHERE id = ?");
+    stmt.PExecute(realmID, GetAccountId());
+
     data.put<uint8>(0, num);
 
     SendPacket( &data );
@@ -762,15 +766,6 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder *holder)
 
     SqlStatement stmt = CharacterDatabase.CreateStatement(updChars, "UPDATE characters SET online = 1 WHERE guid = ?");
     stmt.PExecute(pCurrChar->GetGUIDLow());
-
-    // don't update active realm if is playerbot
-    if (pCurrChar->GetSession()->GetRemoteAddress() != "bot")
-    {
-        static SqlStatementID updAccount;
-
-        stmt = LoginDatabase.CreateStatement(updAccount, "UPDATE account SET active_realm_id = ? WHERE id = ?");
-        stmt.PExecute(realmID, GetAccountId());
-    }
 
     pCurrChar->SetInGameTime( WorldTimer::getMSTime() );
 
