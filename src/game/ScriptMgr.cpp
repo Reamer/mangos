@@ -2224,7 +2224,7 @@ uint32 GetCharCountWithAccountId(uint32 accountId)
     return result->GetRowCount();
 }
 
-InventoryResult addItem(Player* pPlayer, uint32 anzahl, uint32 itemId) {
+bool addItem(Player* pPlayer, uint32 anzahl, uint32 itemId) {
     ItemPosCountVec dest;
     InventoryResult msg = pPlayer->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest,
             itemId, anzahl);
