@@ -219,7 +219,7 @@ public:
 
     uint32 GetMapId() const { return m_mapId; }
 
-    float GetHeightTerrainInfo(float x, float y, float z, bool pCheckVMap=true, float maxSearchDist=DEFAULT_HEIGHT_SEARCH) const;
+    float GetHeightStatic(float x, float y, float z, bool pCheckVMap=true, float maxSearchDist=DEFAULT_HEIGHT_SEARCH) const;
     float GetWaterLevel(float x, float y, float z, float* pGround = NULL) const;
     float GetWaterOrGroundLevel(float x, float y, float z, float* pGround = NULL, bool swim = false) const;
     bool IsInWater(float x, float y, float z, GridMapLiquidData *data = 0, float min_depth = 2.0f) const;

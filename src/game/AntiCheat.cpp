@@ -696,7 +696,7 @@ bool AntiCheat::CheckTp2Plane()
 
     float plane_z = 0.0f;
 
-    plane_z = GetMover()->GetMap()->GetHeight(GetMover()->GetPhaseMask(), m_currentmovementInfo->GetPos()->x, m_currentmovementInfo->GetPos()->y, MAX_HEIGHT) - m_currentmovementInfo->GetPos()->z;
+    plane_z = GetMover()->GetMap()->GetHeight(GetPlayer()->GetPhaseMask(),m_currentmovementInfo->GetPos()->x, m_currentmovementInfo->GetPos()->y, MAX_HEIGHT) - m_currentmovementInfo->GetPos()->z;
     plane_z = (plane_z < -500.0f) ? 0 : plane_z; //check holes in heigth map
     if(plane_z < m_currentConfig->checkFloatParam[1] && plane_z > -m_currentConfig->checkFloatParam[1])
             return true;
