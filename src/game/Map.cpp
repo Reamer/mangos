@@ -2229,13 +2229,17 @@ bool Map::IsInLineOfSight(float srcX, float srcY, float srcZ, float destX, float
         && m_dyn_tree.isInLineOfSight(srcX, srcY, srcZ, destX, destY, destZ, phasemask);
 }
 
+/**
+test if we hit an object. return true if we hit one. rx, ry, rz will hold the hit position or the dest position, if no intersection was found
+return a position, that is pReduceDist closer to the origin
+*/
 // return HitPosition in dest point
 bool Map::GetHitPosition(float srcX, float srcY, float srcZ, float& destX, float& destY, float& destZ, uint32 phasemask, float modifyDist) const
 {
     // at first check all static objects
     float tempX, tempY, tempZ = 0.0f;
     bool result0 = VMAP::VMapFactory::createOrGetVMapManager()->getObjectHitPos(GetId(), srcX, srcY, srcZ, destX, destY, destZ, tempX, tempY, tempZ, modifyDist);
-    if (!result0)
+    if (result0)
     {
         DEBUG_LOG("Map::GetHitPosition vmaps corrects gained with static objects! new dest coords are X:%f Y:%f Z:%f",destX, destY, destZ);
         destX = tempX;
@@ -2244,14 +2248,14 @@ bool Map::GetHitPosition(float srcX, float srcY, float srcZ, float& destX, float
     }
     // at second all dynamic objects, if static check has an hit, then we can calculate only to this point and NOT to end, because we need closely hit point
     bool result1 = m_dyn_tree.getObjectHitPos(phasemask, srcX, srcY, srcZ, destX, destY, destZ, tempX, tempY, tempZ, modifyDist);
-    if (!result1)
+    if (result1)
     {
         DEBUG_LOG("Map::GetHitPosition vmaps corrects gained with dynamic objects! new dest coords are X:%f Y:%f Z:%f",destX, destY, destZ);
         destX = tempX;
         destY = tempY;
         destZ = tempZ;
     }
-    return result0 && result1;
+    return result0 || result1;
 }
 
 float Map::GetHeight(uint32 phasemask, float x, float y, float z, bool pCheckVMap/*=true*/, float maxSearchDist/*=DEFAULT_HEIGHT_SEARCH*/) const
