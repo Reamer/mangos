@@ -2237,12 +2237,8 @@ bool addItem(Player* pPlayer, uint32 anzahl, uint32 itemId) {
 }
 
 void HandleLoseNPC(Player* pPlayer, std::string code) {
-    QueryResult* result = CharacterDatabase.PQuery(
-            "SELECT itemID, itemCount FROM cyber_lose WHERE code = \"%s\";",
-            code.c_str());
-    if (!result) {
-        pPlayer->MonsterSay("Ich sollte meinen Code überprüfen.", LANG_UNIVERSAL);
-    } else {
+    QueryResult* result = CharacterDatabase.PQuery("SELECT itemID, itemCount FROM cyber_lose WHERE code = \"%s\";",code.c_str());
+    if (result) {
         std::list<uint32> itemsWithMistakes;
         do {
             Field* field = result->Fetch();
@@ -2254,9 +2250,8 @@ void HandleLoseNPC(Player* pPlayer, std::string code) {
             }
             else
             {
-                // TODO: delete from DB
+                CharacterDatabase.PExecute("DELETE FROM cyber_lose WHERE code =  \"%s\" AND itemID = %u;", code.c_str(), itemId);
             }
-            delete field;
         } while (result->NextRow());
 
         if (!itemsWithMistakes.empty()) {
@@ -2269,6 +2264,11 @@ void HandleLoseNPC(Player* pPlayer, std::string code) {
             }
         }
         itemsWithMistakes.clear();
+        delete result;
+    }
+    else
+    {
+        pPlayer->MonsterSay("Ich sollte meinen Code überprüfen.", LANG_UNIVERSAL);
     }
 }
 
