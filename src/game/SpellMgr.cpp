@@ -3344,13 +3344,6 @@ void SpellMgr::LoadSpellPetAuras()
                 continue;
             }
 
-            if (spellInfo->Effect[eff] != SPELL_EFFECT_DUMMY &&
-               (spellInfo->Effect[eff] != SPELL_EFFECT_APPLY_AURA ||
-                spellInfo->EffectApplyAuraName[eff] != SPELL_AURA_DUMMY))
-            {
-                DEBUG_LOG("PetAuras load: Spell %u listed in `spell_pet_auras` does not have dummy aura or dummy effect", spell);
-            }
-
             SpellEntry const* spellInfo2 = sSpellStore.LookupEntry(aura);
             if (!spellInfo2)
             {
@@ -4890,7 +4883,11 @@ SpellEntry const* GetSpellEntryByDifficulty(uint32 id, Difficulty difficulty, bo
     spellDiff->spellId[RAID_DIFFICULTY_10MAN_HEROIC],
     spellDiff->spellId[RAID_DIFFICULTY_25MAN_HEROIC]);
 
-    for (Difficulty diff = difficulty; diff >= REGULAR_DIFFICULTY; diff = GetPrevDifficulty(diff, isRaid))
+
+    SpellEntry const* spellInfo = sSpellStore.LookupEntry(spellDiff->spellId[RAID_DIFFICULTY_10MAN_NORMAL]);
+    bool _isRaid = spellInfo ? (spellInfo->HasAttribute(SPELL_ATTR_EX6_NORMAL_DIFFICULTY) ? false : isRaid) : isRaid;
+
+    for (Difficulty diff = difficulty; diff >= REGULAR_DIFFICULTY; diff = GetPrevDifficulty(diff, _isRaid))
     {
         if (spellDiff->spellId[diff])
             return sSpellStore.LookupEntry(spellDiff->spellId[diff]);
@@ -4942,4 +4939,56 @@ bool IsEffectCauseDamage(SpellEntry const *spellInfo, SpellEffectIndex effecIdx)
         default:
             return true;
     }
+}
+
+SpellPreferredTargetType GetPreferredTargetForSpell(SpellEntry const* spellInfo)
+{
+    if (!spellInfo)
+        return SPELL_PREFERRED_TARGET_SELF;
+
+    if (IsSpellWithCasterSourceTargetsOnly(spellInfo))
+        return SPELL_PREFERRED_TARGET_SELF;
+
+    bool positive = IsExplicitPositiveTarget(spellInfo->Id) || IsPositiveSpell(spellInfo);
+
+    if (IsAreaOfEffectSpell(spellInfo))
+        return positive ? SPELL_PREFERRED_TARGET_SELF : SPELL_PREFERRED_TARGET_VICTIM;
+
+    uint32 firstTarget = spellInfo->EffectImplicitTargetA[EFFECT_INDEX_0];
+
+    if (!IsSpellCauseDamage(spellInfo) && firstTarget == TARGET_DUELVSPLAYER)
+        return SPELL_PREFERRED_TARGET_RANDOM;
+
+    if (positive)
+    {
+        switch (firstTarget)
+        {
+            case TARGET_MASTER:
+                return SPELL_PREFERRED_TARGET_OWNER;
+            case TARGET_SINGLE_FRIEND_2:
+                return SPELL_PREFERRED_TARGET_FRIEND;
+            default:
+                break;
+        }
+
+        if (IsCasterSourceTarget(firstTarget))
+            return SPELL_PREFERRED_TARGET_SELF;
+
+        if (IsSpellAppliesAura(spellInfo))
+            return HasAreaAuraEffect(spellInfo) ? SPELL_PREFERRED_TARGET_SELF : SPELL_PREFERRED_TARGET_FRIEND;
+
+        return SPELL_PREFERRED_TARGET_SELF;
+    }
+    else
+    {
+        if (IsCasterSourceTarget(firstTarget))
+            return SPELL_PREFERRED_TARGET_SELF;
+
+        if (IsSpellCauseDamage(spellInfo))
+            return SPELL_PREFERRED_TARGET_VICTIM;
+
+        return SPELL_PREFERRED_TARGET_ENEMY;
+    }
+
+    return SPELL_PREFERRED_TARGET_SELF;
 }

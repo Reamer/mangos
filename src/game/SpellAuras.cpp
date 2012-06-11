@@ -11229,6 +11229,19 @@ void SpellAuraHolder::HandleSpellSpecificBoosts(bool apply)
         }
     }
 
+    // pet auras add (effects not checked! must be checked at load from DB)
+    for (int32 i = 0; i < MAX_EFFECT_INDEX; ++i)
+    {
+        if (PetAura const* petSpell = sSpellMgr.GetPetAura(GetId(), SpellEffectIndex(i)))
+        {
+            if (apply)
+                m_target->AddPetAura(petSpell);
+            else
+                m_target->RemovePetAura(petSpell);
+        }
+    }
+
+    linkedSet.clear();
     if (!apply)
     {
         // Linked spells (CastOnRemove chain)
