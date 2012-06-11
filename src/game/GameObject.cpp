@@ -166,7 +166,7 @@ bool GameObject::Create(uint32 guidlow, uint32 name_id, Map *map, uint32 phaseMa
     SetEntry(goinfo->id);
     SetDisplayId(goinfo->displayId);
 
-    m_model = GameObjectModel::construct(*this);
+    m_model = GameObjectModel::construct(this);
     // GAMEOBJECT_BYTES_1, index at 0, 1, 2 and 3
     SetGoState(go_state);
     SetGoType(GameobjectTypes(goinfo->type));
@@ -2312,7 +2312,7 @@ void GameObject::UpdateModel()
         if (GetMap()->ContainsGameObjectModel(*m_model))
             GetMap()->RemoveGameObjectModel(*m_model);
     delete m_model;
-    m_model = GameObjectModel::construct(*this);
+    m_model = GameObjectModel::construct(this);
     if (m_model)
         GetMap()->InsertGameObjectModel(*m_model);
 }

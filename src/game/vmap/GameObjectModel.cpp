@@ -74,9 +74,9 @@ GameObjectModel::~GameObjectModel()
         ((VMAP::VMapManager2*)VMAP::VMapFactory::createOrGetVMapManager())->releaseModelInstance(name);
 }
 
-bool GameObjectModel::initialize(const GameObject& go, const GameObjectDisplayInfoEntry& info)
+bool GameObjectModel::initialize(const GameObject* const pGo, const GameObjectDisplayInfoEntry* const pDisplayInfo)
 {
-    ModelList::const_iterator it = model_list.find(info.Displayid);
+    ModelList::const_iterator it = model_list.find(pDisplayInfo->Displayid);
     if (it == model_list.end())
         return false;
 
@@ -94,15 +94,12 @@ bool GameObjectModel::initialize(const GameObject& go, const GameObjectDisplayIn
         return false;
 
     name = it->second.name;
-    //flags = VMAP::MOD_M2;
-    //adtId = 0;
-    //ID = 0;
-    iPos = Vector3(go.GetPositionX(),go.GetPositionY(),go.GetPositionZ());
-    phasemask = go.GetPhaseMask();
-    iScale = go.GetObjectScale();
+    iPos = Vector3(pGo->GetPositionX(),pGo->GetPositionY(),pGo->GetPositionZ());
+    phasemask = pGo->GetPhaseMask();
+    iScale = pGo->GetObjectScale();
     iInvScale = 1.f/iScale;
 
-    G3D::Matrix3 iRotation = G3D::Matrix3::fromEulerAnglesZYX(go.GetOrientation(), 0, 0);
+    G3D::Matrix3 iRotation = G3D::Matrix3::fromEulerAnglesZYX(pGo->GetOrientation(), 0, 0);
     iInvRot = iRotation.inverse();
     // transform bounding box:
     mdl_box = AABox(mdl_box.low() * iScale, mdl_box.high() * iScale);
@@ -117,7 +114,7 @@ bool GameObjectModel::initialize(const GameObject& go, const GameObjectDisplayIn
     for (int i = 0; i < 8; ++i)
     {
         Vector3 pos(iBound.corner(i));
-        if (Creature * c = const_cast<GameObject&>(go).SummonCreature(24440, pos.x, pos.y, pos.z, 0, TEMPSUMMON_MANUAL_DESPAWN, 0))
+        if (Creature * c = const_cast<GameObject*>(pGo)->SummonCreature(24440, pos.x, pos.y, pos.z, 0, TEMPSUMMON_MANUAL_DESPAWN, 0))
         {
             c->setFaction(35);
             c->SetObjectScale(0.1f);
@@ -128,14 +125,14 @@ bool GameObjectModel::initialize(const GameObject& go, const GameObjectDisplayIn
     return true;
 }
 
-GameObjectModel* GameObjectModel::construct(const GameObject & go)
+GameObjectModel* GameObjectModel::construct(const GameObject* const pGo)
 {
-    const GameObjectDisplayInfoEntry* info = sGameObjectDisplayInfoStore.LookupEntry(go.GetDisplayId());
+    const GameObjectDisplayInfoEntry* info = sGameObjectDisplayInfoStore.LookupEntry(pGo->GetDisplayId());
     if (!info)
         return NULL;
 
     GameObjectModel* mdl = new GameObjectModel();
-    if (!mdl->initialize(go, *info))
+    if (!mdl->initialize(pGo, info))
     {
         delete mdl;
         return NULL;

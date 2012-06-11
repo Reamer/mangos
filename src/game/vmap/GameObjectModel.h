@@ -46,7 +46,7 @@ class GameObjectModel
     VMAP::WorldModel *iModel;
 
     GameObjectModel() : phasemask(0), iModel(NULL) {}
-    bool initialize(const GameObject & go, const GameObjectDisplayInfoEntry& info);
+    bool initialize(const GameObject* const pGo, const GameObjectDisplayInfoEntry* info);
 
 public:
     std::string name;
@@ -63,6 +63,6 @@ public:
 
     bool intersectRay(const G3D::Ray& Ray, float& MaxDist, bool StopAtFirstHit, uint32 ph_mask) const;
 
-    static GameObjectModel* construct(const GameObject & go);
+    static GameObjectModel* construct(const GameObject* const pGo);
 };
 #endif

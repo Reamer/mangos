@@ -25,7 +25,6 @@
 #include "GridDefines.h"
 #include "Object.h"
 #include "SharedDefines.h"
-#include "vmap/DynamicTree.h"
 
 #include <bitset>
 #include <list>

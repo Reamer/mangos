@@ -31,7 +31,6 @@
 #include "World.h"
 #include "Policies/SingletonImp.h"
 #include "Util.h"
-#include "vmap/GameObjectModel.h"
 
 char const* MAP_MAGIC         = "MAPS";
 char const* MAP_VERSION_MAGIC = "v1.2";
