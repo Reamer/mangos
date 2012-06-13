@@ -2230,8 +2230,8 @@ bool Map::IsInLineOfSight(float srcX, float srcY, float srcZ, float destX, float
 }
 
 /**
-test if we hit an object. return true if we hit one. rx, ry, rz will hold the hit position or the dest position, if no intersection was found
-return a position, that is pReduceDist closer to the origin
+test if we hit an object. return true if we hit one. the dest position will hold the orginal dest position or the possible hit position
+return true if we hit something
 */
 // return HitPosition in dest point
 bool Map::GetHitPosition(float srcX, float srcY, float srcZ, float& destX, float& destY, float& destZ, uint32 phasemask, float modifyDist) const

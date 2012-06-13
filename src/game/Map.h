@@ -362,6 +362,7 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
         //Shared geodata object with map coord info...
         TerrainInfo* const m_TerrainData;
         DynamicMapTree m_dyn_tree;
+
         bool m_bLoadedGrids[MAX_NUMBER_OF_GRIDS][MAX_NUMBER_OF_GRIDS];
 
         std::bitset<TOTAL_NUMBER_OF_CELLS_PER_MAP*TOTAL_NUMBER_OF_CELLS_PER_MAP> marked_cells;

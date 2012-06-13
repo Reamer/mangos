@@ -177,9 +177,9 @@ If intersection is found within pMaxDist, sets pMaxDist to intersection distance
 Else, pMaxDist is not modified and returns false;
 */
 
-bool DynamicMapTree::getIntersectionTime(const uint32 phasemask, const G3D::Ray& ray, const Vector3& endPos, float& maxDist) const
+bool DynamicMapTree::getIntersectionTime(const uint32 phasemask, const G3D::Ray& ray, const Vector3& endPos, float& pMaxDist) const
 {
-    float distance = maxDist;
+    float distance = pMaxDist;
     DynamicTreeIntersectionCallback callback(phasemask);
     impl.intersectRay(ray, callback, distance, endPos);
     if (callback.didHit())
@@ -207,7 +207,7 @@ Return the hit pos or the original dest pos
 */
 bool DynamicMapTree::getObjectHitPos(const uint32 phasemask, const Vector3& pPos1, const Vector3& pPos2, Vector3& pResultHitPos, float pModifyDist) const
 {
-    bool result=false;
+    bool result = false;
     float maxDist = (pPos2 - pPos1).magnitude();
     // valid map coords should *never ever* produce float overflow, but this would produce NaNs too:
     MANGOS_ASSERT(maxDist < std::numeric_limits<float>::max());
