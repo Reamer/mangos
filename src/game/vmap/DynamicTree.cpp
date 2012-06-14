@@ -183,7 +183,7 @@ bool DynamicMapTree::getIntersectionTime(const uint32 phasemask, const G3D::Ray&
     DynamicTreeIntersectionCallback callback(phasemask);
     impl.intersectRay(ray, callback, distance, endPos);
     if (callback.didHit())
-        maxDist = distance;
+        pMaxDist = distance;
     return callback.didHit();
 }
 //=========================================================
