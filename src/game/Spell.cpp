@@ -2001,6 +2001,10 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                     if (Unit* realCaster = GetAffectiveCaster())
                         radius = realCaster->GetObjectScale() * 6;
                     break;
+                case 56438:                                 // Arcane Overload
+                    if (Unit* realCaster = GetAffectiveCaster())
+                        radius = radius * realCaster->GetObjectScale();
+                    break;
                 default:
                     break;
             }
