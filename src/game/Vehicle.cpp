@@ -104,6 +104,29 @@ bool VehicleKit::HasEmptySeat(int8 seatId) const
     return !seat->second.passenger;
 }
 
+int8 VehicleKit::GetNextEmptySeat(int8 seatId, bool next) const
+{
+
+    if (m_Seats.empty() || seatId >= MAX_VEHICLE_SEAT)
+        return -1;
+
+
+    if (next)
+    {
+        for (SeatMap::const_iterator seat = m_Seats.begin(); seat != m_Seats.end(); ++seat)
+            if ((seatId < 0 || seat->first >= seatId) && !seat->second.passenger)
+                return seat->first;
+    }
+    else
+    {
+        for (SeatMap::const_reverse_iterator seat = m_Seats.rbegin(); seat != m_Seats.rend(); ++seat)
+            if ((seatId < 0 || seat->first <= seatId) && !seat->second.passenger)
+                return seat->first;
+    }
+
+    return -1;
+}
+
 Unit *VehicleKit::GetPassenger(int8 seatId) const
 {
     SeatMap::const_iterator seat = m_Seats.find(seatId);
@@ -114,7 +137,7 @@ Unit *VehicleKit::GetPassenger(int8 seatId) const
     return seat->second.passenger;
 }
 
-int8 VehicleKit::GetNextEmptySeat(int8 seatId, bool next) const
+int8 VehicleKit::GetNextEmptySeatWithUsableCheck(int8 seatId, bool next) const
 {
 
     if (m_Seats.empty() || seatId >= MAX_VEHICLE_SEAT)
@@ -128,7 +151,14 @@ int8 VehicleKit::GetNextEmptySeat(int8 seatId, bool next) const
     {
         return 0;
     }
-
+    /*  NPC                     NPC-Entry       Spellid     VehicleId       VehicleFlag     SeatId      SeatFlag
+        Vortex                  30090           55853       214             0x40000003      2187        0x41006447
+        Mutated Abomination     37672                       591             0x60108020      6966        0x68108A20
+        Mutated Abomination     38285                       591             0x60108020      6966        0x68108A20
+        Val'kyr Shadowguard     36609                       532             0x3FFDEFD9      6186        0x0842800A
+        Strangulate Vehicle     36598                       531             0x40001027      6166        0x00002003
+        High Overlord Saurfang  37187                       599             0x40000000      7146        0x00120003
+        */
     if (next)
     {
         for (SeatMap::const_iterator seat = m_Seats.begin(); seat != m_Seats.end(); ++seat)

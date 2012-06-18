@@ -77,8 +77,9 @@ class MANGOS_DLL_SPEC VehicleKit
         void InstallAccessoryWithSpecificEntry(uint32 entry, uint32 accessoryEntry);
 
         bool HasEmptySeat(int8 seatId) const;
-        Unit *GetPassenger(int8 seatId) const;
         int8 GetNextEmptySeat(int8 seatId, bool next) const;
+        Unit *GetPassenger(int8 seatId) const;
+        int8 GetNextEmptySeatWithUsableCheck(int8 seatId, bool next) const;
         bool AddPassenger(Unit *passenger, int8 seatId = -1);
         void RemovePassenger(Unit *passenger, bool dismount = false);
         void RelocatePassengers(float x, float y, float z, float ang);
