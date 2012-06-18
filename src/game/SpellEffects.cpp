@@ -6572,12 +6572,11 @@ void Spell::DoSummonWild(SpellEffectIndex eff_idx, uint32 forceFaction)
     for(int32 count = 0; count < amount; ++count)
     {
         float px, py, pz;
-        bool checkPath = false;
         // If dest location if present
         if (m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION)
         {
             // Summon 1 unit in dest location
-            if (count == 0)
+            if (count == 0 && m_spellInfo->EffectImplicitTargetB[eff_idx] != TARGET_RANDOM_NEARBY_DEST)
             {
                 px = m_targets.m_destX;
                 py = m_targets.m_destY;
@@ -6587,7 +6586,8 @@ void Spell::DoSummonWild(SpellEffectIndex eff_idx, uint32 forceFaction)
             else
             {
                 m_caster->GetRandomPoint(center_x, center_y, center_z, radius, px, py, pz);
-                checkPath = true;
+                m_caster->GetMap()->GetHitPosition(center_x,center_y,center_z, px, py, pz, m_caster->GetPhaseMask(),-0.1f);
+                m_caster->UpdateAllowedPositionZ(px,py,pz);
             }
         }
         // Summon if dest location not present near caster
@@ -6597,7 +6597,10 @@ void Spell::DoSummonWild(SpellEffectIndex eff_idx, uint32 forceFaction)
             {
                 // not using bounding radius of caster here
                 m_caster->GetClosePoint(px, py, pz, 0.0f, radius);
-                checkPath = true;
+                float ox, oy, oz;
+                m_caster->GetPosition(ox, oy, oz);
+                m_caster->GetMap()->GetHitPosition(ox,oy,oz, px, py, pz, m_caster->GetPhaseMask(),-0.1f);
+                m_caster->UpdateAllowedPositionZ(px,py,pz);
             }
             else
             {
@@ -6606,14 +6609,6 @@ void Spell::DoSummonWild(SpellEffectIndex eff_idx, uint32 forceFaction)
                 py = m_caster->GetPositionY();
                 pz = m_caster->GetPositionZ();
             }
-        }
-
-        if (checkPath)
-        {
-            float ox, oy, oz;
-            m_caster->GetPosition(ox, oy, oz);
-            m_caster->GetMap()->GetHitPosition(ox,oy,oz, px, py, pz, m_caster->GetPhaseMask(),-0.1f);
-            m_caster->UpdateAllowedPositionZ(px,py,pz);
         }
 
         if (Creature* summon = m_caster->SummonCreature(creature_entry, px, py, pz, m_caster->GetOrientation(), summonType, m_duration))

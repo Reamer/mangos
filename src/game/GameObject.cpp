@@ -2031,6 +2031,7 @@ void GameObject::DamageTaken(Unit* pDoneBy, uint32 damage, uint32 spellId)
             RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_DAMAGED);
             SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_DESTROYED);
             SetDisplayId(m_goInfo->destructibleBuilding.destroyedDisplayId);
+            EnableCollision(false);
             GetMap()->ScriptsStart(sEventScripts, m_goInfo->destructibleBuilding.destroyedEvent, pDoneBy, this);
             if (pWho)
             {
@@ -2074,6 +2075,7 @@ void GameObject::Rebuild(Unit* pWho)
 
     RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_DAMAGED | GO_FLAG_DESTROYED);
     SetDisplayId(m_goInfo->displayId);
+    EnableCollision(true);
     m_health = GetMaxHealth();
     GetMap()->ScriptsStart(sEventScripts, m_goInfo->destructibleBuilding.rebuildingEvent, pWho, this);
 
