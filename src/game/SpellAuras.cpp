@@ -7222,6 +7222,7 @@ void Aura::HandleAuraModIncreaseHealthPercent(bool apply, bool /*Real*/)
             case 64193:                                         // Heartbreak
             case 65737:                                         // Heartbreak
             case 64582:                                         // Emergency Mode (Ulduar - Mimiron)
+            case 100010:                                        // Cyber Ini Buff
                 target->SetHealth(target->GetMaxHealth());
                 break;
             default:
