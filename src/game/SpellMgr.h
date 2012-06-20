@@ -1248,6 +1248,7 @@ class SpellMgr
 
         static bool IsGroupBuff(SpellEntry const *spellInfo);
         static bool IsStackableSpellAuraHolder(SpellEntry const *spellInfo);
+        static bool IsTargetMatchedWithCreatureType(SpellEntry const* spellInfo, Unit* pTarget);
 
         SpellEntry const* SelectAuraRankForLevel(SpellEntry const* spellInfo, uint32 Level) const;
 

@@ -22672,7 +22672,13 @@ void Player::UpdateUnderwaterState( Map* m, float x, float y, float z )
             {
                 if (!HasAura(liquid->SpellId))
                 {
-                    CastSpell(this, liquid->SpellId, true);
+                    if (SpellEntry* pSpellEntry = sSpellStore.LookupEntry(liquid->SpellId))
+                    {
+                        if (sSpellMgr.IsTargetMatchedWithCreatureType(pSpellEntry, this))
+                        {
+                            CastSpell(this, pSpellEntry, true);
+                        }
+                    }
                 }
             }
             else
