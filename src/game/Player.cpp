@@ -22660,37 +22660,47 @@ void Player::UpdateUnderwaterState( Map* m, float x, float y, float z )
         return;
     }
     
-    if (uint32 liqEntry = liquid_status.entry)
+    //TODO: Find a better Method for adding special liquid-Auras to vehicle
+    std::list<Unit*> targetList;
+    targetList.push_back(this);
+    if (GetVehicle())
     {
-        LiquidTypeEntry const* liquid = sLiquidTypeStore.LookupEntry(liqEntry);
-        if (m_lastLiquid && m_lastLiquid->SpellId && m_lastLiquid->Id != liqEntry)
-            RemoveAurasDueToSpell(m_lastLiquid->SpellId);
-
-        if (liquid && liquid->SpellId)
+        targetList.push_back(GetVehicle()->GetBase());
+    }
+    for (std::list<Unit*>::const_iterator iter = targetList.begin(); iter != targetList.end(); ++iter)
+    {
+        Unit* pTarget = *iter;
+        if (uint32 liqEntry = liquid_status.entry)
         {
-            if (res & (LIQUID_MAP_UNDER_WATER | LIQUID_MAP_IN_WATER))
+            LiquidTypeEntry const* liquid = sLiquidTypeStore.LookupEntry(liqEntry);
+            if (m_lastLiquid && m_lastLiquid->SpellId && m_lastLiquid->Id != liqEntry)
+                pTarget->RemoveAurasDueToSpell(m_lastLiquid->SpellId);
+
+            if (liquid && liquid->SpellId)
             {
-                if (!HasAura(liquid->SpellId))
+                if (res & (LIQUID_MAP_UNDER_WATER | LIQUID_MAP_IN_WATER))
                 {
-                    if (SpellEntry const *pSpellEntry = sSpellStore.LookupEntry(liquid->SpellId))
+                    if (!pTarget->HasAura(liquid->SpellId))
                     {
-                        if (sSpellMgr.IsTargetMatchedWithCreatureType(pSpellEntry, this))
+                        if (SpellEntry const *pSpellEntry = sSpellStore.LookupEntry(liquid->SpellId))
                         {
-                            CastSpell(this, pSpellEntry, true);
+                            if (sSpellMgr.IsTargetMatchedWithCreatureType(pSpellEntry, pTarget))
+                            {
+                                pTarget->CastSpell(pTarget, pSpellEntry, true);
+                            }
                         }
                     }
                 }
+                else
+                    pTarget->RemoveAurasDueToSpell(liquid->SpellId);
             }
-            else
-                RemoveAurasDueToSpell(liquid->SpellId);
+            m_lastLiquid = liquid;
         }
-
-        m_lastLiquid = liquid;
-    }
-    else if (m_lastLiquid && m_lastLiquid->SpellId)
-    {
-        RemoveAurasDueToSpell(m_lastLiquid->SpellId);
-        m_lastLiquid = NULL;
+        else if (m_lastLiquid && m_lastLiquid->SpellId)
+        {
+            pTarget->RemoveAurasDueToSpell(m_lastLiquid->SpellId);
+            m_lastLiquid = NULL;
+        }
     }
 
 
