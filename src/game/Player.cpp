@@ -22655,54 +22655,79 @@ void Player::UpdateUnderwaterState( Map* m, float x, float y, float z )
     {
         m_MirrorTimerFlags &= ~(UNDERWATER_INWATER | UNDERWATER_INLAVA | UNDERWATER_INSLIME | UNDERWATER_INDARKWATER);
         if (m_lastLiquid && m_lastLiquid->SpellId)
+        {
             RemoveAurasDueToSpell(m_lastLiquid->SpellId);
+            if (GetVehicle() && GetVehicle()->GetBase())
+            {
+                GetVehicle()->GetBase()->RemoveAurasDueToSpell(m_lastLiquid->SpellId);
+            }
+        }
         m_lastLiquid = NULL;
         return;
     }
     
-    //TODO: Find a better Method for adding special liquid-Auras to vehicle
-    std::list<Unit*> targetList;
-    targetList.push_back(this);
-    if (GetVehicle())
+    if (uint32 liqEntry = liquid_status.entry)
     {
-        targetList.push_back(GetVehicle()->GetBase());
-    }
-    for (std::list<Unit*>::const_iterator iter = targetList.begin(); iter != targetList.end(); ++iter)
-    {
-        Unit* pTarget = *iter;
-        if (uint32 liqEntry = liquid_status.entry)
-        {
-            LiquidTypeEntry const* liquid = sLiquidTypeStore.LookupEntry(liqEntry);
-            if (m_lastLiquid && m_lastLiquid->SpellId && m_lastLiquid->Id != liqEntry)
-                pTarget->RemoveAurasDueToSpell(m_lastLiquid->SpellId);
+        LiquidTypeEntry const* liquid = sLiquidTypeStore.LookupEntry(liqEntry);
 
-            if (liquid && liquid->SpellId)
+        // Player change LiquidTypeEntry
+        if (m_lastLiquid && m_lastLiquid->SpellId && m_lastLiquid->Id != liqEntry)
+        {
+            RemoveAurasDueToSpell(m_lastLiquid->SpellId);
+            if (GetVehicle() && GetVehicle()->GetBase())
             {
-                if (res & (LIQUID_MAP_UNDER_WATER | LIQUID_MAP_IN_WATER))
+                GetVehicle()->GetBase()->RemoveAurasDueToSpell(m_lastLiquid->SpellId);
+            }
+        }
+
+
+        if (liquid && liquid->SpellId)
+        {
+            if (res & (LIQUID_MAP_UNDER_WATER | LIQUID_MAP_IN_WATER))
+            {
+                if (SpellEntry const *pSpellEntry = sSpellStore.LookupEntry(liquid->SpellId))
                 {
-                    if (!pTarget->HasAura(liquid->SpellId))
+                    // check aura for no double cast
+                    if (!HasAura(liquid->SpellId))
                     {
-                        if (SpellEntry const *pSpellEntry = sSpellStore.LookupEntry(liquid->SpellId))
+                        if (sSpellMgr.IsTargetMatchedWithCreatureType(pSpellEntry, this))
                         {
-                            if (sSpellMgr.IsTargetMatchedWithCreatureType(pSpellEntry, pTarget))
+                            CastSpell(this, pSpellEntry, true);
+                        }
+                    }
+                    if (GetVehicle() && GetVehicle()->GetBase())
+                    {
+                        if (!GetVehicle()->GetBase()->HasAura(liquid->SpellId))
+                        {
+                            if (sSpellMgr.IsTargetMatchedWithCreatureType(pSpellEntry, GetVehicle()->GetBase()))
                             {
-                                pTarget->CastSpell(pTarget, pSpellEntry, true);
+                                GetVehicle()->GetBase()->CastSpell(GetVehicle()->GetBase(), pSpellEntry, true);
                             }
                         }
                     }
                 }
-                else
-                    pTarget->RemoveAurasDueToSpell(liquid->SpellId);
             }
-            m_lastLiquid = liquid;
+            else
+            {
+                // Player is above Water or walk on Water
+                RemoveAurasDueToSpell(liquid->SpellId);
+                if (GetVehicle() && GetVehicle()->GetBase())
+                {
+                    GetVehicle()->GetBase()->RemoveAurasDueToSpell(liquid->SpellId);
+                }
+            }
         }
-        else if (m_lastLiquid && m_lastLiquid->SpellId)
+        m_lastLiquid = liquid;
+    }
+    else if (m_lastLiquid && m_lastLiquid->SpellId)
+    {
+        // Player change to no specific LiquidEntry (= 0)
+        RemoveAurasDueToSpell(m_lastLiquid->SpellId);
+        if (GetVehicle() && GetVehicle()->GetBase())
         {
-            pTarget->RemoveAurasDueToSpell(m_lastLiquid->SpellId);
-            m_lastLiquid = NULL;
+            GetVehicle()->GetBase()->RemoveAurasDueToSpell(m_lastLiquid->SpellId);
         }
     }
-
 
     // All liquids type - check under water position
     if (liquid_status.type_flags&(MAP_LIQUID_TYPE_WATER | MAP_LIQUID_TYPE_OCEAN | MAP_LIQUID_TYPE_MAGMA | MAP_LIQUID_TYPE_SLIME))
