@@ -118,7 +118,6 @@ int8 VehicleKit::GetNextEmptySeatWithFlag(int8 seatId, bool next /*= true*/, uin
     if (m_Seats.empty() || seatId >= MAX_VEHICLE_SEAT)
         return -1;
 
-
     if (next)
     {
         for (SeatMap::const_iterator seat = m_Seats.begin(); seat != m_Seats.end(); ++seat)

@@ -2464,7 +2464,6 @@ bool SpellMgr::IsGroupBuff(SpellEntry const *spellInfo)
     return false;
 }
 
-
 bool SpellMgr::IsTargetMatchedWithCreatureType(SpellEntry const* pSpellInfo, Unit* pTarget)
 {
     uint32 spellCreatureTargetMask = pSpellInfo->TargetCreatureType;

@@ -22665,7 +22665,7 @@ void Player::UpdateUnderwaterState( Map* m, float x, float y, float z )
         m_lastLiquid = NULL;
         return;
     }
-    
+
     if (uint32 liqEntry = liquid_status.entry)
     {
         LiquidTypeEntry const* liquid = sLiquidTypeStore.LookupEntry(liqEntry);
@@ -22717,6 +22717,7 @@ void Player::UpdateUnderwaterState( Map* m, float x, float y, float z )
                 }
             }
         }
+
         m_lastLiquid = liquid;
     }
     else if (m_lastLiquid && m_lastLiquid->SpellId)
