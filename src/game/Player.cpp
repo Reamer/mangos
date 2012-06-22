@@ -22690,7 +22690,7 @@ void Player::UpdateUnderwaterState( Map* m, float x, float y, float z )
                     // check aura for no double cast
                     if (!HasAura(liquid->SpellId))
                     {
-                        if (sSpellMgr.IsTargetMatchedWithCreatureType(pSpellEntry, this))
+                        if (SpellMgr::IsTargetMatchedWithCreatureType(pSpellEntry, this))
                         {
                             CastSpell(this, pSpellEntry, true);
                         }
@@ -22699,7 +22699,7 @@ void Player::UpdateUnderwaterState( Map* m, float x, float y, float z )
                     {
                         if (!GetVehicle()->GetBase()->HasAura(liquid->SpellId))
                         {
-                            if (sSpellMgr.IsTargetMatchedWithCreatureType(pSpellEntry, GetVehicle()->GetBase()))
+                            if (SpellMgr::IsTargetMatchedWithCreatureType(pSpellEntry, GetVehicle()->GetBase()))
                             {
                                 GetVehicle()->GetBase()->CastSpell(GetVehicle()->GetBase(), pSpellEntry, true);
                             }
