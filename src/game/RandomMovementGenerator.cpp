@@ -36,6 +36,7 @@ void RandomMovementGenerator<Creature>::_setRandomLocation(Creature &creature)
     float destX = respX + range * cos(angle);
     float destY = respY + range * sin(angle);
     float destZ = creature.GetPositionZ();
+    creature.GetMap()->GetHitPosition(respX, respY, respZ, destX, destY, destZ, creature.GetPhaseMask(), 0.1f);
     creature.UpdateAllowedPositionZ(destX, destY, destZ);
 
     creature.addUnitState(UNIT_STAT_ROAMING_MOVE);
