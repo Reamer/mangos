@@ -8439,6 +8439,10 @@ void Aura::HandleSchoolAbsorb(bool apply, bool Real)
             uint32 trigger_spell_Id = GetId() == 62274 ? 62277 : 63967;
             target->CastSpell(target, trigger_spell_Id, true);
         }
+        // Shield of Light; Shield of Night
+        else if (spellProto->SpellDifficultyId == 422 || spellProto->SpellDifficultyId == 421){
+            GetTarget()->RemoveAurasDueToSpell(spellProto->Id);
+        }
     }
 }
 
