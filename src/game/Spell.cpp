@@ -8862,7 +8862,7 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
             FillAreaTargets(targetUnitMap, radius, PUSH_DEST_CENTER, SPELL_TARGETS_AOE_DAMAGE);
             break;
         }
-        case 65919: // Anub'arak Cast Check Ice Spell (Trial of the Crusader - Anub'arak)
+        /*case 65919: // Anub'arak Cast Check Ice Spell (Trial of the Crusader - Anub'arak)
         case 67858:
         case 67859:
         case 67860:
@@ -8909,7 +8909,7 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
                 }
             }
             break;
-        }
+        }*/
         case 68508: // Crushing Leap (IoC bosses)
         {
             UnitList tmpUnitMap;
