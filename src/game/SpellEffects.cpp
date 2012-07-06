@@ -7888,6 +7888,15 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                         unitTarget->CastSpell(unitTarget, 66334, true);
                     return;
                 }
+                case 466:                                           // Twin's Pact (dark) - Spells 65875 , 67303 , 67304 , 67305
+                case 467:                                           // Twin's Pact (light)- Spells 65876 , 67306 , 67307 , 67308
+                {
+                    if (!unitTarget)
+                        return;
+
+                    unitTarget->CastSpell(unitTarget, 65916, true);
+                    break;
+                }
                 case 581:                                           // Powering Up (Twin Val'kyrs) - Spells 67590 , 67602 , 67603 , 67604
                 {
                     if (!unitTarget)
