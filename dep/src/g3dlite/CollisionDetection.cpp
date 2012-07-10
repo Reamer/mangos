@@ -601,7 +601,7 @@ float CollisionDetection::penetrationDepthForFixedSphereFixedBox(
         float distanceFromLow  = -halfExtent[a] - center[a];
         float distanceFromHigh = center[a] - halfExtent[a];
 
-        if (fabs(distanceFromLow) < fabs(distanceFromHigh)) {
+        if (fabsf(distanceFromLow) < fabsf(distanceFromHigh)) {
             distOutsideBox[a] = distanceFromLow;
         } else {
             distOutsideBox[a] = distanceFromHigh;
@@ -690,7 +690,7 @@ float CollisionDetection::penetrationDepthForFixedSphereFixedBox(
             contactNormals.append(N);
 
             // Penetration depth:
-            depth = sphere.radius - sqrt(d2);
+            depth = sphere.radius - sqrtf(d2);
 
             // Compute the contact point from the penetration depth
             contactPoints.append(sphere.center + N * (sphere.radius - depth));
@@ -2267,7 +2267,7 @@ bool CollisionDetection::fixedSolidSphereIntersectsFixedTriangle(
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// AABB-triangle overlap test code based on Tomas Akenine-Mï¿½ï¿½ller's
+// AABB-triangle overlap test code based on Tomas Akenine-Möller's
 // http://www.cs.lth.se/home/Tomas_Akenine_Moller/code/tribox3.txt
 // Ported 2008-12-28
 
