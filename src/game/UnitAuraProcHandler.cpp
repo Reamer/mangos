@@ -136,7 +136,7 @@ pAuraProcHandler AuraProcHandler[TOTAL_AURAS]=
     &Unit::HandleNULLProc,                                  //101 SPELL_AURA_MOD_RESISTANCE_PCT
     &Unit::HandleNULLProc,                                  //102 SPELL_AURA_MOD_MELEE_ATTACK_POWER_VERSUS
     &Unit::HandleNULLProc,                                  //103 SPELL_AURA_MOD_TOTAL_THREAT
-    &Unit::HandleNULLProc,                                  //104 SPELL_AURA_WATER_WALK
+    &Unit::HandleRemoveByDamageProc,                        //104 SPELL_AURA_WATER_WALK
     &Unit::HandleNULLProc,                                  //105 SPELL_AURA_FEATHER_FALL
     &Unit::HandleNULLProc,                                  //106 SPELL_AURA_HOVER
     &Unit::HandleAddFlatModifierAuraProc,                   //107 SPELL_AURA_ADD_FLAT_MODIFIER
@@ -433,7 +433,28 @@ bool Unit::IsTriggeredAtSpellProcEvent(Unit *pVictim, SpellAuraHolderPtr holder,
         uint32 WeaponSpeed = GetAttackTime(attType);
         chance = GetPPMProcChance(WeaponSpeed, spellProcEvent->ppmRate);
     }
-    // Apply chance modifier aura
+
+    // some spells has direct chance modifiers in dummy auras
+    switch(spellProto->SpellFamilyName)
+    {
+        case SPELLFAMILY_SHAMAN:
+        {
+            if (spellProto->SpellFamilyFlags.test<CF_SHAMAN_EARTHLIVING_WEAPON_PASSIVE>())
+            {
+                // only if target has < 35% health
+                if (!pVictim || !pVictim->HasAuraState(AURA_STATE_HEALTHLESS_35_PERCENT))
+                    break;
+
+                // Blessing of the Eternals
+                if (Aura* modAura = GetAuraByEffectMask(SPELL_AURA_DUMMY,SPELLFAMILY_SHAMAN,spellProto->SpellFamilyFlags,GetObjectGuid()))
+                    chance += (float)modAura->GetModifier()->m_amount;
+                break;
+            }
+        }
+        break;
+    }
+
+    // Apply cumulative chance modifier auras
     if (Player* modOwner = GetSpellModOwner())
     {
         modOwner->ApplySpellMod(spellProto->Id,SPELLMOD_CHANCE_OF_SUCCESS,chance);
@@ -1616,6 +1637,16 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, DamageInfo* damageI
                 case 39437:
                 {
                     triggered_spell_id = 37378;
+                    break;
+                }
+                // Improved Felhunter (bad description in DBC for triggered aura!)
+                case 56249:
+                {
+                    target = this;
+                    triggered_spell_id = 54425;
+                    // mana gain amount (normal for aura 54037 and doubled for 54038)
+                    if (GetOwner() && GetOwner()->HasAura(54038))
+                        basepoints[0] = 8;
                     break;
                 }
                 // Siphon Life
@@ -4589,7 +4620,8 @@ SpellAuraProcResult Unit::HandleProcTriggerDamageAuraProc(Unit *pVictim, DamageI
         triggeredByAura->GetModifier()->m_amount, spellInfo->Id, triggeredByAura->GetModifier()->m_auraname, triggeredByAura->GetId());
 
     DamageInfo procDamageInfo(this, pVictim, spellInfo);
-    CalculateSpellDamage(&procDamageInfo, triggeredByAura->GetModifier()->m_amount, spellInfo);
+    procDamageInfo.damage = triggeredByAura->GetModifier()->m_amount;
+    CalculateSpellDamage(&procDamageInfo);
     procDamageInfo.target->CalculateAbsorbResistBlock(this, &procDamageInfo, spellInfo);
     DealDamageMods(procDamageInfo.target,procDamageInfo.damage,&procDamageInfo.absorb);
     SendSpellNonMeleeDamageLog(&procDamageInfo);
@@ -5236,6 +5268,8 @@ SpellAuraProcResult Unit::IsTriggeredAtCustomProcEvent(Unit *pVictim, SpellAuraH
 
             switch (auraName)
             {
+                // Removable by damage auras (same rules as for CC auras)
+                case SPELL_AURA_WATER_WALK:
                 // Crowd Control auras
                 case SPELL_AURA_MOD_CONFUSE:
                 case SPELL_AURA_MOD_FEAR:
@@ -5284,7 +5318,16 @@ SpellAuraProcResult Unit::IsTriggeredAtCustomProcEvent(Unit *pVictim, SpellAuraH
                         return SPELL_AURA_PROC_CANT_TRIGGER;
                 }
                 default:
+                {
+                // Default rules for all other auras.
+                    if (EventProcFlag || spellProcEvent)
+                        return SPELL_AURA_PROC_FAILED;
+                    else if ((procFlag & PROC_FLAG_TAKEN_ANY_DAMAGE) &&
+                        ((spellProto->AuraInterruptFlags & AURA_INTERRUPT_FLAG_DAMAGE) ||
+                        spellProto->HasAttribute(SPELL_ATTR_BREAKABLE_BY_DAMAGE)))
+                        return SPELL_AURA_PROC_OK;
                     break;
+                }
             }
 
         }
@@ -5312,7 +5355,7 @@ SpellAuraProcResult Unit::HandleDamageShieldAuraProc(Unit* pVictim, DamageInfo* 
     procDamageInfo.CleanDamage(0, 0, BASE_ATTACK, MELEE_HIT_NORMAL);
 
 
-    pVictim->CalculateDamageAbsorbAndResist(this, &procDamageInfo, !(spellProto->AttributesEx & SPELL_ATTR_EX_CANT_REFLECTED));
+    pVictim->CalculateDamageAbsorbAndResist(this, &procDamageInfo, !spellProto->HasAttribute(SPELL_ATTR_EX_CANT_REFLECTED));
 
     DealDamageMods(pVictim, procDamageInfo.damage, &procDamageInfo.absorb);
 
@@ -5361,7 +5404,7 @@ SpellAuraProcResult Unit::HandleRemoveByDamageChanceProc(Unit* pVictim, DamageIn
     if (!spellProto)
         return SPELL_AURA_PROC_FAILED;
 
-    if (spellProto->AuraInterruptFlags & AURA_INTERRUPT_FLAG_DAMAGE)
+    if (spellProto->AuraInterruptFlags & AURA_INTERRUPT_FLAG_DAMAGE || procEx & PROC_EX_IGNORE_CC)
         return HandleRemoveByDamageProc(pVictim, damageInfo, triggeredByAura, procSpell, procFlag, procEx, cooldown);
 
     if (triggeredByAura->IsAffectedByCrowdControlEffect(damageInfo->damage + damageInfo->absorb))

@@ -81,7 +81,10 @@ void GameObject::AddToWorld()
 {
     ///- Register the gameobject for guid lookup
     if(!IsInWorld())
+    {
+        MAPLOCK_WRITE(this, MAP_LOCK_TYPE_DEFAULT);
         GetMap()->GetObjectsStore().insert<GameObject>(GetObjectGuid(), (GameObject*)this);
+    }
 
     if (m_model)
         GetMap()->InsertGameObjectModel(*m_model);
@@ -112,6 +115,7 @@ void GameObject::RemoveFromWorld()
             if (GetMap()->ContainsGameObjectModel(*m_model))
                 GetMap()->RemoveGameObjectModel(*m_model);
 
+        MAPLOCK_WRITE(this, MAP_LOCK_TYPE_DEFAULT);
         GetMap()->GetObjectsStore().erase<GameObject>(GetObjectGuid(), (GameObject*)NULL);
     }
 
@@ -264,7 +268,7 @@ void GameObject::Update(uint32 update_diff, uint32 diff)
             // remove players who left capture point zone
             for (uint8 team = 0; team < PVP_TEAM_COUNT; ++team)
             {
-                ObjectGuidSet::iterator itr, next;
+                GuidSet::iterator itr, next;
                 for (itr = m_capturePlayers[team].begin(); itr != m_capturePlayers[team].end(); itr = next)
                 {
                     next = itr;
@@ -345,7 +349,7 @@ void GameObject::Update(uint32 update_diff, uint32 diff)
             // on retail this is also sent to newly added players even though they already received a capture tick value
             for (uint8 team = 0; team < PVP_TEAM_COUNT; ++team)
             {
-                for (ObjectGuidSet::iterator itr = m_capturePlayers[team].begin(); itr != m_capturePlayers[team].end(); ++itr)
+                for (GuidSet::iterator itr = m_capturePlayers[team].begin(); itr != m_capturePlayers[team].end(); ++itr)
                 {
                     Player* pPlayer = sObjectMgr.GetPlayer(*itr);
 
@@ -596,7 +600,7 @@ void GameObject::Update(uint32 update_diff, uint32 diff)
 
                 if (spellId)
                 {
-                    for (GuidsSet::const_iterator itr = m_UniqueUsers.begin(); itr != m_UniqueUsers.end(); ++itr)
+                    for (GuidSet::const_iterator itr = m_UniqueUsers.begin(); itr != m_UniqueUsers.end(); ++itr)
                     {
                         if (Player* owner = GetMap()->GetPlayer(*itr))
                             owner->CastSpell(owner, spellId, false, NULL, NULL, GetObjectGuid());
@@ -1211,6 +1215,8 @@ void GameObject::Use(Unit* user)
     }
 
     bool scriptReturnValue = user->GetTypeId() == TYPEID_PLAYER && sScriptMgr.OnGameObjectUse((Player*)user, this);
+    if (!scriptReturnValue)
+        GetMap()->ScriptsStart(sGameObjectTemplateScripts, GetEntry(), spellCaster, this);
 
     switch (GetGoType())
     {
@@ -2406,7 +2412,8 @@ float GameObject::GetObjectBoundingRadius() const
     // 1. This is clearly hack way because GameObjectDisplayInfoEntry have 6 floats related to GO sizes, but better that use DEFAULT_WORLD_OBJECT_SIZE
     // 2. In some cases this must be only interactive size, not GO size, current way can affect creature target point auto-selection in strange ways for big underground/virtual GOs
     if (m_displayInfo)
-        return fabs(m_displayInfo->minX) * GetObjectScale();
+//        return fabs(m_displayInfo->minX) * GetObjectScale();
+        return GetDeterminativeSize(false) * GetObjectScale();
 
     return DEFAULT_WORLD_OBJECT_SIZE;
 }

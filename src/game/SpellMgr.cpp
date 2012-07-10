@@ -830,6 +830,7 @@ bool IsPositiveEffect(SpellEntry const *spellproto, SpellEffectIndex effIndex)
                         case 27201:
                         case 27202:
                         case 27203:
+                        case 47669:
                             return true;
                         default:
                             break;
@@ -3220,8 +3221,8 @@ void SpellMgr::LoadSpellScriptTarget()
                 spellProto->EffectImplicitTargetB[i] == TARGET_AREAEFFECT_INSTANT ||
                 spellProto->EffectImplicitTargetA[i] == TARGET_AREAEFFECT_CUSTOM ||
                 spellProto->EffectImplicitTargetB[i] == TARGET_AREAEFFECT_CUSTOM ||
-                spellProto->EffectImplicitTargetA[i] == TARGET_OBJECT_AREA_SRC ||
-                spellProto->EffectImplicitTargetB[i] == TARGET_OBJECT_AREA_SRC ||
+                spellProto->EffectImplicitTargetA[i] == TARGET_AREAEFFECT_GO_AROUND_SOURCE ||
+                spellProto->EffectImplicitTargetB[i] == TARGET_AREAEFFECT_GO_AROUND_SOURCE ||
                 spellProto->EffectImplicitTargetA[i] == TARGET_AREAEFFECT_GO_AROUND_DEST ||
                 spellProto->EffectImplicitTargetB[i] == TARGET_AREAEFFECT_GO_AROUND_DEST)
             {
@@ -4662,6 +4663,13 @@ DiminishingGroup GetDiminishingReturnsGroupForSpell(SpellEntry const* spellproto
                 return DIMINISHING_FEAR_CHARM_BLIND;
             break;
         }
+        case SPELLFAMILY_SHAMAN:
+        {
+            // Earthgrab
+            if (spellproto->SpellFamilyFlags.test<CF_SHAMAN_EARTHGRAB>())
+                return DIMINISHING_LIMITONLY;
+            break;
+        }
         case SPELLFAMILY_WARLOCK:
         {
             // Curses/etc
@@ -4857,10 +4865,10 @@ bool SpellArea::IsFitToRequirements(Player const* player, uint32 newZone, uint32
             return false;
     }
 
-    if (raceMask)
+    if (player && raceMask)
     {
         // not in expected race
-        if(!player || !(raceMask & player->getRaceMask()))
+        if (!(raceMask & player->getRaceMask()))
             return false;
     }
 

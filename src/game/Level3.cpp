@@ -866,12 +866,13 @@ bool ChatHandler::HandleReloadGameObjectScriptsCommand(char* args)
     }
 
     if (*args!='a')
-        sLog.outString( "Re-Loading Scripts from `gameobject_scripts`...");
+        sLog.outString( "Re-Loading Scripts from `gameobject_[template]_scripts`...");
 
     sScriptMgr.LoadGameObjectScripts();
+    sScriptMgr.LoadGameObjectTemplateScripts();
 
     if (*args!='a')
-        SendGlobalSysMessage("DB table `gameobject_scripts` reloaded.");
+        SendGlobalSysMessage("DB table `gameobject_[template]_scripts` reloaded.");
 
     return true;
 }
@@ -3901,9 +3902,8 @@ bool ChatHandler::HandleDamageCommand(char* args)
         m_session->GetPlayer()->DealDamage(target, damage, NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
         if (target != m_session->GetPlayer())
         {
-            DamageInfo damageInfo  = DamageInfo(m_session->GetPlayer(), target);
-            damageInfo.damage      = damage;
-            damageInfo.HitInfo     = HITINFO_NORMALSWING2;
+            DamageInfo damageInfo  = DamageInfo(m_session->GetPlayer(), target, uint32(0), damage);
+            damageInfo.HitInfo     = HITINFO_AFFECTS_VICTIM;
             damageInfo.TargetState = VICTIMSTATE_NORMAL;
             m_session->GetPlayer()->SendAttackStateUpdate(&damageInfo);
         }
@@ -3930,11 +3930,10 @@ bool ChatHandler::HandleDamageCommand(char* args)
     // melee damage by specific school
     if (!*args)
     {
-        DamageInfo damageInfo  = DamageInfo(m_session->GetPlayer(), target, spellid);
-        damageInfo.damage      = damage;
+        DamageInfo damageInfo  = DamageInfo(m_session->GetPlayer(), target, spellid, damage);
         damageInfo.absorb      = 0;
         damageInfo.resist      = 0;
-        damageInfo.HitInfo     = HITINFO_NORMALSWING2;
+        damageInfo.HitInfo     = HITINFO_AFFECTS_VICTIM;
         damageInfo.TargetState = VICTIMSTATE_NORMAL;
 
         target->CalculateDamageAbsorbAndResist(m_session->GetPlayer(),&damageInfo, false);
@@ -4710,8 +4709,6 @@ bool ChatHandler::HandleAuctionItemCommand(char* args)
         SetSentErrorMessage(true);
         return false;
     }
-
-    //Player* pl = m_session ? m_session->GetPlayer() : NULL;
 
     do
     {

@@ -1108,6 +1108,9 @@ void World::SetInitialWorldSettings()
     sLog.outString("Loading GameObject models...");
     LoadGameObjectModelList();
 
+    sLog.outString( "Loading SpellTemplate..." );
+    sObjectMgr.LoadSpellTemplate();
+
     sLog.outString( "Loading Script Names...");
     sScriptMgr.LoadScriptNames();
 
@@ -1458,6 +1461,7 @@ void World::SetInitialWorldSettings()
     sScriptMgr.LoadQuestEndScripts();                           // must be after load Creature/Gameobject(Template/Data) and QuestTemplate
     sScriptMgr.LoadSpellScripts();                              // must be after load Creature/Gameobject(Template/Data)
     sScriptMgr.LoadGameObjectScripts();                         // must be after load Creature/Gameobject(Template/Data)
+    sScriptMgr.LoadGameObjectTemplateScripts();                 // must be after load Creature/Gameobject(Template/Data)
     sScriptMgr.LoadEventScripts();                              // must be after load Creature/Gameobject(Template/Data)
     sLog.outString( ">>> Scripts loaded" );
     sLog.outString();
@@ -1783,7 +1787,7 @@ void World::Update(uint32 diff)
 }
 
 /// Send a packet to all players (except self if mentioned)
-void World::SendGlobalMessage(WorldPacket *packet, WorldSession *self, uint32 team, AccountTypes security)
+void World::SendGlobalMessage(WorldPacket* packet, WorldSession* self /*= NULL*/, Team team /*= TEAM_NONE*/, AccountTypes security)
 {
     SessionMap::const_iterator itr;
     for (itr = m_sessions.begin(); itr != m_sessions.end(); ++itr)
@@ -1793,7 +1797,7 @@ void World::SendGlobalMessage(WorldPacket *packet, WorldSession *self, uint32 te
             itr->second->GetPlayer()->IsInWorld() &&
             itr->second->GetSecurity() >= security &&
             itr->second != self &&
-            (team == 0 || itr->second->GetPlayer()->GetTeam() == team) )
+            (team == TEAM_NONE || itr->second->GetPlayer()->GetTeam() == team))
         {
             itr->second->SendPacket(packet);
         }
@@ -1896,7 +1900,7 @@ void World::SendWorldTextWithSecurity(AccountTypes security, int32 string_id, ..
 }
 
 /// DEPRICATED, only for debug purpose. Send a System Message to all players (except self if mentioned)
-void World::SendGlobalText(const char* text, WorldSession *self)
+void World::SendGlobalText(const char* text, WorldSession* self)
 {
     WorldPacket data;
 
@@ -1904,17 +1908,17 @@ void World::SendGlobalText(const char* text, WorldSession *self)
     char* buf = mangos_strdup(text);
     char* pos = buf;
 
-    while(char* line = ChatHandler::LineFromMessage(pos))
+    while (char* line = ChatHandler::LineFromMessage(pos))
     {
         ChatHandler::FillMessageData(&data, NULL, CHAT_MSG_SYSTEM, LANG_UNIVERSAL, line);
         SendGlobalMessage(&data, self);
     }
 
-    delete [] buf;
+    delete[] buf;
 }
 
 /// Send a packet to all players (or players selected team) in the zone (except self if mentioned)
-void World::SendZoneMessage(uint32 zone, WorldPacket *packet, WorldSession *self, uint32 team)
+void World::SendZoneMessage(uint32 zone, WorldPacket* packet, WorldSession* self /*= NULL*/, Team team /*= TEAM_NONE*/)
 {
     SessionMap::const_iterator itr;
     for (itr = m_sessions.begin(); itr != m_sessions.end(); ++itr)
@@ -1924,7 +1928,7 @@ void World::SendZoneMessage(uint32 zone, WorldPacket *packet, WorldSession *self
             itr->second->GetPlayer()->IsInWorld() &&
             itr->second->GetPlayer()->GetZoneId() == zone &&
             itr->second != self &&
-            (team == 0 || itr->second->GetPlayer()->GetTeam() == team) )
+            (team == TEAM_NONE || itr->second->GetPlayer()->GetTeam() == team))
         {
             itr->second->SendPacket(packet);
         }
@@ -1932,11 +1936,11 @@ void World::SendZoneMessage(uint32 zone, WorldPacket *packet, WorldSession *self
 }
 
 /// Send a System Message to all players in the zone (except self if mentioned)
-void World::SendZoneText(uint32 zone, const char* text, WorldSession *self, uint32 team)
+void World::SendZoneText(uint32 zone, const char* text, WorldSession* self /*= NULL*/, Team team /*= TEAM_NONE*/)
 {
     WorldPacket data;
     ChatHandler::FillMessageData(&data, NULL, CHAT_MSG_SYSTEM, LANG_UNIVERSAL, text);
-    SendZoneMessage(zone, &data, self,team);
+    SendZoneMessage(zone, &data, self, team);
 }
 
 /// Kick (and save) all players
@@ -2141,7 +2145,7 @@ void World::ShutdownCancel()
 }
 
 /// Send a server message to the user(s)
-void World::SendServerMessage(ServerMessageType type, const char *text, Player* player)
+void World::SendServerMessage(ServerMessageType type, const char* text /*=""*/, Player* player /*= NULL*/)
 {
     WorldPacket data(SMSG_SERVER_MESSAGE, 50);              // guess size
     data << uint32(type);
@@ -2150,7 +2154,7 @@ void World::SendServerMessage(ServerMessageType type, const char *text, Player* 
     if (player)
         player->GetSession()->SendPacket(&data);
     else
-        SendGlobalMessage( &data );
+        SendGlobalMessage(&data);
 }
 
 void World::UpdateSessions( uint32 diff )

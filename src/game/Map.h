@@ -94,7 +94,7 @@ enum LevelRequirementVsMode
 
 #define MIN_UNLOAD_DELAY      1                             // immediate unload
 
-typedef std::map<ObjectGuid,ObjectGuidSet>  AttackersMap;
+typedef std::map<ObjectGuid,GuidSet>  AttackersMap;
 
 class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
 {
@@ -222,7 +222,7 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
         PlayerList const& GetPlayers() const { return m_mapRefManager; }
 
         //per-map script storage
-        void ScriptsStart(ScriptMapMapName const& scripts, uint32 id, Object* source, Object* target);
+        bool ScriptsStart(ScriptMapMapName const& scripts, uint32 id, Object* source, Object* target);
         void ScriptCommandStart(ScriptInfo const& script, uint32 delay, Object* source, Object* target);
 
         // must called with AddToWorld
@@ -275,7 +275,7 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>
         void AddAttackerFor(ObjectGuid targetGuid, ObjectGuid attackerGuid);
         void RemoveAttackerFor(ObjectGuid targetGuid, ObjectGuid attackerGuid);
         void RemoveAllAttackersFor(ObjectGuid targetGuid);
-        ObjectGuidSet GetAttackersFor(ObjectGuid targetGuid);
+        GuidSet GetAttackersFor(ObjectGuid targetGuid);
         void CreateAttackersStorageFor(ObjectGuid targetGuid);
         void RemoveAttackersStorageFor(ObjectGuid targetGuid);
 

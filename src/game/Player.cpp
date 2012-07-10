@@ -985,8 +985,7 @@ uint32 Player::EnvironmentalDamage(EnviromentalDamage type, uint32 damage)
         default:
             break;
     }
-    DamageInfo damageInfo = DamageInfo(this,this,spellID);
-    damageInfo.damage     = damage;
+    DamageInfo damageInfo = DamageInfo(this,this,spellID, damage);
     damageInfo.damageType = SELF_DAMAGE;
 
     CalculateDamageAbsorbAndResist(this, &damageInfo);
@@ -1155,8 +1154,6 @@ void Player::HandleDrowning(uint32 time_diff)
                     EnvironmentalDamage(DAMAGE_LAVA, damage);
                 // need to skip Slime damage in Undercity and Ruins of Lordaeron arena
                 // maybe someone can find better way to handle environmental damage
-                //else if (m_zoneUpdateId != 1497 && m_zoneUpdateId != 3968)
-                    //EnvironmentalDamage(DAMAGE_SLIME, damage);
             }
         }
     }
@@ -1932,7 +1929,7 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
             float final_z = z;
             float final_o = orientation;
 
-            if (m_transport)
+            if (m_movementInfo.HasMovementFlag(MOVEFLAG_ONTRANSPORT))
             {
                 final_x += m_movementInfo.GetTransportPos()->x;
                 final_y += m_movementInfo.GetTransportPos()->y;
@@ -4554,6 +4551,8 @@ void Player::DeleteFromDB(ObjectGuid playerguid, uint32 accountId, bool updateRe
             sLog.outError("Player::DeleteFromDB: Unsupported delete method: %u.", charDelete_method);
             break;
     }
+
+    sAccountMgr.ClearPlayerDataCache(playerguid);
 
     if (updateRealmChars)
         sAccountMgr.UpdateCharactersCount(accountId, realmID);
@@ -16536,39 +16535,39 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder )
 
         player_at_bg = currentBg && currentBg->IsPlayerInBattleGround(GetObjectGuid());
 
-        if (player_at_bg)
+        if (player_at_bg && currentBg->GetStatus() != STATUS_WAIT_LEAVE)
         {
-            if (currentBg->GetStatus() != STATUS_WAIT_LEAVE)
-            {
-                BattleGroundQueueTypeId bgQueueTypeId = BattleGroundMgr::BGQueueTypeId(currentBg->GetTypeID(), currentBg->GetArenaType());
-                AddBattleGroundQueueId(bgQueueTypeId);
+            BattleGroundQueueTypeId bgQueueTypeId = BattleGroundMgr::BGQueueTypeId(currentBg->GetTypeID(), currentBg->GetArenaType());
+            AddBattleGroundQueueId(bgQueueTypeId);
 
-                m_bgData.bgTypeID = currentBg->GetTypeID();     // bg data not marked as modified
+            m_bgData.bgTypeID = currentBg->GetTypeID();     // bg data not marked as modified
 
-                //join player to battleground group
-                currentBg->EventPlayerLoggedIn(this, GetObjectGuid());
-                currentBg->AddOrSetPlayerToCorrectBgGroup(this, GetObjectGuid(), m_bgData.bgTeam);
+            //join player to battleground group
+            currentBg->EventPlayerLoggedIn(this, GetObjectGuid());
+            currentBg->AddOrSetPlayerToCorrectBgGroup(this, GetObjectGuid(), m_bgData.bgTeam);
 
-                SetInviteForBattleGroundQueueType(bgQueueTypeId,currentBg->GetInstanceID());
+            SetInviteForBattleGroundQueueType(bgQueueTypeId,currentBg->GetInstanceID());
 
-                SetLocationMapId(savedLocation.mapid);
-                Relocate(savedLocation.coord_x, savedLocation.coord_y, savedLocation.coord_z, savedLocation.orientation);
-            }
-            else
+            SetLocationMapId(savedLocation.mapid);
+            Relocate(savedLocation.coord_x, savedLocation.coord_y, savedLocation.coord_z, savedLocation.orientation);
+        }
+        else
+        {
+            if (player_at_bg) // if player at bg and bg status is STATUS_WAIT_LEAVE
             {
                 currentBg->RemovePlayerAtLeave(GetObjectGuid(), false, true);
                 player_at_bg = false;
-
-                // move to bg enter point
-                const WorldLocation& _loc = GetBattleGroundEntryPoint();
-                SetLocationMapId(_loc.mapid);
-                Relocate(_loc.coord_x, _loc.coord_y, _loc.coord_z, _loc.orientation);
-
-                // We are not in BG anymore
-                SetBattleGroundId(0, BATTLEGROUND_TYPE_NONE);
-                // remove outdated DB data in DB
-                _SaveBGData(true);
             }
+
+            // move to bg enter point
+            const WorldLocation& _loc = GetBattleGroundEntryPoint();
+            SetLocationMapId(_loc.mapid);
+            Relocate(_loc.coord_x, _loc.coord_y, _loc.coord_z, _loc.orientation);
+
+            // We are not in BG anymore
+            SetBattleGroundId(0, BATTLEGROUND_TYPE_NONE);
+            // remove outdated DB data in DB
+            _SaveBGData(true);
         }
     }
     else
@@ -21309,13 +21308,13 @@ void Player::UpdateVisibilityOf(WorldObject const* viewPoint, WorldObject* targe
 }
 
 template<class T>
-inline void UpdateVisibilityOf_helper(ObjectGuidSet& s64, T* target)
+inline void UpdateVisibilityOf_helper(GuidSet& s64, T* target)
 {
     s64.insert(target->GetObjectGuid());
 }
 
 template<>
-inline void UpdateVisibilityOf_helper(ObjectGuidSet& s64, GameObject* target)
+inline void UpdateVisibilityOf_helper(GuidSet& s64, GameObject* target)
 {
     if(!target->IsTransport())
         s64.insert(target->GetObjectGuid());
@@ -21999,7 +21998,7 @@ void Player::UpdateForQuestWorldObjects()
 
     UpdateData udata;
     WorldPacket packet;
-    for(ObjectGuidSet::const_iterator itr=m_clientGUIDs.begin(); itr!=m_clientGUIDs.end(); ++itr)
+    for(GuidSet::const_iterator itr=m_clientGUIDs.begin(); itr!=m_clientGUIDs.end(); ++itr)
     {
         if (itr->IsGameObject())
         {
@@ -24678,6 +24677,9 @@ bool Player::CheckRAFConditions()
                 continue;
 
             if (GetObjectGuid() == member->GetObjectGuid())
+                continue;
+
+            if (member->GetAccountLinkedState() == STATE_NOT_LINKED)
                 continue;
 
             if (!IsReferAFriendLinked(member))

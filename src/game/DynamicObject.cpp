@@ -41,7 +41,10 @@ void DynamicObject::AddToWorld()
 {
     ///- Register the dynamicObject for guid lookup
     if(!IsInWorld())
+    {
+        MAPLOCK_WRITE(this, MAP_LOCK_TYPE_DEFAULT);
         GetMap()->GetObjectsStore().insert<DynamicObject>(GetObjectGuid(), (DynamicObject*)this);
+    }
 
     Object::AddToWorld();
 }
@@ -51,6 +54,7 @@ void DynamicObject::RemoveFromWorld()
     ///- Remove the dynamicObject from the accessor
     if(IsInWorld())
     {
+        MAPLOCK_WRITE(this, MAP_LOCK_TYPE_DEFAULT);
         GetMap()->GetObjectsStore().erase<DynamicObject>(GetObjectGuid(), (DynamicObject*)NULL);
         GetViewPoint().Event_RemovedFromWorld();
     }
@@ -155,7 +159,7 @@ void DynamicObject::Delete()
 void DynamicObject::Delay(int32 delaytime)
 {
     m_aliveDuration -= delaytime;
-    for(AffectedSet::iterator iter = m_affected.begin(); iter != m_affected.end(); )
+    for (GuidSet::iterator iter = m_affected.begin(); iter != m_affected.end(); )
     {
         Unit *target = GetMap()->GetUnit((*iter));
         if (target)

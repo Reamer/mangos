@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2005-2012 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
+ * Copyright (C) 2011-2012 /dev/rsa for MangosR2 <http://github.com/MangosR2>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -254,7 +255,6 @@ bool VehicleKit::AddPassenger(Unit *passenger, int8 seatId)
         m_pBase->SetCharmerGuid(passenger->GetObjectGuid());
         m_pBase->addUnitState(UNIT_STAT_CONTROLLED);
 
-        // TODO: Realy right?!
         passenger->SetCharm(m_pBase);
 
         if (m_pBase->HasAuraType(SPELL_AURA_FLY) || m_pBase->HasAuraType(SPELL_AURA_MOD_FLIGHT_SPEED))

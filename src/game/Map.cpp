@@ -1652,12 +1652,12 @@ void BattleGroundMap::UnloadAll(bool pForce)
 }
 
 /// Put scripts in the execution queue
-void Map::ScriptsStart(ScriptMapMapName const& scripts, uint32 id, Object* source, Object* target)
+bool Map::ScriptsStart(ScriptMapMapName const& scripts, uint32 id, Object* source, Object* target)
 {
     ///- Find the script map
     ScriptMapMap::const_iterator s = scripts.second.find(id);
     if (s == scripts.second.end())
-        return;
+        return false;
 
     // prepare static data
     ObjectGuid sourceGuid = source->GetObjectGuid();
@@ -1666,20 +1666,16 @@ void Map::ScriptsStart(ScriptMapMapName const& scripts, uint32 id, Object* sourc
 
     ///- Schedule script execution for all scripts in the script map
     ScriptMap const *s2 = &(s->second);
-    bool immedScript = false;
     for (ScriptMap::const_iterator iter = s2->begin(); iter != s2->end(); ++iter)
     {
         ScriptAction sa(scripts.first, this, sourceGuid, targetGuid, ownerGuid, &iter->second);
 
         m_scriptSchedule.insert(ScriptScheduleMap::value_type(time_t(sWorld.GetGameTime() + iter->first), sa));
-        if (iter->first == 0)
-            immedScript = true;
 
         sScriptMgr.IncreaseScheduledScriptsCount();
     }
-    ///- If one of the effects should be immediate, launch the script execution
-    if (immedScript)
-        ScriptsProcess();
+
+    return true;
 }
 
 void Map::ScriptCommandStart(ScriptInfo const& script, uint32 delay, Object* source, Object* target)
@@ -1696,10 +1692,6 @@ void Map::ScriptCommandStart(ScriptInfo const& script, uint32 delay, Object* sou
     m_scriptSchedule.insert(ScriptScheduleMap::value_type(time_t(sWorld.GetGameTime() + delay), sa));
 
     sScriptMgr.IncreaseScheduledScriptsCount();
-
-    ///- If effects should be immediate, launch the script execution
-    if(delay == 0)
-        ScriptsProcess();
 }
 
 /// Process queued scripts
@@ -1743,6 +1735,7 @@ Player* Map::GetPlayer(ObjectGuid guid)
  */
 Creature* Map::GetCreature(ObjectGuid guid)
 {
+    ReadGuard Guard(GetLock(MAP_LOCK_TYPE_DEFAULT));
     return m_objectsStore.find<Creature>(guid, (Creature*)NULL);
 }
 
@@ -1753,6 +1746,7 @@ Creature* Map::GetCreature(ObjectGuid guid)
  */
 Pet* Map::GetPet(ObjectGuid guid)
 {
+    ReadGuard Guard(GetLock(MAP_LOCK_TYPE_DEFAULT));
     return m_objectsStore.find<Pet>(guid, (Pet*)NULL);
 }
 
@@ -1794,6 +1788,7 @@ Creature* Map::GetAnyTypeCreature(ObjectGuid guid)
  */
 GameObject* Map::GetGameObject(ObjectGuid guid)
 {
+    ReadGuard Guard(GetLock(MAP_LOCK_TYPE_DEFAULT));
     return m_objectsStore.find<GameObject>(guid, (GameObject*)NULL);
 }
 
@@ -1804,6 +1799,7 @@ GameObject* Map::GetGameObject(ObjectGuid guid)
  */
 DynamicObject* Map::GetDynamicObject(ObjectGuid guid)
 {
+    ReadGuard Guard(GetLock(MAP_LOCK_TYPE_DEFAULT));
     return m_objectsStore.find<DynamicObject>(guid, (DynamicObject*)NULL);
 }
 
@@ -2099,7 +2095,7 @@ void Map::RemoveAllAttackersFor(ObjectGuid targetGuid)
     }
 }
 
-ObjectGuidSet Map::GetAttackersFor(ObjectGuid targetGuid)
+GuidSet Map::GetAttackersFor(ObjectGuid targetGuid)
 {
     if (!targetGuid.IsEmpty())
     {
@@ -2109,7 +2105,7 @@ ObjectGuidSet Map::GetAttackersFor(ObjectGuid targetGuid)
             return itr->second;
     }
 
-    return ObjectGuidSet();
+    return GuidSet();
 }
 
 void Map::CreateAttackersStorageFor(ObjectGuid targetGuid)
@@ -2120,7 +2116,7 @@ void Map::CreateAttackersStorageFor(ObjectGuid targetGuid)
     AttackersMap::iterator itr = m_attackersMap.find(targetGuid);
     if (itr == m_attackersMap.end())
     {
-        m_attackersMap.insert(std::make_pair(targetGuid,ObjectGuidSet()));
+        m_attackersMap.insert(std::make_pair(targetGuid,GuidSet()));
     }
 
 }
