@@ -6354,15 +6354,6 @@ void Aura::HandleAuraPeriodicDummy(bool apply, bool Real)
                         GetHolder()->ModStackAmount(20);
                     return;
                 }
-                case 64217:                                 // Overcharged (spell from Emalon adds)
-                {
-                    if (GetHolder()->GetStackAmount() > 11)
-                    {
-                        target->CastSpell(target, 64219, true);
-                        target->DealDamage(target, target->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
-                    }
-                    return;
-                }
             }
             break;
         }
@@ -9741,6 +9732,15 @@ void Aura::PeriodicDummyTick()
                     else
                     {
                         target->CastSpell(target, 65294, true);
+                    }
+                    return;
+                }
+                case 64217:                                 // Overcharged
+                {
+                    if (GetHolder()->GetStackAmount() > 11)
+                    {
+                        target->CastSpell(target, 64219, true);
+                        target->DealDamage(target, target->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
                     }
                     return;
                 }
