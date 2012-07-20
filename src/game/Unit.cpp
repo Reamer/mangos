@@ -807,22 +807,31 @@ uint32 Unit::DealDamage(Unit *pVictim, DamageInfo* damageInfo, bool durabilityLo
 
     DEBUG_FILTER_LOG(LOG_FILTER_DAMAGE,"DealDamageStart");
 
-    // share damage by auras
-    AuraList const& vShareDamageAuras = pVictim->GetAurasByType(SPELL_AURA_SHARE_DAMAGE_PCT);
-    for (AuraList::const_iterator itr = vShareDamageAuras.begin(); itr != vShareDamageAuras.end(); ++itr)
+    if (!damageInfo->specialDamageFlags & NO_SHARE_DAMAGE)
     {
-        Aura* aura = *itr;
-        if (!aura || !aura->GetHolder() || aura->GetHolder()->IsDeleted())
-            continue;
-
-        if (Unit* shareTarget = aura->GetCaster())
+        // share damage by auras
+        AuraList const& vShareDamageAuras = pVictim->GetAurasByType(SPELL_AURA_SHARE_DAMAGE_PCT);
+        for (AuraList::const_iterator itr = vShareDamageAuras.begin(); itr != vShareDamageAuras.end(); ++itr)
         {
-            if (shareTarget != pVictim && (aura->GetMiscValue() & damageInfo->SchoolMask()))
+            Aura* aura = *itr;
+            if (!aura || !aura->GetHolder() || aura->GetHolder()->IsDeleted())
+                continue;
+
+            if (Unit* shareTarget = aura->GetCaster())
             {
-                SpellEntry const* shareSpell = aura->GetSpellProto();
-                uint32 shareDamage = uint32(damageInfo->damage * aura->GetModifier()->m_amount / 100.0f);
-                DealDamageMods(shareTarget, shareDamage, NULL);
-                DealDamage(shareTarget, shareDamage, 0, damageInfo->damageType, GetSpellSchoolMask(shareSpell), spellProto, false);
+                if (shareTarget != pVictim && (aura->GetMiscValue() & damageInfo->SchoolMask()))
+                {
+                    SpellEntry const* shareSpell = aura->GetSpellProto();
+                    uint32 shareDamage = uint32(damageInfo->damage * aura->GetModifier()->m_amount / 100.0f);
+                    DealDamageMods(shareTarget, shareDamage, NULL);
+
+                    DamageInfo sharedDamageInfo   = DamageInfo(this, shareTarget, spellProto);
+                    sharedDamageInfo.cleanDamage  = shareDamage;
+                    sharedDamageInfo.damage       = shareDamage;
+                    sharedDamageInfo.damageType   = damageInfo->damageType;
+                    sharedDamageInfo.specialDamageFlags |= NO_SHARE_DAMAGE;
+                    DealDamage(shareTarget, &sharedDamageInfo, false);
+                }
             }
         }
     }
@@ -13729,6 +13738,7 @@ void DamageInfo::Reset(uint32 _damage)
     damageType    = m_spellInfo ? SPELL_DIRECT_DAMAGE : DIRECT_DAMAGE;  // must be corrected after!
     physicalLog   = IsMeleeDamage();
     hitOutCome    = IsMeleeDamage() ? MELEE_HIT_EVADE : MELEE_HIT_NORMAL;
+    specialDamageFlags= 0;
 
 }
 

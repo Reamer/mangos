@@ -885,6 +885,11 @@ enum MeleeHitOutcome
     MELEE_HIT_NORMAL    = 8,
 };
 
+enum SpecialDamageFlags
+{
+    NO_SHARE_DAMAGE   = 0x01
+};
+
 //struct CleanDamage
 //struct CalcDamageInfo
 //struct SpellNonMeleeDamage
@@ -966,6 +971,7 @@ struct DamageInfo
     uint32 procEx;
 
     // Helpers
+    uint32 specialDamageFlags;
     bool   physicalLog;
     bool   unused;
     bool   IsMeleeDamage() { return !m_spellInfo; };
