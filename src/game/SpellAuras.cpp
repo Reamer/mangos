@@ -10799,9 +10799,9 @@ void SpellAuraHolder::_AddSpellAuraHolder()
         {
             case SPELLFAMILY_GENERIC:
                 {
-                    if (GetSpellSchoolMask(m_spellProto) == (SPELL_SCHOOL_MASK_ARCANE | SPELL_SCHOOL_MASK_HOLY))
+                    if (m_spellProto->SpellDifficultyId == 425)
                         m_target->ModifyAuraState(AURA_STATE_LIGHT_TARGET, true);
-                    else if (GetSpellSchoolMask(m_spellProto) == (SPELL_SCHOOL_MASK_ARCANE | SPELL_SCHOOL_MASK_SHADOW))
+                    else if (m_spellProto->SpellDifficultyId == 423)
                         m_target->ModifyAuraState(AURA_STATE_DARK_TARGET, true);
 
                         // need more correct research for this aura state and effect (mostly Ulduar vehicle spells)
@@ -10897,9 +10897,9 @@ void SpellAuraHolder::_RemoveSpellAuraHolder()
         {
             case SPELLFAMILY_GENERIC:
                 {
-                    if (GetSpellSchoolMask(m_spellProto) == (SPELL_SCHOOL_MASK_ARCANE | SPELL_SCHOOL_MASK_HOLY))
+                    if (m_spellProto->SpellDifficultyId == 425)
                         removeState = AURA_STATE_LIGHT_TARGET;
-                    else if (GetSpellSchoolMask(m_spellProto) == (SPELL_SCHOOL_MASK_ARCANE | SPELL_SCHOOL_MASK_SHADOW))
+                    else if (m_spellProto->SpellDifficultyId == 423)
                         removeState = AURA_STATE_DARK_TARGET;
                     else if (GetSpellSchoolMask(m_spellProto) == (SPELL_SCHOOL_MASK_ARCANE | SPELL_SCHOOL_MASK_FIRE))
                         removeState = AURA_STATE_SPELLFIRE;
