@@ -1893,9 +1893,13 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                     break;
                 case 54098:                                 // Poison Bolt Volley (h)
                 case 54835:                                 // Curse of the Plaguebringer (h)
+                case 66140:                                 // Light Bullet Summon Trigger 10 nonhero (correct from sniff)
+                case 67159:                                 // Light Bullet Summon Trigger 10 hero (maybe wrong amount)
                     unMaxTargets = 10;
                     break;
                 case 25991:                                 // Poison Bolt Volley (Pincess Huhuran)
+                case 67158:                                 // Light Bullet Summon Trigger 25 nonhero (maybe wrong amount)
+                case 67160:                                 // Light Bullet Summon Trigger 25 hero (maybe wrong amount)
                     unMaxTargets = 15;
                     break;
                 // random count
