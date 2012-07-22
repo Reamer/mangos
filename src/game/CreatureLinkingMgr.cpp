@@ -506,7 +506,6 @@ void CreatureLinkingHolder::ProcessSlaveGuidList(CreatureLinkingEvent eventType,
             // Remove old guid
             slave_itr = slaveGuidList.erase(slave_itr);
         }
-
     }
 }
 
