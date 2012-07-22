@@ -486,7 +486,8 @@ void CreatureLinkingHolder::ProcessSlaveGuidList(CreatureLinkingEvent eventType,
     if (!flag)
         return;
 
-    for (GuidList::iterator slave_itr = slaveGuidList.begin(); slave_itr != slaveGuidList.end(); ++slave_itr)
+    GuidList::iterator slave_itr = slaveGuidList.begin();
+    while (slave_itr != slaveGuidList.end())
     {
         if (Creature* pSlave = pSource->GetMap()->GetCreature(*slave_itr))
         {
@@ -497,12 +498,15 @@ void CreatureLinkingHolder::ProcessSlaveGuidList(CreatureLinkingEvent eventType,
             // Handle single slave
             if (IsSlaveInRangeOfBoss(pSlave, pSource, searchRange))
                 ProcessSlave(eventType, pSource, flag, pSlave, pEnemy);
+
+            ++slave_itr;
         }
         else
         {
             // Remove old guid
-            slaveGuidList.erase(slave_itr);
+            slave_itr = slaveGuidList.erase(slave_itr);
         }
+
     }
 }
 
