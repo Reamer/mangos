@@ -24,6 +24,7 @@
 #include "GameObject.h"
 #include "Language.h"
 #include "WorldPacket.h"
+#include "DBCStores.h"                                      // TODO REMOVE this when graveyard handling for pvp is updated
 
 BattleGroundAV::BattleGroundAV()
 {
@@ -711,7 +712,7 @@ WorldSafeLocsEntry const* BattleGroundAV::GetClosestGraveYard(Player *plr)
     return good_entry;
 }
 
-uint32 BattleGroundAV::GetNodeName(BG_AV_Nodes node)
+uint32 BattleGroundAV::GetNodeName(BG_AV_Nodes node) const
 {
     switch(node)
     {
