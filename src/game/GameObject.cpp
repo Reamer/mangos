@@ -2270,7 +2270,6 @@ void GameObject::SetGoState(GOState state)
     {
         if (!IsInWorld())
             return;
-
         EnableCollision(CalculateCurrentCollisionState());
     }
 }

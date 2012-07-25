@@ -493,6 +493,7 @@ void CreatureLinkingHolder::ProcessSlaveGuidList(CreatureLinkingEvent eventType,
     {
         if (Creature* pSlave = pSource->GetMap()->GetCreature(*slave_itr))
         {
+            ++slave_itr;
             // Ignore Pets
             if (pSlave->IsPet())
                 continue;
@@ -501,7 +502,6 @@ void CreatureLinkingHolder::ProcessSlaveGuidList(CreatureLinkingEvent eventType,
             if (IsSlaveInRangeOfBoss(pSlave, pSource, searchRange))
                 ProcessSlave(eventType, pSource, flag, pSlave, pEnemy);
 
-            ++slave_itr;
         }
         else
         {

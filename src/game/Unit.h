@@ -885,9 +885,10 @@ enum MeleeHitOutcome
     MELEE_HIT_NORMAL    = 8,
 };
 
-enum SpecialDamageFlags
+enum DamageFlags
 {
-    NO_SHARE_DAMAGE   = 0x01
+    DAMAGE_FREEACTION   = 0,
+    DAMAGE_SHARED       = 1,
 };
 
 //struct CleanDamage
@@ -971,10 +972,16 @@ struct DamageInfo
     uint32 procEx;
 
     // Helpers
-    uint32 specialDamageFlags;
+    bool   durabilityLoss;
     bool   physicalLog;
     bool   unused;
     bool   IsMeleeDamage() { return !m_spellInfo; };
+
+    uint32         m_flags;
+    uint32 const&  GetFlags();
+    void           AddFlag(DamageFlags flag)       { m_flags |= (1 << flag); };
+    void           RemoveFlag(DamageFlags flag)    { m_flags &= ~(1 << flag); };
+    bool           HasFlag(DamageFlags flag) const { return (m_flags & (1 << flag)); };
 };
 
 
@@ -1412,6 +1419,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         void DealDamageMods(Unit *pVictim, uint32 &damage, uint32* absorb);
         uint32 DealDamage(Unit *pVictim, uint32 damage, DamageInfo* cleanDamage, DamageEffectType damagetype, SpellSchoolMask damageSchoolMask, SpellEntry const *spellProto, bool durabilityLoss);
         uint32 DealDamage(Unit* pVictim, DamageInfo* damageInfo, bool durabilityLoss);
+        uint32 DealDamage(DamageInfo* damageInfo);
         int32  DealHeal(Unit* pVictim, uint32 addhealth, SpellEntry const* spellProto, bool critical = false, uint32 absorb = 0);
 
         void PetOwnerKilledUnit(Unit* pVictim);

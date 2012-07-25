@@ -715,9 +715,28 @@ uint32 Unit::DealDamage(Unit* pVictim, uint32 damage, DamageInfo* damageInfo, Da
     }
 }
 
-uint32 Unit::DealDamage(Unit *pVictim, DamageInfo* damageInfo, bool durabilityLoss)
+uint32 Unit::DealDamage(Unit* pVictim, DamageInfo* damageInfo, bool durabilityLoss)
 {
+    if (!damageInfo)
+        return 0;
 
+    if (!damageInfo->target || damageInfo->target != pVictim)
+    {
+        DEBUG_FILTER_LOG(LOG_FILTER_DAMAGE,"Unit::DealDamage wrong target definition in DealDamage of %s, try override!",
+            GetObjectGuid().GetString().c_str());
+        damageInfo->target = pVictim;
+    }
+    damageInfo->durabilityLoss = durabilityLoss;
+
+    return DealDamage(damageInfo);
+}
+
+uint32 Unit::DealDamage(DamageInfo* damageInfo)
+{
+    if (!damageInfo || !damageInfo->target)
+        return 0;
+
+    Unit* pVictim = damageInfo->target;
     SpellEntry const* spellProto = damageInfo->m_spellInfo;
 
     // Divine Storm heal hack
@@ -793,34 +812,42 @@ uint32 Unit::DealDamage(Unit *pVictim, DamageInfo* damageInfo, bool durabilityLo
         return damageInfo->damage;
     }
 
-    DEBUG_FILTER_LOG(LOG_FILTER_DAMAGE,"DealDamageStart");
+    DEBUG_FILTER_LOG(LOG_FILTER_DAMAGE,"Unit::DealDamage DealDamageStart, value %u",damageInfo->damage);
 
-    if (!damageInfo->specialDamageFlags & NO_SHARE_DAMAGE)
+    if (!damageInfo->HasFlag(DAMAGE_SHARED))
     {
-        // share damage by auras
-        AuraList const& vShareDamageAuras = pVictim->GetAurasByType(SPELL_AURA_SHARE_DAMAGE_PCT);
-        for (AuraList::const_iterator itr = vShareDamageAuras.begin(); itr != vShareDamageAuras.end(); ++itr)
+        std::vector<DamageInfo> linkedDamageList;
         {
-            Aura* aura = *itr;
-            if (!aura || !aura->GetHolder() || aura->GetHolder()->IsDeleted())
-                continue;
-
-            if (Unit* shareTarget = aura->GetCaster())
+            MAPLOCK_READ(pVictim,MAP_LOCK_TYPE_AURAS);
+            // share damage by auras
+            AuraList const& vShareDamageAuras = pVictim->GetAurasByType(SPELL_AURA_SHARE_DAMAGE_PCT);
+            for (AuraList::const_iterator itr = vShareDamageAuras.begin(); itr != vShareDamageAuras.end(); ++itr)
             {
-                if (shareTarget != pVictim && (aura->GetMiscValue() & damageInfo->SchoolMask()))
-                {
-                    SpellEntry const* shareSpell = aura->GetSpellProto();
-                    uint32 shareDamage = uint32(damageInfo->damage * aura->GetModifier()->m_amount / 100.0f);
-                    DealDamageMods(shareTarget, shareDamage, NULL);
+                Aura* aura = *itr;
+                if (!aura || !aura->GetHolder() || aura->GetHolder()->IsDeleted())
+                    continue;
 
-                    DamageInfo sharedDamageInfo   = DamageInfo(this, shareTarget, spellProto);
-                    sharedDamageInfo.cleanDamage  = shareDamage;
-                    sharedDamageInfo.damage       = shareDamage;
-                    sharedDamageInfo.damageType   = damageInfo->damageType;
-                    sharedDamageInfo.specialDamageFlags |= NO_SHARE_DAMAGE;
-                    DealDamage(shareTarget, &sharedDamageInfo, false);
+                if (Unit* shareTarget = aura->GetCaster())
+                {
+                    if (shareTarget != pVictim && (aura->GetMiscValue() & damageInfo->SchoolMask()))
+                    {
+                        SpellEntry const* shareSpell = aura->GetSpellProto();
+                        uint32 shareDamage = uint32(damageInfo->damage * aura->GetModifier()->m_amount / 100.0f);
+                        DealDamageMods(shareTarget, shareDamage, NULL);
+                        linkedDamageList.push_back(DamageInfo(this, shareTarget, spellProto));
+                        DamageInfo* sharedDamageInfo   = &linkedDamageList.back();
+                        sharedDamageInfo->cleanDamage  = shareDamage;
+                        sharedDamageInfo->damageType   = damageInfo->damageType;
+                        sharedDamageInfo->AddFlag(DAMAGE_SHARED);
+                    }
                 }
             }
+        }
+
+        while (!linkedDamageList.empty())
+        {
+            DealDamage(&linkedDamageList.back());
+            linkedDamageList.pop_back();
         }
     }
 
@@ -1040,7 +1067,7 @@ uint32 Unit::DealDamage(Unit *pVictim, DamageInfo* damageInfo, bool durabilityLo
         if (pVictim->GetTypeId() == TYPEID_PLAYER)
         {
             // only if not player and not controlled by player pet. And not at BG
-            if (durabilityLoss && !player_tap && !((Player*)pVictim)->InBattleGround())
+            if (damageInfo->durabilityLoss && !player_tap && !((Player*)pVictim)->InBattleGround())
             {
                 DEBUG_LOG("We are dead, loosing 10 percents durability");
                 ((Player*)pVictim)->DurabilityLossAll(0.10f,false);
@@ -13746,6 +13773,8 @@ void DamageInfo::Reset(uint32 _damage)
     bonusDone     = 0;
     bonusTaken    = 0;
     rage          = 0;
+    m_flags       = 0;
+    durabilityLoss= true;
     unused        = false;
     HitInfo       = HITINFO_NORMALSWING;
     TargetState   = VICTIMSTATE_UNAFFECTED;
@@ -13755,7 +13784,6 @@ void DamageInfo::Reset(uint32 _damage)
     damageType    = m_spellInfo ? SPELL_DIRECT_DAMAGE : DIRECT_DAMAGE;  // must be corrected after!
     physicalLog   = IsMeleeDamage();
     hitOutCome    = IsMeleeDamage() ? MELEE_HIT_EVADE : MELEE_HIT_NORMAL;
-    specialDamageFlags= 0;
 
 }
 

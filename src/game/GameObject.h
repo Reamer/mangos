@@ -719,7 +719,6 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
         void SetDisplayId(uint32 modelId);
         void SetPhaseMask(uint32 newPhaseMask, bool update);
         void EnableCollision(bool enable);
-
         bool CalculateCurrentCollisionState() const;
 
         float GetObjectBoundingRadius() const;              // overwrite WorldObject version

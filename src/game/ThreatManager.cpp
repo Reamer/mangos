@@ -476,7 +476,6 @@ void ThreatManager::addThreat(Unit* pVictim, float pThreat, bool crit, SpellScho
 
 void ThreatManager::addThreatDirectly(Unit* pVictim, float threat)
 {
-    MAPLOCK_READ(pVictim, MAP_LOCK_TYPE_THREAT);
     HostileReference* ref = iThreatContainer.addThreat(pVictim, threat);
     // Ref is online
     if (ref)
