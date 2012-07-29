@@ -8737,6 +8737,22 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
             }
             break;
         }
+        case 54069: // Energize Cores
+        case 56251:
+        case 61407:
+        case 62136:
+        {
+            UnitList tempTargetUnitMap;
+            FillAreaTargets(tempTargetUnitMap, radius, PUSH_IN_FRONT_90, SPELL_TARGETS_ALL);
+            for (UnitList::const_iterator itr = tempTargetUnitMap.begin(); itr != tempTargetUnitMap.end(); ++itr)
+            {
+                if ((*itr)->GetEntry() == 28183)
+                {
+                    targetUnitMap.push_back(*itr);
+                }
+            }
+            break;
+        }
         case 57143: // Life Burst (Wyrmrest Skytalon)
         {
             // hack - spell is AoE but implicitTargets dont match here :/
