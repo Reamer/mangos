@@ -325,7 +325,8 @@ void PetAI::MoveToVictim(Unit* u)
                 m_creature->GetMotionMaster()->MoveFollow(owner,PET_FOLLOW_DIST, m_creature->IsPet() ? ((Pet*)m_creature)->GetPetFollowAngle() : PET_FOLLOW_ANGLE);
             break;
         case PET_AI_SLACKER:
-            m_creature->GetMotionMaster()->MoveFleeing(u);
+            if (Unit* owner = m_creature->GetCharmerOrOwner())
+                m_creature->GetMotionMaster()->MoveChase(owner, PET_FOLLOW_DIST, m_creature->IsPet() ? ((Pet*)m_creature)->GetPetFollowAngle() : PET_FOLLOW_ANGLE);
             break;
         case PET_AI_HEALER:
             if (Unit* owner = m_creature->GetCharmerOrOwner())
@@ -333,7 +334,13 @@ void PetAI::MoveToVictim(Unit* u)
             break;
         case PET_AI_RANGED:
             if (sWorld.getConfig(CONFIG_BOOL_PET_ADVANCED_AI))
-                m_creature->GetMotionMaster()->MoveChase(u, attackDistance, m_creature->GetAngle(u) + frand(-M_PI_F/4.0f, M_PI_F/4.0f));
+            {
+                if (m_creature->GetDistance(u) > attackDistance)
+                {
+                    if (Unit* owner = m_creature->GetCharmerOrOwner())
+                        m_creature->GetMotionMaster()->MoveChase(u, attackDistance, u->GetAngle(owner) + frand(-M_PI_F/4.0f, M_PI_F/4.0f));
+                }
+            }
             else
                 m_creature->GetMotionMaster()->MoveChase(u);
             break;
