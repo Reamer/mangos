@@ -633,9 +633,6 @@ class MANGOS_DLL_SPEC WorldObject : public Object
         bool isActiveObject() const { return m_isActiveObject || m_viewPoint.hasViewers(); }
         void SetActiveObjectState(bool active);
 
-        uint32 GetLastUpdateTime() const { return m_LastUpdateTime; }
-        void SetLastUpdateTime() { m_LastUpdateTime = WorldTimer::getMSTime(); }
-
         ViewPoint& GetViewPoint() { return m_viewPoint; }
 
         // ASSERT print helper
@@ -671,8 +668,6 @@ class MANGOS_DLL_SPEC WorldObject : public Object
         ViewPoint m_viewPoint;
         WorldUpdateCounter m_updateTracker;
         bool m_isActiveObject;
-
-        uint32 m_LastUpdateTime;
 };
 
 #endif
