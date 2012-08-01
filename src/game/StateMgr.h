@@ -70,8 +70,8 @@ struct ActionInfo
     bool               restoreable;
 };
 
-//typedef std::map<UnitActionPriority, ActionInfo> UnitActionStorage;
-typedef std::vector<ActionInfo> UnitActionStorage;
+typedef std::map<UnitActionPriority, ActionInfo> UnitActionStorage;
+//typedef std::vector<ActionInfo> UnitActionStorage;
 
 class UnitStateMgr
 {
