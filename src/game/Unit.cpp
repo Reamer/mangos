@@ -6069,7 +6069,7 @@ void Unit::AddGameObject(GameObject* gameObj)
         // Need disable spell use for owner
         if (createBySpell && createBySpell->HasAttribute(SPELL_ATTR_DISABLED_WHILE_ACTIVE))
             // note: item based cooldowns and cooldown spell mods with charges ignored (unknown existing cases)
-            ((Player*)this)->AddSpellAndCategoryCooldowns(createBySpell, 0, NULL, true);
+            ((Player*)this)->AddSpellAndCategoryCooldowns(createBySpell, 0, true);
     }
 }
 
@@ -10077,11 +10077,12 @@ void Unit::AddThreat(Unit* pVictim, float threat /*= 0.0f*/, bool crit /*= false
 
 void Unit::DeleteThreatList()
 {
-    if (CanHaveThreatList() && !m_ThreatManager.isThreatListEmpty())
-        SendThreatClear();
-
-    MAPLOCK_WRITE(this, MAP_LOCK_TYPE_DEFAULT);
-    m_ThreatManager.clearReferences();
+    if (CanHaveThreatList())
+    {
+        if (!m_ThreatManager.isThreatListEmpty())
+            SendThreatClear();
+        m_ThreatManager.clearReferences();
+    }
 }
 
 //======================================================================

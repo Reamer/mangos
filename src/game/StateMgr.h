@@ -48,6 +48,7 @@ struct ActionInfo
     bool operator != (UnitActionPtr _action);
 
     void Delete();
+    void Reset(UnitStateMgr* mgr);
     void Initialize(UnitStateMgr* mgr);
     void Finalize(UnitStateMgr* mgr);
     void Interrupt(UnitStateMgr* mgr);

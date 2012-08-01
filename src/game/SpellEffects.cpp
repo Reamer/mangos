@@ -6492,7 +6492,7 @@ void Spell::EffectDispel(SpellEffectIndex eff_idx)
             if (Unit *caster = holder->GetCaster())
             {
                 if (Player* modOwner = caster->GetSpellModOwner() )
-                    modOwner->ApplySpellMod(spellInfo->Id, SPELLMOD_RESIST_DISPEL_CHANCE, miss_chance, this);
+                    modOwner->ApplySpellMod(spellInfo->Id, SPELLMOD_RESIST_DISPEL_CHANCE, miss_chance);
             }
             // Try dispel
             if (roll_chance_i(miss_chance))
@@ -12389,7 +12389,7 @@ void Spell::EffectStealBeneficialBuff(SpellEffectIndex eff_idx)
 
             if (Player* modOwner = caster->GetSpellModOwner())
             {
-                modOwner->ApplySpellMod(holder->GetSpellProto()->Id, SPELLMOD_RESIST_DISPEL_CHANCE, miss_chance, this);
+                modOwner->ApplySpellMod(holder->GetSpellProto()->Id, SPELLMOD_RESIST_DISPEL_CHANCE, miss_chance);
                 miss_chance += modOwner->GetTotalAuraModifier(SPELL_AURA_MOD_DISPEL_RESIST);
             }
 
@@ -12397,7 +12397,7 @@ void Spell::EffectStealBeneficialBuff(SpellEffectIndex eff_idx)
             {
                 if (Player* modOwner = target->GetSpellModOwner())
                 {
-                    modOwner->ApplySpellMod(holder->GetSpellProto()->Id, SPELLMOD_RESIST_DISPEL_CHANCE, miss_chance, this);
+                    modOwner->ApplySpellMod(holder->GetSpellProto()->Id, SPELLMOD_RESIST_DISPEL_CHANCE, miss_chance);
                     miss_chance += modOwner->GetTotalAuraModifier(SPELL_AURA_MOD_DISPEL_RESIST);
                 }
             }
