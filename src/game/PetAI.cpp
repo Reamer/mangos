@@ -335,11 +335,8 @@ void PetAI::MoveToVictim(Unit* u)
         case PET_AI_RANGED:
             if (sWorld.getConfig(CONFIG_BOOL_PET_ADVANCED_AI))
             {
-                if (m_creature->GetDistance(u) > attackDistance)
-                {
-                    if (Unit* owner = m_creature->GetCharmerOrOwner())
-                        m_creature->GetMotionMaster()->MoveChase(u, attackDistance, u->GetAngle(owner) + frand(-M_PI_F/4.0f, M_PI_F/4.0f));
-                }
+                if (Unit* owner = m_creature->GetCharmerOrOwner())
+                    m_creature->GetMotionMaster()->MoveChase(u, attackDistance, u->GetAngle(owner) + frand(-M_PI_F/4.0f, M_PI_F/4.0f));
             }
             else
                 m_creature->GetMotionMaster()->MoveChase(u);

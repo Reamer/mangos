@@ -8000,14 +8000,8 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                 {
                     if (unitTarget)
                     {
-                        float x, y, z;
-                        unitTarget->GetPosition(x, y, z);
-
-                        if (Creature *pSpike = unitTarget->SummonCreature(38711, x, y, z, 0.0f, TEMPSUMMON_DEAD_DESPAWN, 2000))
-                        {
-                            unitTarget->CastSpell(pSpike, 46598, true); // enter vehicle
-                            pSpike->CastSpell(unitTarget, m_spellInfo->CalculateSimpleValue(EFFECT_INDEX_1), true, 0, 0, m_caster->GetObjectGuid(), m_spellInfo);
-                        }
+                        unitTarget->CastSpell(unitTarget, 69062 , true); // enter vehicle
+                        m_caster->CastSpell(unitTarget, m_spellInfo->CalculateSimpleValue(EFFECT_INDEX_1), true, 0, 0, m_caster->GetObjectGuid(), m_spellInfo);
                     }
                     return;
                 }
