@@ -297,7 +297,7 @@ void LFGMgr::JoinPlayer(Player* pPlayer, LFGRoleMask roles, LFGDungeonSet dungeo
 {
     ObjectGuid guid = pPlayer->GetObjectGuid();
 
-    LFGJoinResult result = GetPlayerJoinResult(pPlayer);
+    LFGJoinResult result = GetPlayerJoinResult(pPlayer, dungeons);
     if (result != ERR_LFG_OK)
     {
         DEBUG_LOG("LFGMgr::JoinPlayer: Player %u joining without members. result: %u - Aborting", guid.GetCounter(), result);
@@ -330,7 +330,7 @@ void LFGMgr::JoinGroup(Group* pGroup,Player* pLeader, LFGRoleMask leaderRoles, L
 
     ObjectGuid guid = pGroup->GetObjectGuid();
 
-    LFGJoinResult result = GetGroupJoinResult(pGroup);
+    LFGJoinResult result = GetGroupJoinResult(pGroup, dungeons);
     if (result != ERR_LFG_OK)
     {
         DEBUG_LOG("LFGMgr::JoinGroup: Group %u joining with %u members. result: %u - Abort", guid.GetCounter(), pGroup->GetMembersCount(), result);
@@ -564,7 +564,7 @@ void LFGMgr::RemoveFromQueue(ObjectGuid guid)
     }
 }
 
-LFGJoinResult LFGMgr::GetPlayerJoinResult(Player* pPlayer)
+LFGJoinResult LFGMgr::GetPlayerJoinResult(Player* pPlayer, LFGDungeonSet dungeons)
 {
 
    if (pPlayer->InBattleGround() || pPlayer->InArena() || pPlayer->InBattleGroundQueue())
@@ -577,9 +577,6 @@ LFGJoinResult LFGMgr::GetPlayerJoinResult(Player* pPlayer)
         && (!pPlayer->GetGroup() || pPlayer->GetGroup()->GetLFGGroupState()->GetStatus() != LFG_STATUS_OFFER_CONTINUE))
         return ERR_LFG_RANDOM_COOLDOWN_PLAYER;
 
-    LFGDungeonSet const* dungeons = pPlayer->GetLFGPlayerState()->GetDungeons();
-
-
     if (pPlayer->GetPlayerbotMgr() || pPlayer->GetPlayerbotAI())
     {
         DEBUG_LOG("LFGMgr::GetPlayerJoinResult: %u trying to join to dungeon finder, but has playerbots (or playerbot itself). Aborting.", pPlayer->GetObjectGuid().GetCounter());
@@ -589,13 +586,13 @@ LFGJoinResult LFGMgr::GetPlayerJoinResult(Player* pPlayer)
     // TODO - Check if all dungeons are valid
 
     // must be last check - ignored in party
-    if (!dungeons || !dungeons->size())
+    if (!dungeons.size())
         return ERR_LFG_INVALID_SLOT;
 
     return ERR_LFG_OK;
 }
 
-LFGJoinResult LFGMgr::GetGroupJoinResult(Group* group)
+LFGJoinResult LFGMgr::GetGroupJoinResult(Group* group, LFGDungeonSet dungeons)
 {
     if (!group)
         return ERR_LFG_GET_INFO_TIMEOUT;
@@ -616,7 +613,7 @@ LFGJoinResult LFGMgr::GetGroupJoinResult(Group* group)
         if (!pGroupMember->IsInWorld())
             return ERR_LFG_MEMBERS_NOT_PRESENT;
 
-        LFGJoinResult result = GetPlayerJoinResult(pGroupMember);
+        LFGJoinResult result = GetPlayerJoinResult(pGroupMember, dungeons);
 
         if (result == ERR_LFG_INVALID_SLOT)
             continue;

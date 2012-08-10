@@ -238,11 +238,11 @@ class LFGMgr
 
         // Dungeon expand operations
         LFGDungeonSet ExpandRandomDungeonsForGroup(LFGDungeonEntry const* randomDungeon, GuidSet playerGuids);
-        LFGDungeonEntry const* SelectRandomDungeonFromList(LFGDungeonSet dugeons);
+        LFGDungeonEntry const* SelectRandomDungeonFromList(LFGDungeonSet dungeons);
 
         // Checks
-        LFGJoinResult GetPlayerJoinResult(Player* pPlayer);
-        LFGJoinResult GetGroupJoinResult(Group* pGroup);
+        LFGJoinResult GetPlayerJoinResult(Player* pPlayer, LFGDungeonSet dungeons);
+        LFGJoinResult GetGroupJoinResult(Group* pGroup, LFGDungeonSet dungeons);
 
         // Player status
         LFGLockStatusType GetPlayerLockStatus(Player* pPlayer, LFGDungeonEntry const* pDungeon);
