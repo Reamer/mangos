@@ -2745,7 +2745,7 @@ void Player::GiveLevel(uint32 level)
 
     GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_REACH_LEVEL);
 
-    GetLFGState()->Update();
+    GetLFGPlayerState()->Update();
 
     // resend quests status directly
     if (GetSession())
