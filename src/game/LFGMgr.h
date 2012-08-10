@@ -159,7 +159,8 @@ class LFGMgr
         void JoinPlayer(Player* pPlayer, LFGRoleMask roles, LFGDungeonSet dungeons, std::string comment);
         void JoinGroup(Group* pGroup,Player* pLeader, LFGRoleMask leaderRoles, LFGDungeonSet dungeons, std::string leaderComment);
         void Leave(Player* pPlayer);
-        void Leave(Group* pGroup);
+        void LeavePlayer(Player* pPlayer);
+        void LeaveGroup(Group* pGroup);
         void ClearLFRList(Player* pPlayer);
 
         // Queue system

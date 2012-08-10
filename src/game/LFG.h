@@ -371,9 +371,9 @@ public:
 
     // Role checks
     LFGRoleCheckState GetRoleCheckState() const { return m_roleCheckState;};
-    void SetRoleCheckState( LFGRoleCheckState _state) { m_roleCheckState = _state; };
+    void SetRoleCheckState( LFGRoleCheckState state) { m_roleCheckState = state; };
     void StartRoleCheck();
-    bool QueryRoleCheckTime() {return (time_t(time(NULL)) < m_roleCheckCancelTime);};
+    bool QueryRoleCheckTime() {return (time(NULL) < m_roleCheckCancelTime);};
     bool IsRoleCheckActive();
 
     uint8 GetRandomPlayersCount() const { return m_uiRandomPlayersCount; };

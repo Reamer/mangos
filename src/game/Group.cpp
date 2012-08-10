@@ -446,7 +446,7 @@ void Group::ChangeLeader(ObjectGuid guid)
     if (slot == m_memberSlots.end())
         return;
 
-    sLFGMgr.Leave(this);
+    sLFGMgr.LeaveGroup(this);
 
     _setLeader(guid);
 
