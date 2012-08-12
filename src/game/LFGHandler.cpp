@@ -961,30 +961,30 @@ void WorldSession::SendLfgPlayerReward(LFGDungeonEntry const* dungeon, const LFG
     SendPacket(&data);
 }
 
-void WorldSession::SendLfgQueueStatus(LFGDungeonEntry const* dungeon, LFGQueueStatus* status)
+void WorldSession::SendLfgQueueStatus(LFGDungeonEntry const* dungeon)
 {
     BASIC_LOG("SMSG_LFG_QUEUE_STATUS %u dungeonEntry: %u ", GetPlayer()->GetObjectGuid().GetCounter(), dungeon->ID);
 
-    LFGQueueInfo* pqInfo = sLFGMgr.GetQueueInfo(GetPlayer()->GetObjectGuid());
-
-    if (GetPlayer()->GetGroup())
-        pqInfo = sLFGMgr.GetQueueInfo(GetPlayer()->GetGroup()->GetObjectGuid());
-
+    time_t waitTime = 0;
+    if (GetPlayer())
+    {
+        waitTime = GetPlayer()->GetLFGPlayerState()->GetWaitTime();
+    }
+    LFGQueueInfo* pqInfo = sLFGMgr.GetQueueInfo(dungeon);
     if (!pqInfo)
         return;
 
     WorldPacket data(SMSG_LFG_QUEUE_STATUS, 4 + 4 + 4 + 4 + 4 +4 + 1 + 1 + 1 + 4);
     data << uint32(dungeon->ID);                                   // Dungeon
-    data << int32(status->avgWaitTime);                            // Average Wait time
-    data << int32(status->waitTime);                               // Wait Time
-    data << int32(status->waitTimeTanks);                          // Wait Tanks
-    data << int32(status->waitTimeHealer);                         // Wait Healers
-    data << int32(status->waitTimeDps);                            // Wait Dps
+    data << int32(pqInfo->GetAvgTime());                           // Average Wait time
+    data << int32(pqInfo->GetFullTime());                          // Wait Time
+    data << int32(pqInfo->GetAvgTimeTanks());                      // Wait Tanks
+    data << int32(pqInfo->GetAvgTimeHealers());                    // Wait Healers
+    data << int32(pqInfo->GetAvgTimeDamagers());                   // Wait Dps
     data << uint8(pqInfo->tanks);                                  // Tanks needed
     data << uint8(pqInfo->healers);                                // Healers needed
-    data << uint8(pqInfo->dps);                                    // Dps needed
-    data << uint32(time(NULL) - pqInfo->joinTime);
-                                                                   // Player/group wait time in queue
+    data << uint8(pqInfo->damagers);                               // Dps needed
+    data << uint32(waitTime);                                      // Player/group wait time in queue
     SendPacket(&data);
 }
 

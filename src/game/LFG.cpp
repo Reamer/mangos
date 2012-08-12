@@ -29,30 +29,12 @@ void LFGStateStructure::SetDungeons(LFGDungeonSet dungeons)
 {
     LFGMgr::WriteGuard Guard(sLFGMgr.GetLock());
     m_DungeonsList = dungeons;
-    if (m_DungeonsList.empty())
-        SetType(LFG_TYPE_NONE);
-    else
-    {
-        if (LFGDungeonEntry const* entry = *m_DungeonsList.begin())
-            SetType(LFGType(entry->type));
-        else
-            SetType(LFG_TYPE_NONE);
-    }
 }
 
 void LFGStateStructure::RemoveDungeon(LFGDungeonEntry const* dungeon)
 {
     LFGMgr::WriteGuard Guard(sLFGMgr.GetLock());
     m_DungeonsList.erase(dungeon);
-    if (m_DungeonsList.empty())
-        SetType(LFG_TYPE_NONE);
-    else
-    {
-        if (LFGDungeonEntry const* entry = *m_DungeonsList.begin())
-            SetType(LFGType(entry->type));
-        else
-            SetType(LFG_TYPE_NONE);
-    }
 }
 
 void LFGStateStructure::AddDungeon(LFGDungeonEntry const* dungeon)
@@ -60,7 +42,6 @@ void LFGStateStructure::AddDungeon(LFGDungeonEntry const* dungeon)
     LFGMgr::WriteGuard Guard(sLFGMgr.GetLock());
     m_DungeonsList.insert(dungeon);
 }
-
 
 void LFGPlayerState::Clear()
 {
@@ -291,17 +272,14 @@ void  LFGGroupState::DecreaseKicksLeft()
         --m_uiKicksLeft;
 }
 
-LFGQueueInfo::LFGQueueInfo(ObjectGuid _guid, LFGType type)
+void LFGQueueInfo::ResetStats()
 {
-    guid = _guid;
-    m_type = type;
-    MANGOS_ASSERT(!guid.IsEmpty());
-
-    tanks = LFG_TANKS_NEEDED;
-    healers = LFG_HEALERS_NEEDED;
-    dps = LFG_DPS_NEEDED;
-    joinTime = time_t(time(NULL));
-
+    tanks    = 0;
+    healers  = 0;
+    damagers = 0;
+    tanksTime   = 0;
+    healersTime = 0;
+    damagersTime= 0;
 }
 
 LFGProposal::LFGProposal(LFGDungeonEntry const* _dungeon)
