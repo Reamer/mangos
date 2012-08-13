@@ -104,7 +104,7 @@ LFGRoleMask LFGPlayerState::GetRoles()
 
 void LFGPlayerState::SetJoined()
 {
-    m_jointime = time_t(time(NULL));
+    m_jointime = time(NULL);
     m_bTeleported = false;
 }
 

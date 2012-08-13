@@ -1538,8 +1538,8 @@ void LFGMgr::CleanupBoots()
     for (LFGQueueInfoMap::const_iterator infoMapitr = m_queueInfoMap.begin(); infoMapitr != m_queueInfoMap.end(); ++infoMapitr)
     {
         LFGDungeonEntry const* dungeon = infoMapitr->first;
-        LFGQueueInfo info = infoMapitr->second;
-        GuidSet groupGuids = info.groupGuids;
+        LFGQueueInfo const* info = &infoMapitr->second;
+        GuidSet groupGuids = info->groupGuids;
 
         if (groupGuids.empty())
             continue;
@@ -1771,8 +1771,8 @@ void LFGMgr::CleanupRoleChecks()
     for (LFGQueueInfoMap::const_iterator infoMapitr = m_queueInfoMap.begin(); infoMapitr != m_queueInfoMap.end(); ++infoMapitr)
     {
         LFGDungeonEntry const* dungeon = infoMapitr->first;
-        LFGQueueInfo info = infoMapitr->second;
-        GuidSet groupGuids = info.groupGuids;
+        LFGQueueInfo const* info = &infoMapitr->second;
+        GuidSet groupGuids = info->groupGuids;
 
         if (groupGuids.empty())
             continue;
@@ -2377,10 +2377,10 @@ bool LFGMgr::TryCreateGroup()
     for (LFGQueueInfoMap::const_iterator infoMapitr = m_queueInfoMap.begin(); infoMapitr != m_queueInfoMap.end(); ++infoMapitr)
     {
         LFGDungeonEntry const* dungeon = infoMapitr->first;
-        LFGQueueInfo info = infoMapitr->second;
+        LFGQueueInfo const* info = &infoMapitr->second;
         LFGType type = LFGType(dungeon->type);
 
-        GuidSet players = info.playerGuids;
+        GuidSet players = info->playerGuids;
         if (players.empty())
             continue;
 
@@ -2451,13 +2451,13 @@ void LFGMgr::UpdateQueueStatus(Group* pGroup)
 
 void LFGMgr::UpdateQueueStatus()
 {
-    for (LFGQueueInfoMap::const_iterator infoMapitr = m_queueInfoMap.begin(); infoMapitr != m_queueInfoMap.end(); ++infoMapitr)
+    for (LFGQueueInfoMap::iterator infoMapitr = m_queueInfoMap.begin(); infoMapitr != m_queueInfoMap.end(); ++infoMapitr)
     {
         LFGDungeonEntry const* dungeon = infoMapitr->first;
-        LFGQueueInfo info = infoMapitr->second;
-        GuidSet groupGuids = info.groupGuids;
-        GuidSet playerGuids = info.playerGuids;
-        info.ResetStats();
+        LFGQueueInfo* info = &infoMapitr->second;
+        GuidSet groupGuids = info->groupGuids;
+        GuidSet playerGuids = info->playerGuids;
+        info->ResetStats();
         for (GuidSet::const_iterator groupsitr = groupGuids.begin(); groupsitr != groupGuids.end(); ++groupsitr)
         {
             Group* pGroup = sObjectMgr.GetGroup(*groupsitr);
@@ -2472,18 +2472,18 @@ void LFGMgr::UpdateQueueStatus()
                         LFGPlayerState* state = pGroupMember->GetLFGPlayerState();
                         if (state->HasRole(ROLE_TANK))
                         {
-                            info.tanks++;
-                            info.tanksTime += timeInQueue;
+                            info->tanks++;
+                            info->tanksTime += timeInQueue;
                         }
                         else if (state->HasRole(ROLE_HEALER))
                         {
-                            info.healers++;
-                            info.healersTime += timeInQueue;
+                            info->healers++;
+                            info->healersTime += timeInQueue;
                         }
                         else if (state->HasRole(ROLE_DAMAGE))
                         {
-                            info.damagers++;
-                            info.damagersTime += timeInQueue;
+                            info->damagers++;
+                            info->damagersTime += timeInQueue;
                         }
                         else
                         {
@@ -2498,22 +2498,22 @@ void LFGMgr::UpdateQueueStatus()
             Player* pPlayer = sObjectMgr.GetPlayer(*playersitr);
             if (pPlayer && pPlayer->IsInWorld())
             {
-                uint64 timeInQueue = uint64( time(NULL) - pPlayer->GetLFGPlayerState()->GetJoinTime());
+                time_t timeInQueue = pPlayer->GetLFGPlayerState()->GetWaitTime();
                 LFGPlayerState* state = pPlayer->GetLFGPlayerState();
                 if (state->HasRole(ROLE_TANK))
                 {
-                    info.tanks++;
-                    info.tanksTime += timeInQueue;
+                    info->tanks++;
+                    info->tanksTime += timeInQueue;
                 }
                 else if (state->HasRole(ROLE_HEALER))
                 {
-                    info.healers++;
-                    info.healersTime += timeInQueue;
+                    info->healers++;
+                    info->healersTime += timeInQueue;
                 }
                 else if (state->HasRole(ROLE_DAMAGE))
                 {
-                    info.damagers++;
-                    info.damagersTime += timeInQueue;
+                    info->damagers++;
+                    info->damagersTime += timeInQueue;
                 }
                 else
                 {
@@ -2521,6 +2521,7 @@ void LFGMgr::UpdateQueueStatus()
                 }
             }
         }
+        BASIC_LOG("LFGMgr::UpdateQueueStatus: dungeonId %u tanks %u, healers %u, damagers %u", dungeon->ID, info->tanks, info->healers, info->damagers);
     }
 }
 
@@ -2529,9 +2530,10 @@ void LFGMgr::SendStatistic()
     for (LFGQueueInfoMap::const_iterator infoMapitr = m_queueInfoMap.begin(); infoMapitr != m_queueInfoMap.end(); ++infoMapitr)
     {
         LFGDungeonEntry const* dungeon = infoMapitr->first;
-        LFGQueueInfo info = infoMapitr->second;
-        GuidSet groupGuids = info.groupGuids;
-        GuidSet playerGuids = info.playerGuids;
+        LFGQueueInfo const* info = &infoMapitr->second;
+        GuidSet groupGuids = info->groupGuids;
+        GuidSet playerGuids = info->playerGuids;
+        BASIC_LOG("LFGMgr::SendStatistic: DungeonID %u with %u Groups and %u Players", dungeon->ID, groupGuids.size(), playerGuids.size());
         switch (LFGType(dungeon->type))
         {
             case LFG_TYPE_RAID:
@@ -2678,8 +2680,8 @@ void LFGMgr::UpdateLFRGroups()
     for (LFGQueueInfoMap::const_iterator infoMapitr = m_queueInfoMap.begin(); infoMapitr != m_queueInfoMap.end(); ++infoMapitr)
     {
         LFGDungeonEntry const* dungeon = infoMapitr->first;
-        LFGQueueInfo info = infoMapitr->second;
-        GuidSet groupGuids = info.groupGuids;
+        LFGQueueInfo const* info = &infoMapitr->second;
+        GuidSet groupGuids = info->groupGuids;
 
         if (groupGuids.empty())
             continue;
