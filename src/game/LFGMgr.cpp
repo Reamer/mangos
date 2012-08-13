@@ -2415,6 +2415,13 @@ bool LFGMgr::TryCreateGroup()
                 continue;
 
             Player* player1 = sObjectMgr.GetPlayer(playerGuid);
+
+            if (player1->GetLFGPlayerState()->GetState() != LFG_STATE_QUEUED)
+            {
+                BASIC_LOG("LFGMgr::TryCreateGroup: Player is not in State Queue. Actual state: %u", player1->GetLFGPlayerState()->GetState());
+                continue;
+            }
+
             if (player1 && player1->IsInWorld())
             {
                 rolesMap.insert(std::make_pair(player1->GetObjectGuid(), player1->GetLFGPlayerState()->GetRoles()));
@@ -2441,14 +2448,6 @@ bool LFGMgr::TryCreateGroup()
         }
     }
     return false;
-}
-
-void LFGMgr::UpdateQueueStatus(Player* pPlayer)
-{
-}
-
-void LFGMgr::UpdateQueueStatus(Group* pGroup)
-{
 }
 
 void LFGMgr::UpdateQueueStatus()

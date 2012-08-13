@@ -195,8 +195,6 @@ class LFGMgr
         bool IsGroupCompleted(Group* pGroup, uint8 uiAddMembers = 0);
 
         // Statistic system
-        void UpdateQueueStatus(Player* pPlayer);
-        void UpdateQueueStatus(Group* pGroup);
         void UpdateQueueStatus();
         void SendStatistic();
 
