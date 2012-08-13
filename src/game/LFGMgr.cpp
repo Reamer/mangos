@@ -474,6 +474,8 @@ void LFGMgr::AddToQueue(ObjectGuid guid, LFGDungeonEntry const* pDungeon)
     if (pDungeon->type == LFG_TYPE_NONE)
         return;
 
+    // at first we delete clean from queue
+    RemoveFromQueue(guid);
     LFGQueueInfo* pqInfo = GetQueueInfo(pDungeon);
     if (!pqInfo)
     {
@@ -2222,16 +2224,16 @@ void LFGMgr::TryCompleteGroups()
     for (LFGQueueInfoMap::const_iterator itr = m_queueInfoMap.begin(); itr != m_queueInfoMap.end(); ++itr)
     {
         LFGDungeonEntry const* dungeon = itr->first;
-        LFGQueueInfo info = itr->second;
+        LFGQueueInfo const* info = &itr->second;
         LFGType type = LFGType(dungeon->type);
 
         if (type == LFG_TYPE_RAID || type == LFG_TYPE_NONE || type == LFG_TYPE_MAX) // the last two cases should never appear, but for save we continue
             continue;
 
-        if (info.groupGuids.empty())
+        if (info->groupGuids.empty())
             continue;
 
-        GuidSet groups = info.groupGuids;
+        GuidSet groups = info->groupGuids;
         for (GuidSet::const_iterator itr = groups.begin(); itr != groups.end(); ++itr)
         {
             Group* pGroup = sObjectMgr.GetGroup(*itr);
@@ -2253,14 +2255,14 @@ void LFGMgr::TryCompleteGroups()
                 break;
             }
 
-            if (info.playerGuids.empty())
+            if (info->playerGuids.empty())
             {
                 BASIC_LOG("LFGMgr:TryCompleteGroups: Try complete group %u  type %u state %u, but we have no players", pGroup->GetObjectGuid().GetCounter(), type, pGroup->GetLFGGroupState()->GetState());
                 continue;
             }
 
             GuidSet applicants;
-            for (GuidSet::const_iterator iter = info.playerGuids.begin(); iter != info.playerGuids.end(); ++iter)
+            for (GuidSet::const_iterator iter = info->playerGuids.begin(); iter != info->playerGuids.end(); ++iter)
             {
                 Player* pPlayer = sObjectMgr.GetPlayer(*iter);
                 if (!pPlayer)
