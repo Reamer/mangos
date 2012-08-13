@@ -974,10 +974,6 @@ void WorldSession::SendLfgQueueStatus(LFGDungeonEntry const* dungeon)
     if (!pqInfo)
         return;
 
-    uint8 tanksNeeded = (LFG_TANKS_NEEDED - pqInfo->tanks > 0) ? LFG_TANKS_NEEDED - pqInfo->tanks : 0;
-    uint8 healerNeeded = (LFG_HEALERS_NEEDED - pqInfo->healers > 0) ? LFG_HEALERS_NEEDED - pqInfo->healers : 0;
-    uint8 damagersNeeded = (LFG_DPS_NEEDED - pqInfo->damagers > 0) ? LFG_DPS_NEEDED - pqInfo->damagers : 0;
-
     WorldPacket data(SMSG_LFG_QUEUE_STATUS, 4 + 4 + 4 + 4 + 4 +4 + 1 + 1 + 1 + 4);
     data << uint32(dungeon->ID);                                   // Dungeon
     data << int32(pqInfo->GetAvgTime());                           // Average Wait time
@@ -985,9 +981,9 @@ void WorldSession::SendLfgQueueStatus(LFGDungeonEntry const* dungeon)
     data << int32(pqInfo->GetAvgTimeTanks());                      // Wait Tanks
     data << int32(pqInfo->GetAvgTimeHealers());                    // Wait Healers
     data << int32(pqInfo->GetAvgTimeDamagers());                   // Wait Dps
-    data << uint8(tanksNeeded);                                    // Tanks needed
-    data << uint8(healerNeeded);                                   // Healers needed
-    data << uint8(damagersNeeded);                                 // Dps needed
+    data << uint8(pqInfo->GetTanksNeeded());                       // Tanks needed
+    data << uint8(pqInfo->GetHealersNeeded());                     // Healers needed
+    data << uint8(pqInfo->GetDamagersNeeded());                    // Dps needed
     data << uint32(waitTime);                                      // Player/group wait time in queue
     SendPacket(&data);
 }

@@ -100,27 +100,14 @@ struct LFGQueueInfo
 
     void ResetStats();
     uint32 GetFullCount() { return tanks + healers + damagers; };
+    uint8  GetTanksNeeded() { return (LFG_TANKS_NEEDED - tanks > 0) ? (LFG_TANKS_NEEDED - tanks) : 0; };
+    uint8  GetHealersNeeded() { return (LFG_HEALERS_NEEDED - healers > 0) ? (LFG_HEALERS_NEEDED - healers) : 0; };
+    uint8  GetDamagersNeeded() { return (LFG_DPS_NEEDED - damagers > 0) ? (LFG_DPS_NEEDED - damagers) : 0; };
     time_t GetFullTime() { return tanksTime + healersTime + damagersTime; };
     time_t GetAvgTimeTanks() {return tanks ? time_t(tanksTime/tanks) : 0;};
     time_t GetAvgTimeHealers() {return healers ? time_t(healersTime/healers) : 0; };
     time_t GetAvgTimeDamagers() {return damagers ? time_t(damagersTime/damagers) : 0; };
     time_t GetAvgTime() {return GetFullCount() ? time_t(GetFullTime()/GetFullCount()) : 0; };
-};
-
-struct LFGQueueStatus
-{
-    LFGQueueStatus(): avgWaitTime(0), waitTime(0), waitTimeTanks(0), waitTimeDps(0),
-                      tanks(0), healers(0), dps(0), playersWaited(0) {};
-
-    time_t                 avgWaitTime;                      // Average Wait time
-    time_t                 waitTime;                         // Wait Time
-    time_t                 waitTimeTanks;                    // Wait Tanks
-    time_t                 waitTimeHealer;                   // Wait Healers
-    time_t                 waitTimeDps;                      // Wait Dps
-    uint32                 tanks;                            // Tanks
-    uint32                 healers;                          // Healers
-    uint32                 dps;                              // Dps
-    uint32                 playersWaited;                    // players summ
 };
 
 // Event manager
@@ -142,8 +129,6 @@ typedef std::pair<LFGRewardMap::const_iterator, LFGRewardMap::const_iterator> LF
 typedef std::map<LFGDungeonEntry const*, LFGQueueInfo> LFGQueueInfoMap;
 typedef std::map<uint32/*dungeonID*/, LFGDungeonEntry const*> LFGDungeonMap;
 typedef std::map<uint32/*ID*/, LFGProposal> LFGProposalMap;
-
-typedef std::map<LFGDungeonEntry const*, LFGQueueStatus> LFGQueueStatusMap;
 typedef std::map<ObjectGuid, LFGRoleMask>  LFGRolesMap;
 typedef std::map<LFGDungeonEntry const*, GuidSet> LFGSearchMap;
 typedef std::list<LFGEvent> LFGEventList;
