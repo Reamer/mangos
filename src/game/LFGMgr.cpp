@@ -1312,8 +1312,8 @@ void LFGMgr::UpdateProposal(uint32 ID, ObjectGuid guid, bool accept)
             {
                 pPlayer->GetSession()->SendLfgUpdatePlayer(LFG_UPDATETYPE_GROUP_FOUND, pPlayer->GetLFGPlayerState()->GetType());
             }
-
-            pGroup->AddMember(pPlayer->GetObjectGuid(), pPlayer->GetName());
+            if (pGroup->IsMember(pPlayer->GetObjectGuid()))
+                pGroup->AddMember(pPlayer->GetObjectGuid(), pPlayer->GetName());
             pProposal->RemoveMember(*itr);
 //            player->GetSession()->SendLfgUpdateProposal(pProposal);
             pPlayer->GetLFGPlayerState()->SetProposal(NULL);
