@@ -184,7 +184,6 @@ void WorldSession::HandleLfgSetRolesOpcode(WorldPacket &recv_data)
     {
         bool isChanged = sLFGMgr.RoleChanged(GetPlayer(), roleMask);
         BASIC_LOG("CMSG_LFG_SET_ROLES: Group %u, Player %u, Roles: %u %s", pGroup->GetObjectGuid().GetCounter(), GetPlayer()->GetObjectGuid().GetCounter(), roles, isChanged ? "changed" : "not changed");
-        sLFGMgr.UpdateQueueStatus(pGroup);
         sLFGMgr.UpdateRoleCheck(pGroup);
     }
     else // when this is called without group?
