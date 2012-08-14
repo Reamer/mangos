@@ -620,8 +620,6 @@ LFGLockStatusType LFGMgr::GetPlayerLockStatus(Player* pPlayer, LFGDungeonEntry c
     if (!pPlayer || !pPlayer->IsInWorld())
         return LFG_LOCKSTATUS_RAID_LOCKED;
 
-    bool isRandom = (pPlayer->GetLFGPlayerState()->GetType() == LFG_TYPE_RANDOM_DUNGEON);
-
     // check if player in this dungeon. not need other checks
     //
     if (pPlayer->GetGroup() && pPlayer->GetGroup()->isLFDGroup())
@@ -630,8 +628,6 @@ LFGLockStatusType LFGMgr::GetPlayerLockStatus(Player* pPlayer, LFGDungeonEntry c
         {
             if (pPlayer->GetGroup()->GetLFGGroupState()->GetDungeon()->map == pPlayer->GetMapId())
                 return LFG_LOCKSTATUS_OK;
-            else if (pPlayer->GetGroup()->GetLFGGroupState()->GetType() == LFG_TYPE_RANDOM_DUNGEON)
-                isRandom = true;
         }
     }
 
@@ -648,6 +644,7 @@ LFGLockStatusType LFGMgr::GetPlayerLockStatus(Player* pPlayer, LFGDungeonEntry c
     if (dungeon->maxlevel < pPlayer->getLevel())
         return LFG_LOCKSTATUS_TOO_HIGH_LEVEL;
 
+    /* I think we doesn't need this check. If we use: TODO: Check AREA_LOCKSTATUS_RAID_LOCKED. If Player is not in raid group he can't join this raid-Queue.
     switch (pPlayer->GetAreaLockStatus(dungeon->map, Difficulty(dungeon->difficulty)))
     {
         case AREA_LOCKSTATUS_OK:
@@ -668,7 +665,7 @@ LFGLockStatusType LFGMgr::GetPlayerLockStatus(Player* pPlayer, LFGDungeonEntry c
         case AREA_LOCKSTATUS_UNKNOWN_ERROR:
         default:
             return LFG_LOCKSTATUS_RAID_LOCKED;
-    }
+    }*/
 
     if (dungeon->difficulty > DUNGEON_DIFFICULTY_NORMAL)
     {
