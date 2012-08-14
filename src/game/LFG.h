@@ -314,7 +314,7 @@ public:
 
     void           SetJoined();
     time_t         GetJoinTime() { return m_jointime; };
-    time_t         GetWaitTime() { return time_t(NULL) - m_jointime; };
+    time_t         GetWaitTime() { return time(NULL) - m_jointime; };
 
     void           SetTeleported() {m_bTeleported = true;};
     bool           IsTeleported() { return m_bTeleported;};
