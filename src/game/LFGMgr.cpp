@@ -529,13 +529,6 @@ LFGJoinResult LFGMgr::GetPlayerJoinResult(Player* pPlayer, LFGDungeonSet dungeon
         return ERR_LFG_NO_SLOTS_PLAYER;
     }
 
-    for (LFGDungeonSet::const_iterator itr = dungeons.begin(); itr != dungeons.end(); ++itr)
-    {
-        LFGDungeonEntry const* dungeon = *itr;
-        if (sWorld.IsDungeonMapIdDisable(dungeon->map))
-            return ERR_LFG_INVALID_SLOT;
-    }
-
     // TODO - Check if all dungeons are valid
 
     // must be last check - ignored in party
@@ -602,8 +595,10 @@ LFGLockStatusType LFGMgr::GetPlayerLockStatus(Player* pPlayer, LFGDungeonEntry c
     if (!pPlayer || !pPlayer->IsInWorld())
         return LFG_LOCKSTATUS_RAID_LOCKED;
 
+    if (sWorld.IsDungeonMapIdDisable(dungeon->map))
+        return LFG_LOCKSTATUS_RAID_LOCKED;
+
     // check if player in this dungeon. not need other checks
-    //
     if (pPlayer->GetGroup() && pPlayer->GetGroup()->isLFDGroup())
     {
         if (pPlayer->GetGroup()->GetLFGGroupState()->GetDungeon())
