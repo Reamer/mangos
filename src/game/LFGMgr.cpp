@@ -789,16 +789,6 @@ LFGDungeonSet LFGMgr::ExpandRandomDungeonsForGroup(LFGDungeonEntry const* random
     return list;
 }
 
-LFGDungeonEntry const* SelectDungeonFromList(LFGDungeonSet* dungeons)
-{
-    if (!dungeons || dungeons->empty())
-        return NULL;
-    if (dungeons->size() == 1)
-        return *dungeons->begin();
-
-    return NULL;
-}
-
 LFGDungeonEntry const* LFGMgr::GetDungeon(uint32 dungeonID)
 {
     LFGDungeonMap::const_iterator itr = m_dungeonMap.find(dungeonID);
@@ -818,7 +808,6 @@ void LFGMgr::ClearLFRList(Player* pPlayer)
     pPlayer->GetLFGPlayerState()->SetDungeons(dungeons);
     BASIC_LOG("LFGMgr::LFR List cleared, player %u leaving LFG queue", pPlayer->GetObjectGuid().GetCounter());
     RemoveFromQueue(pPlayer->GetObjectGuid());
-
 }
 
 GuidSet LFGMgr::GetDungeonPlayerQueue(LFGDungeonEntry const* pDungeon, Team team)
@@ -906,6 +895,7 @@ void LFGMgr::SendLFGRewards(Group* pGroup)
     pGroup->GetLFGGroupState()->SetState(LFG_STATE_FINISHED_DUNGEON);
     pGroup->GetLFGGroupState()->SetStatus(LFG_STATUS_SAVED);
 
+
     LFGDungeonEntry const* pRealdungeon = pGroup->GetLFGGroupState()->GetDungeon();
 
     if (!pRealdungeon)
@@ -913,7 +903,7 @@ void LFGMgr::SendLFGRewards(Group* pGroup)
         BASIC_LOG("LFGMgr::SendLFGReward: group %u - but no realdungeon", pGroup->GetObjectGuid().GetCounter());
         return;
     }
-    else  if (pRealdungeon->type != LFG_TYPE_RANDOM_DUNGEON)
+    else  if (pGroup->GetLFGGroupState()->GetType() != LFG_TYPE_RANDOM_DUNGEON)
     {
         BASIC_LOG("LFGMgr::SendLFGReward: group %u dungeon %u is not random (%u)", pGroup->GetObjectGuid().GetCounter(), pRealdungeon->ID, pRealdungeon->type);
         return;
@@ -1210,22 +1200,22 @@ void LFGMgr::UpdateProposal(uint32 ID, ObjectGuid guid, bool accept)
             pProposal->SetDeleted();
             return;
         }
-        Player* leader = LeaderElection(&proposalGuidsTmp);
-        if (!leader)
+        Player* pLeader = LeaderElection(&proposalGuidsTmp);
+        if (!pLeader)
         {
             BASIC_LOG("LFGMgr::UpdateProposal:%u cannot make pGroup, cannot set leader!", pProposal->m_uiID);
             pProposal->SetDeleted();
             return;
         }
 
-        if (leader->GetGroup())
-            leader->RemoveFromGroup();
+        if (pLeader->GetGroup())
+            pLeader->RemoveFromGroup();
 
-        leader->GetSession()->SendLfgUpdatePlayer(LFG_UPDATETYPE_GROUP_FOUND, leader->GetLFGPlayerState()->GetType());
-        leader->GetLFGPlayerState()->AddRole(ROLE_LEADER);
+        pLeader->GetSession()->SendLfgUpdatePlayer(LFG_UPDATETYPE_GROUP_FOUND, pLeader->GetLFGPlayerState()->GetType());
+        pLeader->GetLFGPlayerState()->AddRole(ROLE_LEADER);
 
         pGroup = new Group();
-        pGroup->Create(leader->GetObjectGuid(), leader->GetName());
+        pGroup->Create(pLeader->GetObjectGuid(), pLeader->GetName());
         pGroup->ConvertToLFG(pProposal->GetType());
         sObjectMgr.AddGroup(pGroup);
 
@@ -1234,11 +1224,12 @@ void LFGMgr::UpdateProposal(uint32 ID, ObjectGuid guid, bool accept)
         pGroup->GetLFGGroupState()->SetState(LFG_STATE_PROPOSAL);
         pGroup->GetLFGGroupState()->AddDungeon(pProposal->GetDungeon());
         pGroup->GetLFGGroupState()->SetDungeon(realdungeon);
+        pGroup->GetLFGGroupState()->SetType(pLeader->GetLFGPlayerState()->GetType());
 
         // Special case to add leader to LFD pGroup:
-        AddMemberToLFDGroup(leader->GetObjectGuid());
-        pProposal->RemoveMember(leader->GetObjectGuid());
-        leader->GetLFGPlayerState()->SetProposal(NULL);
+        AddMemberToLFDGroup(pLeader->GetObjectGuid());
+        pProposal->RemoveMember(pLeader->GetObjectGuid());
+        pLeader->GetLFGPlayerState()->SetProposal(NULL);
         BASIC_LOG("LFGMgr::UpdateProposal: in proposal %u created pGroup %u", pProposal->m_uiID, pGroup->GetObjectGuid().GetCounter());
     }
     else
@@ -2003,23 +1994,23 @@ bool LFGMgr::RoleChanged(Player* pPlayer, LFGRoleMask roles)
 Player* LFGMgr::LeaderElection(GuidSet* playerGuids)
 {
     std::set<Player*> leaders;
-    Player* leader = NULL;
+    Player* pLeader = NULL;
     uint32 GS = 0;
 
     for (GuidSet::const_iterator itr = playerGuids->begin(); itr != playerGuids->end(); ++itr)
     {
-        Player* member  = sObjectMgr.GetPlayer(*itr);
-        if (member && member->IsInWorld())
+        Player* pMember  = sObjectMgr.GetPlayer(*itr);
+        if (pMember && pMember->IsInWorld())
         {
-            if (member->GetLFGPlayerState()->GetRoles() & LFG_ROLE_MASK_LEADER)
-                leaders.insert(member);
+            if (pMember->GetLFGPlayerState()->HasRole(ROLE_LEADER))
+                leaders.insert(pMember);
 
-            member->GetLFGPlayerState()->RemoveRole(ROLE_LEADER);
+            pMember->GetLFGPlayerState()->RemoveRole(ROLE_LEADER);
 
-            if (member->GetEquipGearScore() > GS)
+            if (pMember->GetEquipGearScore() > GS)
             {
-                GS = member->GetEquipGearScore();
-                leader = member;
+                GS = pMember->GetEquipGearScore();
+                pLeader = pMember;
             }
         }
     }
@@ -2032,25 +2023,25 @@ Player* LFGMgr::LeaderElection(GuidSet* playerGuids)
             if ((*itr)->GetEquipGearScore() > GS)
             {
                 GS = (*itr)->GetEquipGearScore();
-                leader = (*itr);
+                pLeader = (*itr);
             }
         }
     }
 
-    if (!leader)
+    if (!pLeader)
     {
         for (GuidSet::const_iterator itr = playerGuids->begin(); itr != playerGuids->end(); ++itr)
         {
-            Player* member  = sObjectMgr.GetPlayer(*itr);
-            if (member && member->IsInWorld())
+            Player* pMember  = sObjectMgr.GetPlayer(*itr);
+            if (pMember && pMember->IsInWorld())
             {
-                leader = member;
+                pLeader = pMember;
                 break;
             }
         }
     }
     // leader may be NULL!
-    return leader;
+    return pLeader;
 }
 
 void LFGMgr::SetRoles(LFGRolesMap* rolesMap)

@@ -239,7 +239,7 @@ class LFGMgr
         LFGLockStatusMap GetPlayerLockMap(Player* pPlayer);
 
         // Helper Functions
-        LFGType GetAndCheckLFGType(LFGDungeonSet dungeons);
+        static LFGType GetAndCheckLFGType(LFGDungeonSet dungeons);
 
         // Sheduler
         void SheduleEvent();

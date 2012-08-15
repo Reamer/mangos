@@ -63,13 +63,6 @@ void WorldSession::HandleLfgJoinOpcode( WorldPacket & recv_data )
     {
         recv_data >> dungeonID;
         LFGDungeonEntry const* dungeon = sLFGMgr.GetDungeon(dungeonID & 0x00FFFFFF);    // remove the type from the dungeon entry
-        if (dungeon->map == 632
-            || dungeon->map == 650
-            || dungeon->map == 658
-            || dungeon->map == 668)
-        {
-            continue;
-        }
         if (dungeon)
             newDungeons.insert(dungeon);
     }
@@ -135,12 +128,11 @@ void WorldSession::HandleLfrLeaveOpcode( WorldPacket & recv_data )
 
     BASIC_LOG("CMSG_SEARCH_LFG_LEAVE %u dungeon entry: %u", GetPlayer()->GetObjectGuid().GetCounter(), entry);
 
-    Group* group = GetPlayer()->GetGroup();
+    LFGDungeonEntry const* dungeon = sLFGMgr.GetDungeon(entry & 0x00FFFFFF);
 
-//    if (!group || group->GetLeaderGuid() == GetPlayer()->GetObjectGuid())
-    if (!group)
+    if (!GetPlayer()->GetGroup())
     {
-        GetPlayer()->GetLFGPlayerState()->RemoveDungeon(sLFGMgr.GetDungeon(entry & 0x00FFFFFF));
+        GetPlayer()->GetLFGPlayerState()->RemoveDungeon(dungeon);
 
         if (GetPlayer()->GetLFGPlayerState()->GetDungeons()->empty())
             sLFGMgr.Leave(GetPlayer());
@@ -154,7 +146,7 @@ void WorldSession::HandleLfgClearOpcode( WorldPacket & /*recv_data */ )
 
     sLFGMgr.ClearLFRList(GetPlayer());
 
-    if(sWorld.getConfig(CONFIG_BOOL_RESTRICTED_LFG_CHANNEL) && _player->GetSession()->GetSecurity() == SEC_PLAYER )
+    if(sWorld.getConfig(CONFIG_BOOL_RESTRICTED_LFG_CHANNEL) && GetPlayer()->GetSession()->GetSecurity() == SEC_PLAYER )
         GetPlayer()->LeaveLFGChannel();
 
 }
