@@ -67,49 +67,31 @@ void LFGMgr::Update(uint32 uiDiff)
     if (m_queueInfoMap.empty())
         return;
 
-    bool isFullUpdate = false;
-    bool isLFRUpdate  = false;
-    bool isStatUpdate = false;
-
     m_LFGupdateTimer.Update(uiDiff);
     m_LFRupdateTimer.Update(uiDiff);
     m_LFGQueueUpdateTimer.Update(uiDiff);
 
     if (m_LFGupdateTimer.Passed())
     {
-        isFullUpdate = true;
+        CleanupProposals();
+        CleanupRoleChecks();
+        CleanupBoots();
+        TryCompleteGroups();
+        TryCreateGroup();
         m_LFGupdateTimer.Reset();
     }
 
     if (m_LFRupdateTimer.Passed())
     {
-        isLFRUpdate = true;
+        UpdateLFRGroups();
         m_LFRupdateTimer.Reset();
     }
 
     if (m_LFGQueueUpdateTimer.Passed())
     {
-        isStatUpdate = true;
-        m_LFGQueueUpdateTimer.Reset();
-    }
-
-//        BASIC_LOG("LFGMgr::Update type %u, player queue %u group queue %u",i,m_playerQueue[i].size(), m_groupQueue[i].size());
-    TryCompleteGroups();
-    TryCreateGroup();
-    if (isFullUpdate)
-    {
-        CleanupProposals();
-        CleanupRoleChecks();
-        CleanupBoots();
         UpdateQueueStatus();
-    }
-    if (isStatUpdate)
-    {
         SendStatistic();
-    }
-    if (sWorld.getConfig(CONFIG_BOOL_LFR_EXTEND) && isLFRUpdate)
-    {
-        UpdateLFRGroups();
+        m_LFGQueueUpdateTimer.Reset();
     }
 }
 
@@ -2680,6 +2662,9 @@ void LFGMgr::UpdateLFRGroups()
         LFGDungeonEntry const* dungeon = infoMapitr->first;
         LFGQueueInfo const* info = &infoMapitr->second;
         GuidSet groupGuids = info->groupGuids;
+
+        if (dungeon->type == LFG_TYPE_RAID)
+            continue;
 
         if (groupGuids.empty())
             continue;
