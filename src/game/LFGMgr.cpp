@@ -596,7 +596,7 @@ LFGLockStatusType LFGMgr::GetPlayerLockStatus(Player* pPlayer, LFGDungeonEntry c
         return LFG_LOCKSTATUS_RAID_LOCKED;
 
     if (sWorld.IsDungeonMapIdDisable(dungeon->map))
-        return LFG_LOCKSTATUS_RAID_LOCKED;
+        return LFG_LOCKSTATUS_NOT_FILL_REQUIREMENTS;
 
     // check if player in this dungeon. not need other checks
     if (pPlayer->GetGroup() && pPlayer->GetGroup()->isLFDGroup())
