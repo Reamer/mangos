@@ -82,34 +82,6 @@ struct LFGReward
     }
 };
 
-// Stores player or group queue info
-struct LFGQueueInfo
-{
-    LFGQueueInfo() { ResetStats(); };
-    GuidSet groupGuids;
-    GuidSet playerGuids;
-
-    uint32  damagers;
-    time_t  damagersTime;
-
-    uint32  healers;
-    time_t  healersTime;
-
-    uint32  tanks;
-    time_t  tanksTime;
-
-    void ResetStats();
-    uint32 GetFullCount() { return tanks + healers + damagers; };
-    uint8  GetTanksNeeded() { return (LFG_TANKS_NEEDED - tanks > 0) ? (LFG_TANKS_NEEDED - tanks) : 0; };
-    uint8  GetHealersNeeded() { return (LFG_HEALERS_NEEDED - healers > 0) ? (LFG_HEALERS_NEEDED - healers) : 0; };
-    uint8  GetDamagersNeeded() { return (LFG_DPS_NEEDED - damagers > 0) ? (LFG_DPS_NEEDED - damagers) : 0; };
-    time_t GetFullTime() { return tanksTime + healersTime + damagersTime; };
-    time_t GetAvgTimeTanks() {return tanks ? time_t(tanksTime/tanks) : 0;};
-    time_t GetAvgTimeHealers() {return healers ? time_t(healersTime/healers) : 0; };
-    time_t GetAvgTimeDamagers() {return damagers ? time_t(damagersTime/damagers) : 0; };
-    time_t GetAvgTime() {return GetFullCount() ? time_t(GetFullTime()/GetFullCount()) : 0; };
-};
-
 // Event manager
 struct LFGEvent
 {
@@ -174,7 +146,7 @@ class LFGMgr
         uint32 CreateProposal(LFGDungeonEntry const* pDungeon, Group* pGroup, GuidSet playerGuids);
         bool SendProposal(uint32 uiID, ObjectGuid guid);
         LFGProposal* GetProposal(uint32 uiID);
-        void RemoveProposal(Player* pDecliner, uint32 uiID);
+        void RemoveFomProposal(Player* pDecliner, uint32 uiID);
         void RemoveProposal(uint32 uiID, bool bGroupCreateSuccess);
         void UpdateProposal(uint32 uiID, ObjectGuid guid, bool bAccept);
         void CleanupProposals();
@@ -263,6 +235,7 @@ class LFGMgr
         LFGDungeonMap   m_dungeonMap;                       // sorted dungeon map
         LFGProposalMap  m_proposalMap;                      // Proposal store
         LFGEventList    m_eventList;                        // events storage
+        GuidSet         m_GroupsWithBoot;
 
         IntervalTimer   m_LFGupdateTimer;                   // update timer for cleanup/statistic
         IntervalTimer   m_LFRupdateTimer;                   // update timer for LFR extend system

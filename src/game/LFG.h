@@ -87,7 +87,7 @@ enum LFGState
     LFG_STATE_QUEUED             = 4,                  // Queued
     LFG_STATE_PROPOSAL           = 5,                  // Proposal active
     LFG_STATE_BOOT               = 6,                  // Vote kick active
-    LFG_STATE_DUNGEON            = 7,                  // In LFG Group, in a Dungeon
+    LFG_STATE_IN_DUNGEON         = 7,                  // In LFG Group, in a Dungeon
     LFG_STATE_FINISHED_DUNGEON   = 8,                  // In LFG Group, in a finished Dungeon
     LFG_STATE_MAX
 };
@@ -213,44 +213,71 @@ typedef std::map<LFGDungeonEntry const*, LFGLockStatusType> LFGLockStatusMap;
 /// Stores group data related to proposal to join
 struct LFGProposal
 {
-    LFGProposal(LFGDungeonEntry const* _dungeon);
     public:
-    uint32 m_uiID;                                               // Proposal id
+        LFGProposal(LFGDungeonEntry const* dungeon);
+        uint32 m_uiID;                                               // Proposal id
 
-    // helpers
-    Group* GetGroup();
-    void SetGroup(Group* group);
-    void AddMember(ObjectGuid guid);
-    void RemoveMember(ObjectGuid guid);
-    bool IsMember(ObjectGuid guid);
-    GuidSet const GetMembers();
+        // helpers
+        Group* GetGroup();
+        void SetGroup(Group* group);
+        void AddMember(Player* pPlayer);
+        void RemoveMember(Player* pPlayer);
+        bool IsMember(Player* pPlayer);
+        GuidSet const GetMembers();
 
-    void RemoveDecliner(ObjectGuid guid);
-    bool IsDecliner(ObjectGuid guid);
+        void RemoveDecliner(Player* pPlayer);
+        bool IsDecliner(Player* pPlayer);
 
-    LFGProposalState GetState() {return m_state;};
-    void SetState(LFGProposalState _state ) { m_state = _state;};
+        LFGProposalState GetState() {return m_state;};
+        void SetState(LFGProposalState state ) { m_state = state;};
 
-    LFGDungeonEntry const* GetDungeon() { return m_dungeon;};
-    LFGType GetType();
+        LFGDungeonEntry const* GetDungeon() { return m_dungeon;};
+        LFGType GetType();
 
-    void Start();
+        void Start();
 
-    void SetDeleted() { m_bDeleted = true; };
-    bool const IsDeleted() const { return m_bDeleted; };
+        void SetDeleted() { m_bDeleted = true; };
+        bool const IsDeleted() const { return m_bDeleted; };
 
-    bool IsExpired() { return ( m_cancelTime > 0 && m_cancelTime < time_t(time(NULL)));};
+        bool IsExpired() { return ( m_cancelTime > 0 && m_cancelTime < time(NULL)); };
 
     private:
-    LFGDungeonEntry const* m_dungeon;                    // Dungeon
-    LFGProposalState m_state;                            // State of the proposal
-    ObjectGuid m_groupGuid;                              // Proposal group (empty if not created)
-    time_t m_cancelTime;                                 // Time when we will cancel this proposal
-    GuidSet playerGuids;                                 // Players in this proposal
-    GuidSet declinerGuids;                               // Decliners in this proposal
-    bool m_bDeleted;                                     // avoid double-deleting proposal
+        LFGDungeonEntry const* m_dungeon;                    // Dungeon
+        LFGProposalState m_state;                            // State of the proposal
+        ObjectGuid m_groupGuid;                              // Proposal group (empty if not created)
+        time_t m_cancelTime;                                 // Time when we will cancel this proposal
+        GuidSet playerGuids;                                 // Players in this proposal
+        GuidSet declinerGuids;                               // Decliners in this proposal
+        bool m_bDeleted;                                     // avoid double-deleting proposal
 };
 
+// Stores player or group queue info
+struct LFGQueueInfo
+{
+    LFGQueueInfo() { ResetStats(); };
+    GuidSet groupGuids;
+    GuidSet playerGuids;
+
+    uint32  damagers;
+    time_t  damagersTime;
+
+    uint32  healers;
+    time_t  healersTime;
+
+    uint32  tanks;
+    time_t  tanksTime;
+
+    void ResetStats();
+    uint32 GetFullCount() { return tanks + healers + damagers; };
+    uint8  GetTanksNeeded() { return (LFG_TANKS_NEEDED - tanks > 0) ? (LFG_TANKS_NEEDED - tanks) : 0; };
+    uint8  GetHealersNeeded() { return (LFG_HEALERS_NEEDED - healers > 0) ? (LFG_HEALERS_NEEDED - healers) : 0; };
+    uint8  GetDamagersNeeded() { return (LFG_DPS_NEEDED - damagers > 0) ? (LFG_DPS_NEEDED - damagers) : 0; };
+    time_t GetFullTime() { return tanksTime + healersTime + damagersTime; };
+    time_t GetAvgTimeTanks() {return tanks ? time_t(tanksTime/tanks) : 0;};
+    time_t GetAvgTimeHealers() {return healers ? time_t(healersTime/healers) : 0; };
+    time_t GetAvgTimeDamagers() {return damagers ? time_t(damagersTime/damagers) : 0; };
+    time_t GetAvgTime() {return GetFullCount() ? time_t(GetFullTime()/GetFullCount()) : 0; };
+};
 
 struct LFGStateStructure
 {
@@ -309,7 +336,7 @@ public:
     void           SetRoles(LFGRoleMask roles);
     void           AddRole(LFGRoles role) { m_rolesMask = LFGRoleMask( m_rolesMask | (1 << role)); };
     void           RemoveRole(LFGRoles role) { m_rolesMask = LFGRoleMask( m_rolesMask & ~(1 << role)); };
-    bool           IsSingleRole();
+    bool           HasSingleRole();
     bool           HasRole(LFGRoles role) { return (1 << role) & m_rolesMask; };
 
     void           SetJoined();
@@ -345,8 +372,8 @@ public:
     ~LFGGroupState() {};
 
     void Clear();
-    LFGDungeonEntry const* GetDungeon()   { return m_realdungeon; };
-    void SetDungeon(LFGDungeonEntry const* dungeon)   { m_realdungeon = dungeon; };
+    LFGDungeonEntry const* GetChosenDungeon()   { return m_choosenDungeon; };
+    void SetChosenDungeon(LFGDungeonEntry const* dungeon)   { m_choosenDungeon = dungeon; };
 
     // Current state operations
     void SaveState() { m_savedstate = m_state; };
@@ -386,7 +413,7 @@ private:
     Group*         m_pGroup;
     LFGState       m_savedstate;
     LFGDungeonStatus     m_status;
-    LFGDungeonEntry const* m_realdungeon;                       // real dungeon entry (if random or list)
+    LFGDungeonEntry const* m_choosenDungeon;                       // real dungeon entry (if random or list)
     // Role check
     time_t         m_roleCheckCancelTime;                       // Time when the rolecheck will fail
     LFGRoleCheckState m_roleCheckState;                         // State of the rolecheck
