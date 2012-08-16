@@ -207,6 +207,13 @@ enum LFGDungeonStatus
     LFG_STATUS_COMPLETE              = 3,
 };
 
+enum LFG_NEEDED
+{
+    LFG_TANKS_NEEDED           = 1,
+    LFG_HEALERS_NEEDED         = 1,
+    LFG_DPS_NEEDED             = 3,
+};
+
 typedef std::set<LFGDungeonEntry const*> LFGDungeonSet;
 typedef std::map<LFGDungeonEntry const*, LFGLockStatusType> LFGLockStatusMap;
 
