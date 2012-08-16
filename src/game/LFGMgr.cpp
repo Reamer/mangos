@@ -1552,7 +1552,7 @@ void LFGMgr::UpdateBoot(Player* pPlayer, LFGAnswer answer)
     if (!pGroup->GetLFGGroupState()->IsBootActive())
         return;
 
-    BASIC_LOG("LFGMgr::UpdateBoot: group %u kicker %u answer %u", pGroup->GetObjectGuid().GetCounter(), pPlayer->GetObjectGuid().GetCounter(), accept);
+    BASIC_LOG("LFGMgr::UpdateBoot: group %u kicker %u answer %u", pGroup->GetObjectGuid().GetCounter(), pPlayer->GetObjectGuid().GetCounter(), answer);
 
     pGroup->GetLFGGroupState()->UpdateBoot(pPlayer->GetObjectGuid(),answer);
 
@@ -1742,7 +1742,7 @@ void LFGMgr::CleanupRoleChecks()
 
     for (LFGQueueInfoMap::const_iterator infoMapitr = m_queueInfoMap.begin(); infoMapitr != m_queueInfoMap.end(); ++infoMapitr)
     {
-        LFGDungeonEntry const* dungeon = infoMapitr->first;
+        // LFGDungeonEntry const* dungeon = infoMapitr->first;
         LFGQueueInfo const* info = &infoMapitr->second;
         GuidSet groupGuids = info->groupGuids;
 
@@ -2302,7 +2302,7 @@ bool LFGMgr::TryAddMembersToGroup(Group* pGroup, GuidSet const* players)
 // no GuidSet Pointer because with this copy of GuidSet we make maybe a Proposal
 void LFGMgr::CompleteGroup(Group* pGroup, GuidSet players)
 {
-    BASIC_LOG("LFGMgr:CompleteGroup: Try complete group %u with %lu players", pGroup->GetObjectGuid().GetCounter(), players.size());
+    BASIC_LOG("LFGMgr:CompleteGroup: Try complete group %u with %u players", pGroup->GetObjectGuid().GetCounter(), players.size());
     LFGGroupState* groupState = pGroup->GetLFGGroupState();
     LFGDungeonEntry const* chosenDungeon;
     // if we have already a chosen dungeon, then use it. This Group is in Offer Continue
@@ -2340,7 +2340,7 @@ void LFGMgr::CompleteGroup(Group* pGroup, GuidSet players)
     {
         SetGroupRoles(pGroup, &players);
         uint32 ID = CreateProposal(chosenDungeon, pGroup, players);
-        BASIC_LOG("LFGMgr:CompleteGroup: dungeons for group %u with %lu players found, created proposal %u", pGroup->GetObjectGuid().GetCounter(), players.size(), ID);
+        BASIC_LOG("LFGMgr:CompleteGroup: dungeons for group %u with %u players found, created proposal %u", pGroup->GetObjectGuid().GetCounter(), players.size(), ID);
     }
 }
 
@@ -2827,7 +2827,7 @@ LFGType LFGMgr::GetAndCheckLFGType(LFGDungeonSet dungeons)
     while (itr != dungeons.end())
     {
         LFGDungeonEntry const* dungeon = *itr;
-        if (dungeon->type != resultType)
+        if (LFGType(dungeon->type) != resultType)
             return LFG_TYPE_NONE;
         ++itr;
     }
