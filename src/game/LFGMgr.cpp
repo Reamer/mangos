@@ -1340,7 +1340,8 @@ void LFGMgr::RemoveFomProposal(Player* pDecliner, uint32 ID)
         }
     }
 
-    if (GuidSet const playersSet = pProposal->GetMembers())
+    GuidSet const playersSet = pProposal->GetMembers();
+    if (!playersSet.empty())
     {
         for (GuidSet::const_iterator itr = playersSet.begin(); itr != playersSet.end(); ++itr)
         {
