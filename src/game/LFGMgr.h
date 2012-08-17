@@ -136,7 +136,7 @@ class LFGMgr
         void LoadRewards();
         LFGReward const* GetRandomDungeonReward(LFGDungeonEntry const* pDungeon, Player* pPlayer);
         void SendLFGRewards(Group* pGroup);
-        void SendLFGReward(Player* pPlayer, LFGDungeonEntry const* pDungeon);
+        void SendLFGReward(Player* pPlayer, LFGDungeonEntry const* pDungeon, LFGDungeonEntry const* pDeclaredDungeon);
         void DungeonEncounterReached(Group* pGroup);
 
         // Proposal system

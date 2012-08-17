@@ -854,7 +854,7 @@ class MANGOS_DLL_SPEC WorldSession
         void SendLfgUpdateParty(LFGUpdateType updateType, LFGType type);
         void SendLfgUpdateSearch(bool update);
         void SendLfgJoinResult(LFGJoinResult checkResult, uint8 checkValue = 0, bool withLockMap = false);
-        void SendLfgPlayerReward(LFGDungeonEntry const* dungeon, const LFGReward* reward, const Quest* qRew, bool isSecond = false);
+        void SendLfgPlayerReward(LFGDungeonEntry const* declaredDungeon, LFGDungeonEntry const* chosenDungeon, const LFGReward* reward, const Quest* qRew, bool isSecond = false);
         void SendLfgQueueStatus(LFGDungeonEntry const* dungeon);
         void SendLfgRoleChosen(ObjectGuid guid, uint8 roles);
         void SendLfgRoleCheckUpdate();

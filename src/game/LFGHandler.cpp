@@ -906,7 +906,7 @@ void WorldSession::SendLfgTeleportError(LFGTeleportError msg)
     SendPacket(&data);
 }
 
-void WorldSession::SendLfgPlayerReward(LFGDungeonEntry const* pRandomDungeon, const LFGReward* reward, const Quest* qRew, bool isSecond)
+void WorldSession::SendLfgPlayerReward(LFGDungeonEntry const* pdeclaredDungeon, LFGDungeonEntry const* chosenDungeon, const LFGReward* reward, const Quest* qRew, bool isSecond)
 {
     if (!sWorld.getConfig(CONFIG_BOOL_LFG_ENABLE))
     {
@@ -914,14 +914,7 @@ void WorldSession::SendLfgPlayerReward(LFGDungeonEntry const* pRandomDungeon, co
         return;
     }
 
-    LFGDungeonEntry const* pdeclaredDungeon = *GetPlayer()->GetLFGPlayerState()->GetDungeons()->begin();
-    if (!pdeclaredDungeon)
-    {
-        BASIC_LOG("SendLfgPlayerReward %u failed - pdeclaredDungeon is not failed", GetPlayer()->GetObjectGuid().GetCounter());
-        return;
-    }
-
-    if (!pRandomDungeon || !reward || !qRew)
+    if (!pdeclaredDungeon || !chosenDungeon || !reward || !qRew)
     {
         BASIC_LOG("SendLfgPlayerReward %u failed - some other Stuff failed", GetPlayer()->GetObjectGuid().GetCounter());
         return;
@@ -930,10 +923,10 @@ void WorldSession::SendLfgPlayerReward(LFGDungeonEntry const* pRandomDungeon, co
     uint8 itemNum = uint8(qRew ? qRew->GetRewItemsCount() : 0);
     uint8 done = uint8(isSecond);
 
-    BASIC_LOG("SMSG_LFG_PLAYER_REWARD %u dungeonEntry: %u ", GetPlayer()->GetObjectGuid().GetCounter(), pRandomDungeon->ID);
+    BASIC_LOG("SMSG_LFG_PLAYER_REWARD %u dungeonEntry: %u ", GetPlayer()->GetObjectGuid().GetCounter(), chosenDungeon->ID);
 
     WorldPacket data(SMSG_LFG_PLAYER_REWARD, 4 + 4 + 1 + 4 + 4 + 4 + 4 + 4 + 1 + itemNum * (4 + 4 + 4));
-    data << uint32(pRandomDungeon->Entry());                        // Random Dungeon Finished
+    data << uint32(chosenDungeon->Entry());                        // Random Dungeon Finished
     data << uint32(pdeclaredDungeon->Entry());                      // Dungeon Finished
     data << uint8(done);
     data << uint32(1);
