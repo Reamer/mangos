@@ -299,7 +299,10 @@ void LFGMgr::JoinGroup(Group* pGroup,Player* pLeader, LFGRoleMask leaderRoles, L
         pGroup->GetLFGGroupState()->SetType(type);
     }
     else
+    {
+        dungeons = pGroup->GetLFGGroupState()->GetDungeons();
         BASIC_LOG("We are in Offer continue, therefore we doesn't change the type (oldtype %u) and the dungeons.", pGroup->GetLFGGroupState()->GetType());
+    }
 
     switch (groupState->GetState())
     {
