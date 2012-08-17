@@ -914,7 +914,7 @@ void WorldSession::SendLfgPlayerReward(LFGDungeonEntry const* pRandomDungeon, co
         return;
     }
 
-    LFGDungeonEntry const* pdeclaredDungeon = GetPlayer()->GetLFGPlayerState()->GetDungeons()->begin();
+    LFGDungeonEntry const* pdeclaredDungeon = *GetPlayer()->GetLFGPlayerState()->GetDungeons()->begin();
     if (!pdeclaredDungeon)
     {
         BASIC_LOG("SendLfgPlayerReward %u failed - pdeclaredDungeon is not failed", GetPlayer()->GetObjectGuid().GetCounter());
