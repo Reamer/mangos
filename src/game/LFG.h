@@ -294,7 +294,6 @@ public:
 
     void Update(bool update = true) { m_bUpdate = update; };
     LFGDungeonSet const* GetDungeons() const { return &m_DungeonsList; };
-    LFGDungeonSet GetDungeons() { return m_DungeonsList; };
     void SetDungeons(LFGDungeonSet dungeons);
     void RemoveDungeon(LFGDungeonEntry const* dungeon);
     void AddDungeon(LFGDungeonEntry const* dungeon);

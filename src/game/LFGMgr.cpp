@@ -190,7 +190,7 @@ bool LFGMgr::IsRandomDungeon(LFGDungeonEntry const* dungeon)
     return dungeon->type == LFG_TYPE_RANDOM_DUNGEON;
 }
 
-void LFGMgr::Join(Player* pPlayer, LFGRoleMask roles, LFGDungeonSet dungeons, std::string comment)
+void LFGMgr::Join(Player* pPlayer, LFGRoleMask roles, LFGDungeonSet const* dungeons, std::string comment)
 {
     if (!pPlayer)
         return;
@@ -205,7 +205,7 @@ void LFGMgr::Join(Player* pPlayer, LFGRoleMask roles, LFGDungeonSet dungeons, st
         return;
     }
 
-    if (dungeons.empty())
+    if (dungeons->empty())
     {
         BASIC_LOG("LFGMgr::Join: %u trying to join without Dungeons. Aborting.", pPlayer->GetObjectGuid().GetCounter());
         pPlayer->GetSession()->SendLfgJoinResult(ERR_LFG_INVALID_SLOT);
@@ -238,7 +238,7 @@ void LFGMgr::Join(Player* pPlayer, LFGRoleMask roles, LFGDungeonSet dungeons, st
     }
 }
 
-void LFGMgr::JoinPlayer(Player* pPlayer, LFGRoleMask roles, LFGDungeonSet dungeons, LFGType type, std::string comment)
+void LFGMgr::JoinPlayer(Player* pPlayer, LFGRoleMask roles, LFGDungeonSet const* dungeons, LFGType type, std::string comment)
 {
     ObjectGuid guid = pPlayer->GetObjectGuid();
 
@@ -253,13 +253,13 @@ void LFGMgr::JoinPlayer(Player* pPlayer, LFGRoleMask roles, LFGDungeonSet dungeo
     // All Okay - Joining process
     pPlayer->GetLFGPlayerState()->SetJoined();
 
-    pPlayer->GetLFGPlayerState()->SetDungeons(dungeons);
+    pPlayer->GetLFGPlayerState()->SetDungeons(*dungeons);
     pPlayer->GetLFGPlayerState()->SetType(type);
     pPlayer->GetLFGPlayerState()->SetRoles(roles);
     pPlayer->GetLFGPlayerState()->SetComment(comment);
 
     RemoveFromQueue(guid);
-    for (LFGDungeonSet::const_iterator itr = dungeons.begin(); itr != dungeons.end(); ++itr)
+    for (LFGDungeonSet::const_iterator itr = dungeons->begin(); itr != dungeons->end(); ++itr)
         AddToQueue(guid, *itr);
     pPlayer->GetLFGPlayerState()->SetState((type == LFG_TYPE_RAID) ? LFG_STATE_LFR : LFG_STATE_QUEUED);
     pPlayer->GetSession()->SendLfgJoinResult(result, LFG_ROLECHECK_NONE);
@@ -267,7 +267,7 @@ void LFGMgr::JoinPlayer(Player* pPlayer, LFGRoleMask roles, LFGDungeonSet dungeo
     pPlayer->GetSession()->SendLfgUpdateSearch(true);
 }
 
-void LFGMgr::JoinGroup(Group* pGroup,Player* pLeader, LFGRoleMask leaderRoles, LFGDungeonSet dungeons, LFGType type, std::string leaderComment)
+void LFGMgr::JoinGroup(Group* pGroup,Player* pLeader, LFGRoleMask leaderRoles, LFGDungeonSet const* dungeons, LFGType type, std::string leaderComment)
 {
     if (!pGroup || !pLeader)
         return;
@@ -285,7 +285,7 @@ void LFGMgr::JoinGroup(Group* pGroup,Player* pLeader, LFGRoleMask leaderRoles, L
     // all Okay - Joining process as group
     pLeader->GetLFGPlayerState()->SetJoined();
 
-    pLeader->GetLFGPlayerState()->SetDungeons(dungeons);
+    pLeader->GetLFGPlayerState()->SetDungeons(*dungeons);
     pLeader->GetLFGPlayerState()->SetRoles(leaderRoles);
     pLeader->GetLFGPlayerState()->SetComment(leaderComment);
 
@@ -295,7 +295,7 @@ void LFGMgr::JoinGroup(Group* pGroup,Player* pLeader, LFGRoleMask leaderRoles, L
     if (!groupState->GetChosenDungeon())
     {
         BASIC_LOG("We are not in Offer continue, therefore we change the type %u and the dungeons.", type);
-        pGroup->GetLFGGroupState()->SetDungeons(dungeons);
+        pGroup->GetLFGGroupState()->SetDungeons(*dungeons);
         pGroup->GetLFGGroupState()->SetType(type);
     }
     else
@@ -310,7 +310,7 @@ void LFGMgr::JoinGroup(Group* pGroup,Player* pLeader, LFGRoleMask leaderRoles, L
         case LFG_STATE_FINISHED_DUNGEON:
         {
             RemoveFromQueue(guid);
-            for (LFGDungeonSet::const_iterator itr = dungeons.begin(); itr != dungeons.end(); ++itr)
+            for (LFGDungeonSet::const_iterator itr = dungeons->begin(); itr != dungeons->end(); ++itr)
                 AddToQueue(guid, *itr);
             groupState->SetState((type == LFG_TYPE_RAID) ? LFG_STATE_LFR : LFG_STATE_LFG);
             groupState->SetStatus(LFG_STATUS_NOT_SAVED);
@@ -341,7 +341,7 @@ void LFGMgr::JoinGroup(Group* pGroup,Player* pLeader, LFGRoleMask leaderRoles, L
         case LFG_STATE_IN_DUNGEON:
         {
             RemoveFromQueue(guid);
-            for (LFGDungeonSet::const_iterator itr = dungeons.begin(); itr != dungeons.end(); ++itr)
+            for (LFGDungeonSet::const_iterator itr = dungeons->begin(); itr != dungeons->end(); ++itr)
                 AddToQueue(guid, *itr);
             if (type == LFG_TYPE_RAID)
                 break;
@@ -522,7 +522,7 @@ void LFGMgr::RemoveFromQueue(ObjectGuid guid)
     }
 }
 
-LFGJoinResult LFGMgr::GetPlayerJoinResult(Player* pPlayer, LFGDungeonSet dungeons)
+LFGJoinResult LFGMgr::GetPlayerJoinResult(Player* pPlayer, LFGDungeonSet const* dungeons)
 {
 
    if (pPlayer->InBattleGround() || pPlayer->InArena() || pPlayer->InBattleGroundQueue())
@@ -544,13 +544,13 @@ LFGJoinResult LFGMgr::GetPlayerJoinResult(Player* pPlayer, LFGDungeonSet dungeon
     // TODO - Check if all dungeons are valid
 
     // must be last check - ignored in party
-    if (!dungeons.size())
+    if (!dungeons->size())
         return ERR_LFG_INVALID_SLOT;
 
     return ERR_LFG_OK;
 }
 
-LFGJoinResult LFGMgr::GetGroupJoinResult(Group* group, LFGDungeonSet dungeons)
+LFGJoinResult LFGMgr::GetGroupJoinResult(Group* group, LFGDungeonSet const* dungeons)
 {
     if (!group)
         return ERR_LFG_GET_INFO_TIMEOUT;
@@ -1194,7 +1194,7 @@ void LFGMgr::UpdateProposal(uint32 ID, ObjectGuid guid, bool accept)
             }
 
             LFGDungeonSet randomList = ExpandRandomDungeonsForGroup(pProposal->GetDungeon(), tmpSet);
-            chosenDungeon = SelectRandomDungeonFromList(randomList);
+            chosenDungeon = SelectRandomDungeonFromList(&randomList);
             if (!chosenDungeon)
             {
                 BASIC_LOG("LFGMgr::UpdateProposal:%u cannot set real dungeon! no compatible list.", pProposal->m_uiID);
@@ -2595,21 +2595,21 @@ bool LFGMgr::IsInSameTeam(Group* pGroup, Player* pPlayer)
     return false;
 }
 
-LFGDungeonEntry const* LFGMgr::SelectRandomDungeonFromList(LFGDungeonSet dungeons)
+LFGDungeonEntry const* LFGMgr::SelectRandomDungeonFromList(LFGDungeonSet const* dungeons)
 {
-    if (dungeons.empty())
+    if (dungeons->empty())
     {
         BASIC_LOG("LFGMgr::SelectRandomDungeonFromList: cannot select dungeons from empty list!");
         return NULL;
     }
 
-    if (dungeons.size() == 1)
-        return *dungeons.begin();
+    if (dungeons->size() == 1)
+        return *dungeons->begin();
     else
     {
-        uint32 rand = urand(0, dungeons.size() - 1);
+        uint32 rand = urand(0, dungeons->size() - 1);
         uint32 _key = 0;
-        for (LFGDungeonSet::const_iterator itr = dungeons.begin(); itr != dungeons.end(); ++itr)
+        for (LFGDungeonSet::const_iterator itr = dungeons->begin(); itr != dungeons->end(); ++itr)
         {
             LFGDungeonEntry const* dungeon = *itr;
             if (!dungeon)
@@ -2792,14 +2792,14 @@ void LFGMgr::DungeonEncounterReached(Group* pGroup)
 /*
  * returns LFGType of all given dungeons, if dungeons have different types then LFG_TYPE_NONE
  */
-LFGType LFGMgr::GetAndCheckLFGType(LFGDungeonSet dungeons)
+LFGType LFGMgr::GetAndCheckLFGType(LFGDungeonSet const* dungeons)
 {
-    if (dungeons.empty())
+    if (dungeons->empty())
         return LFG_TYPE_NONE;
-    LFGDungeonSet::const_iterator itr = dungeons.begin();
+    LFGDungeonSet::const_iterator itr = dungeons->begin();
     LFGDungeonEntry const* dungeon = *itr;
     LFGType resultType = LFGType(dungeon->type);
-    while (itr != dungeons.end())
+    while (itr != dungeons->end())
     {
         LFGDungeonEntry const* dungeon = *itr;
         if (LFGType(dungeon->type) != resultType)

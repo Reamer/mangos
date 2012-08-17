@@ -117,9 +117,9 @@ class LFGMgr
         bool TryCreateGroup();
 
         // Join system
-        void Join(Player* pPlayer, LFGRoleMask roles, LFGDungeonSet dungeons, std::string comment);
-        void JoinPlayer(Player* pPlayer, LFGRoleMask roles, LFGDungeonSet dungeons, LFGType type, std::string comment);
-        void JoinGroup(Group* pGroup,Player* pLeader, LFGRoleMask leaderRoles, LFGDungeonSet dungeons, LFGType type, std::string leaderComment);
+        void Join(Player* pPlayer, LFGRoleMask roles, LFGDungeonSet const* dungeons, std::string comment);
+        void JoinPlayer(Player* pPlayer, LFGRoleMask roles, LFGDungeonSet const* dungeons, LFGType type, std::string comment);
+        void JoinGroup(Group* pGroup,Player* pLeader, LFGRoleMask leaderRoles, LFGDungeonSet const* dungeons, LFGType type, std::string leaderComment);
         void Leave(Player* pPlayer);
         void LeavePlayer(Player* pPlayer);
         void LeaveGroup(Group* pGroup);
@@ -195,11 +195,11 @@ class LFGMgr
 
         // Dungeon expand operations
         LFGDungeonSet ExpandRandomDungeonsForGroup(LFGDungeonEntry const* randomDungeon, GuidSet playerGuids);
-        LFGDungeonEntry const* SelectRandomDungeonFromList(LFGDungeonSet dungeons);
+        LFGDungeonEntry const* SelectRandomDungeonFromList(LFGDungeonSet const* dungeons);
 
         // Checks
-        LFGJoinResult GetPlayerJoinResult(Player* pPlayer, LFGDungeonSet dungeons);
-        LFGJoinResult GetGroupJoinResult(Group* pGroup, LFGDungeonSet dungeons);
+        LFGJoinResult GetPlayerJoinResult(Player* pPlayer, LFGDungeonSet const* dungeons);
+        LFGJoinResult GetGroupJoinResult(Group* pGroup, LFGDungeonSet const* dungeons);
 
         // Player status
         LFGLockStatusType GetPlayerLockStatus(Player* pPlayer, LFGDungeonEntry const* pDungeon);
@@ -208,7 +208,7 @@ class LFGMgr
         LFGLockStatusMap GetPlayerLockMap(Player* pPlayer);
 
         // Helper Functions
-        static LFGType GetAndCheckLFGType(LFGDungeonSet dungeons);
+        static LFGType GetAndCheckLFGType(LFGDungeonSet const* dungeons);
 
         // Sheduler
         void SheduleEvent();

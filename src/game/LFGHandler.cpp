@@ -81,7 +81,7 @@ void WorldSession::HandleLfgJoinOpcode( WorldPacket & recv_data )
     }
 
     BASIC_LOG("CMSG_LFG_JOIN %u as group: %u  Dungeons: %u", GetPlayer()->GetObjectGuid().GetCounter(), GetPlayer()->GetGroup() ? 1 : 0, uint8(newDungeons.size()));
-    sLFGMgr.Join(GetPlayer(), LFGRoleMask(roles), newDungeons, comment);
+    sLFGMgr.Join(GetPlayer(), LFGRoleMask(roles), &newDungeons, comment);
 }
 
 void WorldSession::HandleLfgLeaveOpcode( WorldPacket & /*recv_data*/ )
@@ -213,7 +213,7 @@ void WorldSession::HandleLfgPlayerLockInfoRequestOpcode(WorldPacket &/*recv_data
 
     BASIC_LOG("CMSG_LFG_PLAYER_LOCK_INFO_REQUEST %u ", GetPlayer()->GetObjectGuid().GetCounter());
 
-    LFGDungeonSet    randomlist = sLFGMgr.GetRandomDungeonsForPlayer(GetPlayer());
+    LFGDungeonSet randomlist = sLFGMgr.GetRandomDungeonsForPlayer(GetPlayer());
     LFGLockStatusMap const lockSet = *GetPlayer()->GetLFGPlayerState()->GetLockMap();
 
     uint32 rsize = randomlist.size();
