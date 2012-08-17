@@ -180,8 +180,8 @@ class LFGMgr
         // Social check system
         bool HasIgnoreState(ObjectGuid guid1, ObjectGuid guid2);
         bool HasIgnoreState(Group* pGroup, ObjectGuid guid);
-        bool CheckTeam(Group* pGroup, Player* pPlayer = NULL);
-        bool CheckTeam(ObjectGuid guid1, ObjectGuid guid2);
+        bool IsInSameTeam(Group* pGroup, Player* pPlayer = NULL);
+        bool IsInSameTeam(ObjectGuid guid1, ObjectGuid guid2);
 
         // Dungeon operations
         LFGDungeonEntry const* GetDungeon(uint32 dungeonID);

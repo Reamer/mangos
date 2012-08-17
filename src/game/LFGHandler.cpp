@@ -906,7 +906,7 @@ void WorldSession::SendLfgTeleportError(LFGTeleportError msg)
     SendPacket(&data);
 }
 
-void WorldSession::SendLfgPlayerReward(LFGDungeonEntry const* dungeon, const LFGReward* reward, const Quest* qRew, bool isSecond)
+void WorldSession::SendLfgPlayerReward(LFGDungeonEntry const* pRandomDungeon, const LFGReward* reward, const Quest* qRew, bool isSecond)
 {
     if (!sWorld.getConfig(CONFIG_BOOL_LFG_ENABLE))
     {
@@ -914,19 +914,27 @@ void WorldSession::SendLfgPlayerReward(LFGDungeonEntry const* dungeon, const LFG
         return;
     }
 
-    LFGDungeonEntry const* realdungeon = *GetPlayer()->GetLFGPlayerState()->GetDungeons()->begin();
-
-    if (!dungeon || !realdungeon || !reward || !qRew)
+    LFGDungeonEntry const* pdeclaredDungeon = GetPlayer()->GetLFGPlayerState()->GetDungeons()->begin();
+    if (!pdeclaredDungeon)
+    {
+        BASIC_LOG("SendLfgPlayerReward %u failed - pdeclaredDungeon is not failed", GetPlayer()->GetObjectGuid().GetCounter());
         return;
+    }
+
+    if (!pRandomDungeon || !reward || !qRew)
+    {
+        BASIC_LOG("SendLfgPlayerReward %u failed - some other Stuff failed", GetPlayer()->GetObjectGuid().GetCounter());
+        return;
+    }
 
     uint8 itemNum = uint8(qRew ? qRew->GetRewItemsCount() : 0);
     uint8 done = uint8(isSecond);
 
-    BASIC_LOG("SMSG_LFG_PLAYER_REWARD %u dungeonEntry: %u ", GetPlayer()->GetObjectGuid().GetCounter(), dungeon->ID);
+    BASIC_LOG("SMSG_LFG_PLAYER_REWARD %u dungeonEntry: %u ", GetPlayer()->GetObjectGuid().GetCounter(), pRandomDungeon->ID);
 
     WorldPacket data(SMSG_LFG_PLAYER_REWARD, 4 + 4 + 1 + 4 + 4 + 4 + 4 + 4 + 1 + itemNum * (4 + 4 + 4));
-    data << uint32(dungeon->Entry());                                            // Random Dungeon Finished
-    data << uint32(realdungeon->Entry());                                        // Dungeon Finished
+    data << uint32(pRandomDungeon->Entry());                        // Random Dungeon Finished
+    data << uint32(pdeclaredDungeon->Entry());                      // Dungeon Finished
     data << uint8(done);
     data << uint32(1);
     data << uint32(qRew->GetRewOrReqMoney());
