@@ -113,7 +113,7 @@ class LFGMgr
 
         void TryCompleteGroups();
         bool TryAddMembersToGroup(Group* pGroup, GuidSet const* players);
-        void CompleteGroup(Group* pGroup, GuidSet players);
+        void CompleteGroup(Group* pGroup, GuidSet players, LFGDungeonEntry const* dungeon);
         bool TryCreateGroup();
 
         // Join system

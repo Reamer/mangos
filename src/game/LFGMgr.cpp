@@ -2200,9 +2200,9 @@ void LFGMgr::TryCompleteGroups()
             continue;
 
         GuidSet groups = info->groupGuids;
-        for (GuidSet::const_iterator itr = groups.begin(); itr != groups.end(); ++itr)
+        for (GuidSet::const_iterator groupsitr = groups.begin(); groupsitr != groups.end(); ++groupsitr)
         {
-            Group* pGroup = sObjectMgr.GetGroup(*itr);
+            Group* pGroup = sObjectMgr.GetGroup(*groupsitr);
             if (!pGroup)
                 continue;
 
@@ -2216,7 +2216,7 @@ void LFGMgr::TryCompleteGroups()
                 GuidSet tmp;
                 tmp.clear();
                 BASIC_LOG("LFGMgr:TryCompleteGroups: Try complete group %u  type %u, but his already completed!", pGroup->GetObjectGuid().GetCounter(), type);
-                CompleteGroup(pGroup, tmp);
+                CompleteGroup(pGroup, tmp, dungeon);
                 isGroupCompleted = true;
                 break;
             }
@@ -2244,7 +2244,7 @@ void LFGMgr::TryCompleteGroups()
                 {
                     if (IsGroupCompleted(pGroup, applicants.size()))
                     {
-                        CompleteGroup(pGroup,applicants);
+                        CompleteGroup(pGroup, applicants, dungeon);
                         isGroupCompleted = true;
                     }
                 }
@@ -2265,9 +2265,6 @@ bool LFGMgr::TryAddMembersToGroup(Group* pGroup, GuidSet const* players)
     if (!pGroup || players->empty())
         return false;
 
-    LFGDungeonSet const* groupDungeons = pGroup->GetLFGGroupState()->GetDungeons();
-    LFGDungeonSet intersection  = *groupDungeons;
-
     for (GuidSet::const_iterator itr = players->begin(); itr != players->end(); ++itr)
     {
         Player* pPlayer = sObjectMgr.GetPlayer(*itr);
@@ -2282,6 +2279,7 @@ bool LFGMgr::TryAddMembersToGroup(Group* pGroup, GuidSet const* players)
 
         if (!CheckRoles(pGroup, pPlayer))
            return false;
+
         /*
         if (LFGProposal* pProposal = group->GetLFGState()->GetProposal())
         {
@@ -2289,53 +2287,23 @@ bool LFGMgr::TryAddMembersToGroup(Group* pGroup, GuidSet const* players)
                return false;
         }
         */
-
-        LFGDungeonSet const* playerDungeons = pPlayer->GetLFGPlayerState()->GetDungeons();
-        LFGDungeonSet  tmpIntersection;
-        std::set_intersection(intersection.begin(),intersection.end(), playerDungeons->begin(),playerDungeons->end(),std::inserter(tmpIntersection,tmpIntersection.end()));
-        if (tmpIntersection.empty())
-            return false;
-        intersection = tmpIntersection;
     }
     return true;
 }
 
 // no GuidSet Pointer because with this copy of GuidSet we make maybe a Proposal
-void LFGMgr::CompleteGroup(Group* pGroup, GuidSet players)
+void LFGMgr::CompleteGroup(Group* pGroup, GuidSet players, LFGDungeonEntry const* dungeon)
 {
     BASIC_LOG("LFGMgr:CompleteGroup: Try complete group %u with %u players", pGroup->GetObjectGuid().GetCounter(), players.size());
-    LFGGroupState* groupState = pGroup->GetLFGGroupState();
     LFGDungeonEntry const* chosenDungeon;
     // if we have already a chosen dungeon, then use it. This Group is in Offer Continue
-    if (groupState->GetChosenDungeon())
+    if (pGroup->GetLFGGroupState()->GetChosenDungeon())
     {
-        chosenDungeon = groupState->GetChosenDungeon();
+        chosenDungeon = pGroup->GetLFGGroupState()->GetChosenDungeon();
     }
     else
     {
-        LFGDungeonSet const* groupDungeons = pGroup->GetLFGGroupState()->GetDungeons();
-        LFGDungeonSet intersection = LFGDungeonSet(*groupDungeons);
-        if (!players.empty())
-        {
-            for (GuidSet::const_iterator itr = players.begin(); itr != players.end(); ++itr)
-            {
-                Player* pPlayer = sObjectMgr.GetPlayer(*itr);
-                if (!pPlayer || !pPlayer->IsInWorld())
-                    return;
-
-                LFGDungeonSet const* playerDungeons = pPlayer->GetLFGPlayerState()->GetDungeons();
-                LFGDungeonSet tmpIntersection;
-                std::set_intersection(intersection.begin(),intersection.end(), playerDungeons->begin(),playerDungeons->end(),std::inserter(tmpIntersection,tmpIntersection.end()));
-                intersection = tmpIntersection;
-            }
-        }
-
-        if (intersection.empty())
-        {
-            BASIC_LOG("LFGMgr:CompleteGroup: Try complete group %u but dungeon list is empty!", pGroup->GetObjectGuid().GetCounter());
-            return;
-        }
-        chosenDungeon = SelectRandomDungeonFromList(intersection);
+        chosenDungeon = dungeon;
     }
     if (chosenDungeon)
     {
