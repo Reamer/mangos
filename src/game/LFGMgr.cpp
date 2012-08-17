@@ -292,11 +292,14 @@ void LFGMgr::JoinGroup(Group* pGroup,Player* pLeader, LFGRoleMask leaderRoles, L
     LFGGroupState* groupState = pGroup->GetLFGGroupState();
 
     // if we are already in dungeon, then we must not change type and dungeon, because the "offer continue" select only the dungeon where the group is
-    if (groupState->GetChosenDungeon() && groupState->GetType() != LFG_TYPE_NONE)
+    if (!groupState->GetChosenDungeon())
     {
+        BASIC_LOG("We are not in Offer continue, therefore we change the type %u and the dungeons.", type);
         pGroup->GetLFGGroupState()->SetDungeons(dungeons);
         pGroup->GetLFGGroupState()->SetType(type);
     }
+    else
+        BASIC_LOG("We are in Offer continue, therefore we doesn't change the type (oldtype %u) and the dungeons.", pGroup->GetLFGGroupState()->GetType());
 
     switch (groupState->GetState())
     {
