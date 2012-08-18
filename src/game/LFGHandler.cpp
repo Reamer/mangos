@@ -1074,8 +1074,8 @@ void WorldSession::SendLfgUpdateProposal(LFGProposal* pProposal)
 
     ObjectGuid guid = GetPlayer()->GetObjectGuid();
 
-    bool isSameDungeon = false;
-    bool isSameGroup   = false;
+    //bool isSameDungeon = false;
+    //bool isSameGroup   = false;
 
     uint32 completedEncounters = 0;
     LFGRolesMap rolesMap;
@@ -1098,8 +1098,8 @@ void WorldSession::SendLfgUpdateProposal(LFGProposal* pProposal)
         }
 
         // isContinue = group->isLFGGroup() && sLFGMgr->GetState(gguid) != LFG_STATE_FINISHED_DUNGEON;
-        isSameDungeon =  dungeon->map == GetPlayer()->GetMapId();
-        isSameGroup   =  GetPlayer()->GetGroup() == group;
+        // isSameDungeon =  dungeon->map == GetPlayer()->GetMapId();
+        //isSameGroup   =  GetPlayer()->GetGroup() == group;
     }
 
     GuidSet const proposalGuids = pProposal->GetMembers();
@@ -1124,7 +1124,8 @@ void WorldSession::SendLfgUpdateProposal(LFGProposal* pProposal)
     data << uint8(pProposal->GetState());                      // Result state
     data << uint32(pProposal->m_uiID);                         // Internal Proposal ID
     data << uint32(completedEncounters);                       // Bosses killed
-    data << uint8(isSameDungeon);                              // Silent (show client window)
+    //data << uint8(isSameDungeon);                              // Silent (show client window)
+    data << uint8(0);                                          // Silent (show client window)
     data << uint8(size);                                       // Group size
 
     for (LFGRolesMap::const_iterator itr = rolesMap.begin(); itr != rolesMap.end(); ++itr)
@@ -1133,8 +1134,8 @@ void WorldSession::SendLfgUpdateProposal(LFGProposal* pProposal)
         if (!pPlayer)
             continue;
 
-        isSameDungeon =  dungeon->map == pPlayer->GetMapId();
-        isSameGroup   =  pPlayer->GetGroup() == pProposal->GetGroup();
+        bool isSameDungeon =  dungeon->map == pPlayer->GetMapId();
+        bool isSameGroup   =  pPlayer->GetGroup() == pProposal->GetGroup();
 
         data << uint32(itr->second);                              // Role
         data << uint8(pPlayer->GetObjectGuid() == guid);          // Self player
