@@ -909,9 +909,14 @@ void LFGMgr::SendLFGRewards(Group* pGroup)
 
 
     LFGDungeonEntry const* pChosenDungeon = pGroup->GetLFGGroupState()->GetChosenDungeon();
-    LFGDungeonEntry const* pDeclaredDungeon = (*pGroup->GetLFGGroupState()->GetDungeons()).begin();
+    LFGDungeonEntry const* pDeclaredDungeon = *(pGroup->GetLFGGroupState()->GetDungeons()->begin());
 
-    if (!pChosenDungeon)
+    if (!pDeclaredDungeon)
+    {
+        BASIC_LOG("LFGMgr::SendLFGReward: group %u - but no declared dungeon", pGroup->GetObjectGuid().GetCounter());
+        return;
+    }
+    else if (!pChosenDungeon)
     {
         BASIC_LOG("LFGMgr::SendLFGReward: group %u - but no chosen dungeon", pGroup->GetObjectGuid().GetCounter());
         return;
