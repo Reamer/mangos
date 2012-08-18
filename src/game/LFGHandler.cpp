@@ -906,7 +906,7 @@ void WorldSession::SendLfgTeleportError(LFGTeleportError msg)
     SendPacket(&data);
 }
 
-void WorldSession::SendLfgPlayerReward(LFGDungeonEntry const* pdeclaredDungeon, LFGDungeonEntry const* chosenDungeon, const LFGReward* reward, const Quest* qRew, bool isSecond)
+void WorldSession::SendLfgPlayerReward(LFGDungeonEntry const* pDeclaredDungeon, LFGDungeonEntry const* pChosenDungeon, const LFGReward* reward, const Quest* qRew, bool isSecond)
 {
     if (!sWorld.getConfig(CONFIG_BOOL_LFG_ENABLE))
     {
@@ -914,7 +914,7 @@ void WorldSession::SendLfgPlayerReward(LFGDungeonEntry const* pdeclaredDungeon, 
         return;
     }
 
-    if (!pdeclaredDungeon || !chosenDungeon || !reward || !qRew)
+    if (!pDeclaredDungeon || !pChosenDungeon || !reward || !qRew)
     {
         BASIC_LOG("SendLfgPlayerReward %u failed - some other Stuff failed", GetPlayer()->GetObjectGuid().GetCounter());
         return;
@@ -923,11 +923,11 @@ void WorldSession::SendLfgPlayerReward(LFGDungeonEntry const* pdeclaredDungeon, 
     uint8 itemNum = uint8(qRew ? qRew->GetRewItemsCount() : 0);
     uint8 done = uint8(isSecond);
 
-    BASIC_LOG("SMSG_LFG_PLAYER_REWARD %u dungeonEntry: %u ", GetPlayer()->GetObjectGuid().GetCounter(), chosenDungeon->ID);
+    BASIC_LOG("SMSG_LFG_PLAYER_REWARD %u dungeonEntry: %u ", GetPlayer()->GetObjectGuid().GetCounter(), pChosenDungeon->ID);
 
     WorldPacket data(SMSG_LFG_PLAYER_REWARD, 4 + 4 + 1 + 4 + 4 + 4 + 4 + 4 + 1 + itemNum * (4 + 4 + 4));
-    data << uint32(chosenDungeon->Entry());                        // Random Dungeon Finished
-    data << uint32(pdeclaredDungeon->Entry());                      // Dungeon Finished
+    data << uint32(pDeclaredDungeon->Entry());                        // Random Dungeon Finished
+    data << uint32(pChosenDungeon->Entry());                      // Dungeon Finished
     data << uint8(done);
     data << uint32(1);
     data << uint32(qRew->GetRewOrReqMoney());
