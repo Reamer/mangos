@@ -1185,18 +1185,18 @@ void LFGMgr::UpdateProposal(uint32 ID, ObjectGuid guid, bool accept)
             {
                 for (GroupReference* itr = pGroup->GetFirstMember(); itr != NULL; itr = itr->next())
                 {
-                    if (Player* pGroupMember = itr->getSource())
-                        if (pGroupMember->IsInWorld())
-                            tmpSet.insert(pGroupMember->GetObjectGuid());
+                    Player* pGroupMember = itr->getSource();
+                    if (pGroupMember && pGroupMember->IsInWorld())
+                        tmpSet.insert(pGroupMember->GetObjectGuid());
                 }
             }
 
             GuidSet const proposalGuids = pProposal->GetMembers();
             for (GuidSet::const_iterator itr = proposalGuids.begin(); itr != proposalGuids.end(); ++itr )
             {
-                 Player* pPlayer = sObjectMgr.GetPlayer(*itr);
-                    if (pPlayer && pPlayer->IsInWorld())
-                        tmpSet.insert(pPlayer->GetObjectGuid());
+                Player* pPlayer = sObjectMgr.GetPlayer(*itr);
+                if (pPlayer && pPlayer->IsInWorld())
+                    tmpSet.insert(pPlayer->GetObjectGuid());
             }
 
             LFGDungeonSet randomList = ExpandRandomDungeonsForGroup(pProposal->GetDungeon(), tmpSet);
@@ -2368,14 +2368,14 @@ bool LFGMgr::TryCreateGroup()
 
             Player* player1 = sObjectMgr.GetPlayer(playerGuid);
 
-            if (player1->GetLFGPlayerState()->GetState() != LFG_STATE_QUEUED)
-            {
-                BASIC_LOG("LFGMgr::TryCreateGroup: Player is not in State Queue. Actual state: %u", player1->GetLFGPlayerState()->GetState());
-                continue;
-            }
-
             if (player1 && player1->IsInWorld())
             {
+                if (player1->GetLFGPlayerState()->GetState() != LFG_STATE_QUEUED)
+                {
+                    BASIC_LOG("LFGMgr::TryCreateGroup: Player is not in State Queue. Actual state: %u", player1->GetLFGPlayerState()->GetState());
+                    continue;
+                }
+
                 rolesMap.insert(std::make_pair(player1->GetObjectGuid(), player1->GetLFGPlayerState()->GetRoles()));
 
                 if (!CheckRoles(&rolesMap))
