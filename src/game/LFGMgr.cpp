@@ -182,14 +182,6 @@ LFGReward const* LFGMgr::GetRandomDungeonReward(LFGDungeonEntry const* dungeon, 
     return rew;
 }
 
-bool LFGMgr::IsRandomDungeon(LFGDungeonEntry const* dungeon)
-{
-    if (!dungeon)
-        return false;
-
-    return dungeon->type == LFG_TYPE_RANDOM_DUNGEON;
-}
-
 void LFGMgr::Join(Player* pPlayer, LFGRoleMask roles, LFGDungeonSet const* dungeons, std::string comment)
 {
     if (!pPlayer)
@@ -1200,7 +1192,7 @@ void LFGMgr::UpdateProposal(uint32 ID, ObjectGuid guid, bool accept)
             }
 
             LFGDungeonSet randomList = ExpandRandomDungeonsForGroup(pProposal->GetDungeon(), tmpSet);
-            chosenDungeon = SelectRandomDungeonFromList(&randomList);
+            chosenDungeon = LFGMgr::SelectRandomDungeonFromList(&randomList);
             if (!chosenDungeon)
             {
                 DETAIL_LOG("LFGMgr::UpdateProposal:%u cannot set real dungeon! no compatible list.", pProposal->m_uiID);
@@ -2223,7 +2215,7 @@ void LFGMgr::TryCompleteGroups()
 
             DETAIL_LOG("LFGMgr:TryCompleteGroups: Try complete group %u  type %u state %u", pGroup->GetObjectGuid().GetCounter(), type, pGroup->GetLFGGroupState()->GetState());
 
-            if (IsGroupCompleted(pGroup))
+            if (LFGMgr::IsGroupCompleted(pGroup))
             {
                 GuidSet tmp;
                 tmp.clear();
@@ -2254,7 +2246,7 @@ void LFGMgr::TryCompleteGroups()
                 applicants.insert(pPlayer->GetObjectGuid());
                 if (TryAddMembersToGroup(pGroup, &applicants))
                 {
-                    if (IsGroupCompleted(pGroup, applicants.size()))
+                    if (LFGMgr::IsGroupCompleted(pGroup, applicants.size()))
                     {
                         CompleteGroup(pGroup, applicants, dungeon);
                         isGroupCompleted = true;
@@ -2283,10 +2275,10 @@ bool LFGMgr::TryAddMembersToGroup(Group* pGroup, GuidSet const* players)
         if (!pPlayer || !pPlayer->IsInWorld())
             return false;
 
-        if (!IsInSameTeam(pGroup, pPlayer))
+        if (!LFGMgr::IsInSameTeam(pGroup, pPlayer))
            return false;
 
-        if (HasIgnoreState(pGroup, pPlayer->GetObjectGuid()))
+        if (LFGMgr::HasIgnoreState(pGroup, pPlayer->GetObjectGuid()))
            return false;
 
         if (!CheckRoles(pGroup, pPlayer))
@@ -2347,43 +2339,49 @@ bool LFGMgr::TryCreateGroup()
         for (GuidSet::const_iterator playersitr = players.begin(); playersitr != players.end(); ++playersitr)
         {
             ObjectGuid playerGuid = *playersitr;
-            bool checkPassed = true;
-            LFGRolesMap rolesMap;
-            for (GuidSet::const_iterator groupitr = newGroup.begin(); groupitr != newGroup.end(); ++groupitr)
-            {
-                ObjectGuid groupMemberGuid = *groupitr;
-                if (playerGuid != groupMemberGuid && (!IsInSameTeam(playerGuid, groupMemberGuid) || HasIgnoreState(playerGuid, groupMemberGuid)))
-                    checkPassed = false;
-                else
-                {
-                    Player* pGroupMember = sObjectMgr.GetPlayer(groupMemberGuid);
-                    if (pGroupMember && pGroupMember->IsInWorld())
-                    {
-                        rolesMap.insert(std::make_pair(pGroupMember->GetObjectGuid(), pGroupMember->GetLFGPlayerState()->GetRoles()));
-                    }
-                }
-            }
-            if (!checkPassed)
-                continue;
+            Player* pPlayer = sObjectMgr.GetPlayer(playerGuid);
 
-            Player* player1 = sObjectMgr.GetPlayer(playerGuid);
-
-            if (player1 && player1->IsInWorld())
+            if (pPlayer && pPlayer->IsInWorld())
             {
-                if (player1->GetLFGPlayerState()->GetState() != LFG_STATE_QUEUED)
+                if (pPlayer->GetLFGPlayerState()->GetState() != LFG_STATE_QUEUED)
                 {
-                    DETAIL_LOG("LFGMgr::TryCreateGroup: Player is not in State Queue. Actual state: %u", player1->GetLFGPlayerState()->GetState());
+                    DETAIL_LOG("LFGMgr::TryCreateGroup: Player is not in State Queue. Actual state: %u", pPlayer->GetLFGPlayerState()->GetState());
                     continue;
                 }
 
-                rolesMap.insert(std::make_pair(player1->GetObjectGuid(), player1->GetLFGPlayerState()->GetRoles()));
+                bool checkPassed = true;
+                LFGRolesMap rolesMap;
+                for (GuidSet::const_iterator groupitr = newGroup.begin(); groupitr != newGroup.end(); ++groupitr)
+                {
+                    ObjectGuid groupMemberGuid = *groupitr;
+                    Player* pGroupMember = sObjectMgr.GetPlayer(groupMemberGuid);
+                    if (pGroupMember && pGroupMember->IsInWorld())
+                    {
+                        if (!LFGMgr::IsInSameTeam(pGroupMember, pPlayer))
+                        {
+                            checkPassed = false;
+                            break;
+                        }
+                        else if (LFGMgr::HasIgnoreState(pGroupMember, playerGuid))
+                        {
+                            checkPassed = false;
+                            break;
+                        }
+                        else
+                            rolesMap.insert(std::make_pair(pGroupMember->GetObjectGuid(), pGroupMember->GetLFGPlayerState()->GetRoles()));
+                    }
+                }
+                if (!checkPassed)
+                    continue;
+
+                rolesMap.insert(std::make_pair(pPlayer->GetObjectGuid(), pPlayer->GetLFGPlayerState()->GetRoles()));
 
                 if (!CheckRoles(&rolesMap))
                    continue;
 
                 newGroup.insert(playerGuid);
 
-                if (IsGroupCompleted(NULL, newGroup.size()))
+                if (LFGMgr::IsGroupCompleted(NULL, newGroup.size()))
                    groupCreated = true;
 
                 if (!groupCreated)
@@ -2535,99 +2533,6 @@ void LFGMgr::SendStatistic()
     //TODO: more
 }
 
-bool LFGMgr::HasIgnoreState(ObjectGuid guid1, ObjectGuid guid2)
-{
-    Player* pPlayer = sObjectMgr.GetPlayer(guid1);
-    if (!pPlayer || !pPlayer->IsInWorld())
-        return false;
-
-    if (pPlayer->GetSocial()->HasIgnore(guid2))
-        return true;
-
-    return false;
-}
-
-bool LFGMgr::HasIgnoreState(Group* pGroup, ObjectGuid guid)
-{
-    if (!pGroup)
-        return false;
-
-    for (GroupReference* itr = pGroup->GetFirstMember(); itr != NULL; itr = itr->next())
-    {
-        if (Player* pGroupMember = itr->getSource())
-            if (HasIgnoreState(pGroupMember->GetObjectGuid(), guid))
-                return true;
-    }
-
-    return false;
-}
-
-bool LFGMgr::IsInSameTeam(ObjectGuid guid1, ObjectGuid guid2)
-{
-
-    if (guid1.IsEmpty() || guid2.IsEmpty())
-        return true;
-
-    Player* pPlayer1 = sObjectMgr.GetPlayer(guid1);
-    Player* pPlayer2 = sObjectMgr.GetPlayer(guid2);
-
-    if (!pPlayer1 || !pPlayer2)
-        return true;
-
-    if (sWorld.getConfig(CONFIG_BOOL_ALLOW_TWO_SIDE_INTERACTION_GROUP))
-        return true;
-
-    if (pPlayer1->GetTeam() == pPlayer2->GetTeam())
-        return true;
-
-    return false;
-}
-
-bool LFGMgr::IsInSameTeam(Group* pGroup, Player* pPlayer)
-{
-    if (!pGroup || !pPlayer)
-        return true;
-
-    if (sWorld.getConfig(CONFIG_BOOL_ALLOW_TWO_SIDE_INTERACTION_GROUP))
-        return true;
-
-    Player* pLeader = sObjectMgr.GetPlayer(pGroup->GetLeaderGuid());
-    if (pLeader)
-    {
-        if (pLeader->GetTeam() == pPlayer->GetTeam())
-            return true;
-    }
-
-    return false;
-}
-
-LFGDungeonEntry const* LFGMgr::SelectRandomDungeonFromList(LFGDungeonSet const* dungeons)
-{
-    if (dungeons->empty())
-    {
-        DETAIL_LOG("LFGMgr::SelectRandomDungeonFromList: cannot select dungeons from empty list!");
-        return NULL;
-    }
-
-    if (dungeons->size() == 1)
-        return *dungeons->begin();
-    else
-    {
-        uint32 rand = urand(0, dungeons->size() - 1);
-        uint32 _key = 0;
-        for (LFGDungeonSet::const_iterator itr = dungeons->begin(); itr != dungeons->end(); ++itr)
-        {
-            LFGDungeonEntry const* dungeon = *itr;
-            if (!dungeon)
-                continue;
-            if (_key == rand)
-                return dungeon;
-            else ++_key;
-        }
-    }
-    return NULL;
-}
-
 void LFGMgr::UpdateLFRGroups()
 {
     for (LFGQueueInfoMap::const_iterator infoMapitr = m_queueInfoMap.begin(); infoMapitr != m_queueInfoMap.end(); ++infoMapitr)
@@ -2651,7 +2556,7 @@ void LFGMgr::UpdateLFRGroups()
             if (pGroup->GetLFGGroupState()->GetState() != LFG_STATE_LFR)
                 continue;
 
-            if (!IsGroupCompleted(pGroup))
+            if (!LFGMgr::IsGroupCompleted(pGroup))
                 continue;
 
             pGroup->GetLFGGroupState()->SetChosenDungeon(dungeon);
@@ -2684,46 +2589,6 @@ void LFGMgr::UpdateLFRGroups()
             RemoveFromQueue(pGroup->GetObjectGuid());
         }
     }
-}
-
-bool LFGMgr::IsGroupCompleted(Group* pGroup, uint8 uiAddMembers)
-{
-    if (!pGroup)
-    {
-        if (sWorld.getConfig(CONFIG_BOOL_LFG_DEBUG_ENABLE) && uiAddMembers > 2)
-            return true;
-        else if ( uiAddMembers >= MAX_GROUP_SIZE)
-            return true;
-        else
-            return false;
-    }
-
-    if (sWorld.getConfig(CONFIG_BOOL_LFG_DEBUG_ENABLE) && (pGroup->GetMembersCount() + uiAddMembers > 2))
-        return true;
-
-    if (pGroup->isRaidGroup())
-    {
-        switch (pGroup->GetDifficulty(true))
-        {
-            case RAID_DIFFICULTY_10MAN_NORMAL:
-            case RAID_DIFFICULTY_10MAN_HEROIC:
-                if (pGroup->GetMembersCount() + uiAddMembers >= 10)
-                    return true;
-                break;
-            case RAID_DIFFICULTY_25MAN_NORMAL:
-            case RAID_DIFFICULTY_25MAN_HEROIC:
-                if (pGroup->GetMembersCount() + uiAddMembers >= 25)
-                    return true;
-                break;
-            default:
-                return false;
-                break;
-        }
-    }
-    else if (pGroup->GetMembersCount() + uiAddMembers >= MAX_GROUP_SIZE)
-        return true;
-
-    return false;
 }
 
 void LFGMgr::AddMemberToLFDGroup(ObjectGuid guid)
@@ -2779,6 +2644,10 @@ void LFGMgr::RemoveMemberFromLFDGroup(Group* pGroup, ObjectGuid guid)
     pPlayer->GetLFGPlayerState()->Clear();
 }
 
+/*
+ * Called when Group reached an encounter.
+ * This function removes the dungeon cooldown Aura.
+ */
 void LFGMgr::DungeonEncounterReached(Group* pGroup)
 {
     if (!pGroup)
@@ -2788,10 +2657,7 @@ void LFGMgr::DungeonEncounterReached(Group* pGroup)
     {
         Player* pGroupMember = itr->getSource();
         if (pGroupMember && pGroupMember->IsInWorld())
-        {
-            if (pGroupMember->HasAura(LFG_SPELL_DUNGEON_COOLDOWN))
-                pGroupMember->RemoveAurasDueToSpell(LFG_SPELL_DUNGEON_COOLDOWN);
-        }
+            pGroupMember->RemoveAurasDueToSpell(LFG_SPELL_DUNGEON_COOLDOWN);
     }
 }
 
@@ -2814,6 +2680,141 @@ LFGType LFGMgr::GetAndCheckLFGType(LFGDungeonSet const* dungeons)
     }
     return resultType;
 }
+
+/*
+ * Checks whether a group is complete
+ */
+bool LFGMgr::IsGroupCompleted(Group const* pGroup, uint8 uiAddMembers)
+{
+    if (!pGroup)
+    {
+        if (sWorld.getConfig(CONFIG_BOOL_LFG_DEBUG_ENABLE) && uiAddMembers > 2)
+            return true;
+        else if ( uiAddMembers >= MAX_GROUP_SIZE)
+            return true;
+        else
+            return false;
+    }
+
+    if (sWorld.getConfig(CONFIG_BOOL_LFG_DEBUG_ENABLE) && (pGroup->GetMembersCount() + uiAddMembers > 2))
+        return true;
+
+    if (pGroup->isRaidGroup())
+    {
+        switch (pGroup->GetDifficulty(true))
+        {
+            case RAID_DIFFICULTY_10MAN_NORMAL:
+            case RAID_DIFFICULTY_10MAN_HEROIC:
+                if (pGroup->GetMembersCount() + uiAddMembers >= 10)
+                    return true;
+                break;
+            case RAID_DIFFICULTY_25MAN_NORMAL:
+            case RAID_DIFFICULTY_25MAN_HEROIC:
+                if (pGroup->GetMembersCount() + uiAddMembers >= 25)
+                    return true;
+                break;
+            default:
+                return false;
+                break;
+        }
+    }
+    else if (pGroup->GetMembersCount() + uiAddMembers >= MAX_GROUP_SIZE)
+        return true;
+
+    return false;
+}
+
+/*
+ * This function returns a random Dungeon from list. If list is empty we return NULL.
+ */
+LFGDungeonEntry const* LFGMgr::SelectRandomDungeonFromList(LFGDungeonSet const* dungeons)
+{
+    if (dungeons->empty())
+    {
+        DETAIL_LOG("LFGMgr::SelectRandomDungeonFromList: cannot select dungeons from empty list!");
+        return NULL;
+    }
+
+    LFGDungeonEntry const* randomDungeon = *dungeons->begin();
+    if (dungeons->size() > 1)
+    {
+        uint32 rand = urand(0, dungeons->size() - 1);
+        uint32 key = 0;
+        for (LFGDungeonSet::const_iterator itr = dungeons->begin(); itr != dungeons->end(); ++itr)
+        {
+            LFGDungeonEntry const* dungeon = *itr;
+            if (!dungeon)
+                continue;
+            if (key == rand)
+                return dungeon;
+            else ++key;
+        }
+    }
+    return randomDungeon;
+}
+
+/*
+ * return true if dungeon type = 6 (LFG_TYPE_RANDOM_DUNGEON), else false
+ */
+bool LFGMgr::IsRandomDungeon(LFGDungeonEntry const* dungeon)
+{
+    if (!dungeon)
+        return false;
+
+    return dungeon->type == LFG_TYPE_RANDOM_DUNGEON;
+}
+
+bool LFGMgr::HasIgnoreState(Player* pPlayer, ObjectGuid checkTarget)
+{
+    if (!pPlayer)
+        return false;
+
+     return pPlayer->GetSocial()->HasIgnore(checkTarget);
+}
+
+bool LFGMgr::HasIgnoreState(Group* pGroup, ObjectGuid checkTarget)
+{
+    if (!pGroup)
+        return false;
+
+    for (GroupReference* itr = pGroup->GetFirstMember(); itr != NULL; itr = itr->next())
+    {
+        if (Player* pGroupMember = itr->getSource())
+            if (pGroupMember->GetSocial()->HasIgnore(checkTarget))
+                return true;
+    }
+
+    return false;
+}
+
+bool LFGMgr::IsInSameTeam(Player* pPlayer1, Player* pPlayer2)
+{
+    if (!pPlayer1 || !pPlayer2)
+        return true;
+
+    if (sWorld.getConfig(CONFIG_BOOL_ALLOW_TWO_SIDE_INTERACTION_GROUP))
+        return true;
+
+    return pPlayer1->GetTeam() == pPlayer2->GetTeam();
+}
+
+bool LFGMgr::IsInSameTeam(Group* pGroup, Player* pPlayer)
+{
+    if (!pGroup || !pPlayer)
+        return true;
+
+    if (sWorld.getConfig(CONFIG_BOOL_ALLOW_TWO_SIDE_INTERACTION_GROUP))
+        return true;
+
+    Player* pLeader = sObjectMgr.GetPlayer(pGroup->GetLeaderGuid());
+    if (pLeader)
+    {
+        if (pLeader->GetTeam() == pPlayer->GetTeam())
+            return true;
+    }
+    return false;
+}
+
 
 void LFGMgr::SheduleEvent()
 {

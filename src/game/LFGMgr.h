@@ -161,7 +161,6 @@ class LFGMgr
 
         // LFR extend system
         void UpdateLFRGroups();
-        bool IsGroupCompleted(Group* pGroup, uint8 uiAddMembers = 0);
 
         // Statistic system
         void UpdateQueueStatus();
@@ -177,15 +176,8 @@ class LFGMgr
         void SetGroupRoles(Group* pGroup, GuidSet const* players);
         void SetRoles(LFGRolesMap* roleMap);
 
-        // Social check system
-        bool HasIgnoreState(ObjectGuid guid1, ObjectGuid guid2);
-        bool HasIgnoreState(Group* pGroup, ObjectGuid guid);
-        bool IsInSameTeam(Group* pGroup, Player* pPlayer = NULL);
-        bool IsInSameTeam(ObjectGuid guid1, ObjectGuid guid2);
-
         // Dungeon operations
         LFGDungeonEntry const* GetDungeon(uint32 dungeonID);
-        bool IsRandomDungeon(LFGDungeonEntry const* dungeon);
         LFGDungeonSet GetRandomDungeonsForPlayer(Player* pPlayer);
 
         // Group operations
@@ -195,7 +187,6 @@ class LFGMgr
 
         // Dungeon expand operations
         LFGDungeonSet ExpandRandomDungeonsForGroup(LFGDungeonEntry const* randomDungeon, GuidSet playerGuids);
-        LFGDungeonEntry const* SelectRandomDungeonFromList(LFGDungeonSet const* dungeons);
 
         // Checks
         LFGJoinResult GetPlayerJoinResult(Player* pPlayer, LFGDungeonSet const* dungeons);
@@ -207,8 +198,17 @@ class LFGMgr
         LFGLockStatusType GetGroupLockStatus(Group* pGroup, LFGDungeonEntry const* pDungeon);
         LFGLockStatusMap GetPlayerLockMap(Player* pPlayer);
 
-        // Helper Functions
+        // some static Helper Functions
         static LFGType GetAndCheckLFGType(LFGDungeonSet const* dungeons);
+        static bool IsGroupCompleted(Group const* pGroup, uint8 uiAddMembers = 0);
+        static LFGDungeonEntry const* SelectRandomDungeonFromList(LFGDungeonSet const* dungeons);
+        static bool IsRandomDungeon(LFGDungeonEntry const* dungeon);
+        // Social check system TODO: not the right place (maybe SocialMgr)
+        static bool HasIgnoreState(Group* pGroup, ObjectGuid checkTarget);
+        static bool HasIgnoreState(Player* pPlayer, ObjectGuid checkTarget);
+        static bool IsInSameTeam(Group* pGroup, Player* pPlayer = NULL);
+        static bool IsInSameTeam(Player* pPlayer1, Player* pPlayer2);
+
 
         // Sheduler
         void SheduleEvent();
