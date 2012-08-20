@@ -8858,8 +8858,9 @@ void Aura::PeriodicTick()
 
             int32 gain = target->ModifyHealth(damageInfo.damage);
             damageInfo.cleanDamage = damageInfo.damage;
-            damageInfo.damage = damageInfo.cleanDamage - uint32(gain);
-            SpellPeriodicAuraLogInfo pInfo(this, damageInfo.cleanDamage, damageInfo.damage, damageInfo.absorb, 0, 0.0f, isCrit);
+            damageInfo.damage = uint32(gain);
+            uint32 overDamage = damageInfo.cleanDamage - damageInfo.damage;
+            SpellPeriodicAuraLogInfo pInfo(this, damageInfo.cleanDamage, overDamage, damageInfo.absorb, 0, 0.0f, isCrit);
             target->SendPeriodicAuraLog(&pInfo);
 
             // Set trigger flag
