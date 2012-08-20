@@ -354,7 +354,6 @@ bool LFGProposal::IsDecliner(Player* pPlayer)
     if (declinerGuids.empty())
         return false;
 
-
     LFGMgr::ReadGuard Guard(sLFGMgr.GetLock());
     GuidSet::iterator itr = declinerGuids.find(pPlayer->GetObjectGuid());
     if (itr != declinerGuids.end())
