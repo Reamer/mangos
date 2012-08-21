@@ -12942,29 +12942,10 @@ void Spell::EffectKnockBackFromPosition(SpellEffectIndex eff_idx)
 
     float angle = unitTarget->GetAngle(x,y) + M_PI_F;
     angle = MapManager::NormalizeOrientation(angle);
-    float vsin = sin(angle);
-    float vcos = cos(angle);
 
     float horizontalSpeed = float(m_spellInfo->EffectMiscValue[eff_idx])/10;
     float verticalSpeed = float(damage)/10;
-    if (unitTarget->GetTypeId() == TYPEID_PLAYER)
-    {
-        unitTarget->KnockBackPlayerWithAngle(angle, horizontalSpeed, verticalSpeed);
-    }
-    else
-    {
-        float moveTimeHalf = verticalSpeed / Movement::gravity;
-        float max_height = -Movement::computeFallElevation(moveTimeHalf,false,-verticalSpeed);
-
-        float dis = 2 * moveTimeHalf * horizontalSpeed;
-        float ox, oy, oz;
-        unitTarget->GetPosition(ox, oy, oz);
-        float fx = ox + dis * vcos;
-        float fy = oy + dis * vsin;
-        float fz = oz;
-
-        unitTarget->MonsterMoveToDestination(fx,fy,fz,unitTarget->GetOrientation(),horizontalSpeed,max_height, true);
-    }
+    unitTarget->KnockBackWithAngle(angle, horizontalSpeed, verticalSpeed);
 }
 
 // Used only for snake trap
