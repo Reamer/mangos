@@ -910,20 +910,20 @@ void WorldSession::SendLfgPlayerReward(LFGDungeonEntry const* pDeclaredDungeon, 
 {
     if (!sWorld.getConfig(CONFIG_BOOL_LFG_ENABLE))
     {
-        DEBUG_LOG("SendLfgPlayerReward %u failed - Dungeon finder disabled", GetPlayer()->GetObjectGuid().GetCounter());
+        BASIC_LOG("SendLfgPlayerReward %u failed - Dungeon finder disabled", GetPlayer()->GetObjectGuid().GetCounter());
         return;
     }
 
     if (!pDeclaredDungeon || !pChosenDungeon || !reward || !qRew)
     {
-        DEBUG_LOG("SendLfgPlayerReward %u failed - some other Stuff failed", GetPlayer()->GetObjectGuid().GetCounter());
+        BASIC_LOG("SendLfgPlayerReward %u failed - some other Stuff failed", GetPlayer()->GetObjectGuid().GetCounter());
         return;
     }
 
     uint8 itemNum = uint8(qRew ? qRew->GetRewItemsCount() : 0);
     uint8 done = uint8(isSecond);
 
-    DEBUG_LOG("SMSG_LFG_PLAYER_REWARD %u dungeonEntry: %u ", GetPlayer()->GetObjectGuid().GetCounter(), pChosenDungeon->ID);
+    BASIC_LOG("SMSG_LFG_PLAYER_REWARD %u dungeonEntry: %u ", GetPlayer()->GetObjectGuid().GetCounter(), pChosenDungeon->ID);
 
     WorldPacket data(SMSG_LFG_PLAYER_REWARD, 4 + 4 + 1 + 4 + 4 + 4 + 4 + 4 + 1 + itemNum * (4 + 4 + 4));
     data << uint32(pDeclaredDungeon->Entry());                    // Random Dungeon Finished

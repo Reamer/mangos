@@ -886,13 +886,13 @@ void LFGMgr::SendLFGRewards(Group* pGroup)
 
     if (!pGroup || !pGroup->isLFGGroup())
     {
-        DEBUG_LOG("LFGMgr::SendLFGReward: not group or not a LFGGroup. Ignoring");
+        BASIC_LOG("LFGMgr::SendLFGReward: not group or not a LFGGroup. Ignoring");
         return;
     }
 
     if (pGroup->GetLFGGroupState()->GetState() == LFG_STATE_FINISHED_DUNGEON)
     {
-        DEBUG_LOG("LFGMgr::SendLFGReward: group %u already rewarded!",pGroup->GetObjectGuid().GetCounter());
+        BASIC_LOG("LFGMgr::SendLFGReward: group %u already rewarded!",pGroup->GetObjectGuid().GetCounter());
         return;
     }
 
@@ -905,17 +905,17 @@ void LFGMgr::SendLFGRewards(Group* pGroup)
 
     if (!pDeclaredDungeon)
     {
-        DEBUG_LOG("LFGMgr::SendLFGReward: group %u - but no declared dungeon", pGroup->GetObjectGuid().GetCounter());
+        BASIC_LOG("LFGMgr::SendLFGReward: group %u - but no declared dungeon", pGroup->GetObjectGuid().GetCounter());
         return;
     }
     else if (!pChosenDungeon)
     {
-        DEBUG_LOG("LFGMgr::SendLFGReward: group %u - but no chosen dungeon", pGroup->GetObjectGuid().GetCounter());
+        BASIC_LOG("LFGMgr::SendLFGReward: group %u - but no chosen dungeon", pGroup->GetObjectGuid().GetCounter());
         return;
     }
     else  if (LFGType(pDeclaredDungeon->type) != LFG_TYPE_RANDOM_DUNGEON)
     {
-        DEBUG_LOG("LFGMgr::SendLFGReward: group %u dungeon %u is not random (%u)", pGroup->GetObjectGuid().GetCounter(), pDeclaredDungeon->ID, pDeclaredDungeon->type);
+        BASIC_LOG("LFGMgr::SendLFGReward: group %u dungeon %u is not random (%u)", pGroup->GetObjectGuid().GetCounter(), pDeclaredDungeon->ID, pDeclaredDungeon->type);
         return;
     }
 
@@ -934,7 +934,7 @@ void LFGMgr::SendLFGReward(Player* pPlayer, LFGDungeonEntry const* pChosenDungeo
 
     if (pPlayer->GetLFGPlayerState()->GetState() == LFG_STATE_FINISHED_DUNGEON)
     {
-        DEBUG_LOG("LFGMgr::SendLFGReward: player %u already rewarded!",pPlayer->GetObjectGuid().GetCounter());
+        BASIC_LOG("LFGMgr::SendLFGReward: player %u already rewarded!",pPlayer->GetObjectGuid().GetCounter());
         return;
     }
 
@@ -954,7 +954,7 @@ void LFGMgr::SendLFGReward(Player* pPlayer, LFGDungeonEntry const* pChosenDungeo
 
     if (!reward)
     {
-        DEBUG_LOG("LFGMgr::SendLFGReward: We have no reward for player %u!",pPlayer->GetObjectGuid().GetCounter());
+        BASIC_LOG("LFGMgr::SendLFGReward: We have no reward for player %u!",pPlayer->GetObjectGuid().GetCounter());
         return;
     }
 
@@ -978,7 +978,7 @@ void LFGMgr::SendLFGReward(Player* pPlayer, LFGDungeonEntry const* pChosenDungeo
     pPlayer->RewardQuest(qReward,0,NULL,false);
 
     // Give rewards
-    DEBUG_LOG("LFGMgr::SendLFGReward: %u done dungeon %u, %s previously done.", pPlayer->GetObjectGuid().GetCounter(), pChosenDungeon->ID, index > 0 ? " " : " not");
+    BASIC_LOG("LFGMgr::SendLFGReward: %u done dungeon %u, %s previously done.", pPlayer->GetObjectGuid().GetCounter(), pChosenDungeon->ID, index > 0 ? " " : " not");
     pPlayer->GetSession()->SendLfgPlayerReward(pDeclaredDungeon, pChosenDungeon, reward, qReward, index != 0);
 }
 
