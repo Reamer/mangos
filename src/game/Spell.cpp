@@ -121,8 +121,8 @@ SpellCastTargets::SpellCastTargets()
     m_srcX = m_srcY = m_srcZ = m_destX = m_destY = m_destZ = 0.0f;
     m_strTarget = "";
     m_targetMask = 0;
-    m_elevation = 0.0f;
-    m_speed = 0.0f;
+    SetElevation(0.0f);
+    SetSpeed(0.0f);
 }
 
 SpellCastTargets::~SpellCastTargets()
@@ -2554,8 +2554,13 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
             break;
         case TARGET_IN_FRONT_OF_CASTER:
         {
-            bool inFront = m_spellInfo->SpellVisual[0] != 3879;
-            FillAreaTargets(targetUnitMap, radius, inFront ? PUSH_IN_FRONT : PUSH_IN_BACK, SPELL_TARGETS_AOE_DAMAGE);
+            SpellNotifyPushType pushType = PUSH_IN_FRONT;
+            switch (m_spellInfo->SpellVisual[0])            // Some spell require a different target fill
+            {
+                case 3879: pushType = PUSH_IN_BACK;     break;
+                case 7441: pushType = PUSH_IN_FRONT_15; break;
+            }
+            FillAreaTargets(targetUnitMap, radius, pushType, SPELL_TARGETS_AOE_DAMAGE);
             break;
         }
         case TARGET_LARGE_FRONTAL_CONE:
@@ -4305,7 +4310,7 @@ void Spell::SendSpellGo()
         castFlags |= CAST_FLAG_PREDICTED_RUNES;             // rune cooldowns list
     }
 
-    if ((m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION) && m_targets.GetSpeed() > 0.0f)
+    if ((m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION) && (m_targets.GetSpeed() > M_NULL_F || m_targets.GetElevation() > M_NULL_F))
         castFlags |= CAST_FLAG_ADJUST_MISSILE;             // spell has trajectory (guess parameters)
 
     Unit *caster = m_triggeredByAuraSpell && IsChanneledSpell(m_triggeredByAuraSpell) ? GetAffectiveCaster() : m_caster;
