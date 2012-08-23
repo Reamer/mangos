@@ -705,6 +705,7 @@ bool IsPositiveEffect(SpellEntry const *spellproto, SpellEffectIndex effIndex)
         case 37675:                                         // Chaos Blast
         case 42786:                                         // Echo Of Ymiron
         case 56266:                                         // Vortex
+        case 54798:                                         // FLAMING Arrow Triggered Effect
         case 62470:                                         // Deafening Thunder
         case 63138:                                         // Sara's Fervor (Ulduar - Yogg Saron encounter)
         case 63134:                                         // Sara's Blessing (Ulduar - Yogg Saron encounter)
