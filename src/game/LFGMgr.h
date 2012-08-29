@@ -178,7 +178,7 @@ class LFGMgr
 
         // Dungeon operations
         LFGDungeonEntry const* GetDungeon(uint32 dungeonID);
-        LFGDungeonSet GetRandomDungeonsForPlayer(Player* pPlayer);
+        LFGDungeonSet GetRandomDungeonsAndWorldEventsForPlayer(Player* pPlayer);
 
         // Group operations
         void AddMemberToLFDGroup(ObjectGuid guid);
@@ -203,6 +203,7 @@ class LFGMgr
         static bool IsGroupCompleted(Group const* pGroup, uint8 uiAddMembers = 0);
         static LFGDungeonEntry const* SelectRandomDungeonFromList(LFGDungeonSet const* dungeons);
         static bool IsRandomDungeon(LFGDungeonEntry const* dungeon);
+        static bool CheckWorldEvent(LFGDungeonEntry const* dungeon);
         // Social check system TODO: not the right place (maybe SocialMgr)
         static bool HasIgnoreState(Group* pGroup, ObjectGuid checkTarget);
         static bool HasIgnoreState(Player* pPlayer, ObjectGuid checkTarget);
