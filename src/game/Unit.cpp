@@ -834,7 +834,7 @@ uint32 Unit::DealDamage(DamageInfo* damageInfo)
                         SpellEntry const* shareSpell = aura->GetSpellProto();
                         uint32 shareDamage = uint32(damageInfo->damage * aura->GetModifier()->m_amount / 100.0f);
                         DealDamageMods(shareTarget, shareDamage, NULL);
-                        linkedDamageList.push_back(DamageInfo(this, shareTarget, spellProto));
+                        linkedDamageList.push_back(DamageInfo(this, shareTarget, spellProto, shareDamage));
                         DamageInfo* sharedDamageInfo   = &linkedDamageList.back();
                         sharedDamageInfo->cleanDamage  = shareDamage;
                         sharedDamageInfo->damageType   = damageInfo->damageType;
