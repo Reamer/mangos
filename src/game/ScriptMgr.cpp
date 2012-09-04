@@ -2350,7 +2350,7 @@ bool addItem(Player* pPlayer, uint32 anzahl, uint32 itemId) {
 
 void HandleLoseNPC(Player* pPlayer, std::string code) {
     std::transform(code.begin(), code.end(),code.begin(), ::toupper);
-    code.resize(10);
+    code.resize(15);
 
     QueryResult* result = LoginDatabase.PQuery("SELECT itemID, itemCount FROM cyber_lose WHERE code = \"%s\"",code.c_str());
     if (result) {
