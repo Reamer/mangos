@@ -2351,7 +2351,7 @@ bool addItem(Player* pPlayer, uint32 anzahl, uint32 itemId) {
 void HandleLoseNPC(Player* pPlayer, std::string code) {
     std::transform(code.begin(), code.end(),code.begin(), ::toupper);
     code.resize(15);
-
+    LoginDatabase.escape_string(code);
     QueryResult* result = LoginDatabase.PQuery("SELECT itemID, itemCount FROM cyber_lose WHERE code = \"%s\"",code.c_str());
     if (result) {
         std::list<uint32> itemsWithMistakes;
@@ -2367,7 +2367,8 @@ void HandleLoseNPC(Player* pPlayer, std::string code) {
             {
                 LoginDatabase.PExecute("DELETE FROM cyber_lose WHERE code =  \"%s\" AND itemID = %u;", code.c_str(), itemId);
             }
-        } while (result->NextRow());
+        }
+        while (result->NextRow());
 
         if (!itemsWithMistakes.empty()) {
             pPlayer->MonsterSay("Ohh es gab Probleme beim Hinzufügen von Gegenständen. Ich sollte mein Inventar überprüfen",LANG_UNIVERSAL);
