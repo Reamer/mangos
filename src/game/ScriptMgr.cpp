@@ -2365,7 +2365,9 @@ void HandleLoseNPC(Player* pPlayer, std::string code) {
             }
             else
             {
-                LoginDatabase.PExecute("DELETE FROM cyber_lose WHERE code =  \"%s\" AND itemID = %u;", code.c_str(), itemId);
+                static SqlStatementID delItem ;
+                SqlStatement stmt = LoginDatabase.CreateStatement(delItem, "DELETE FROM cyber_lose WHERE code = ? AND itemID = ?");
+                stmt.PExecute(code.c_str(), itemId);
             }
         }
         while (result->NextRow());
