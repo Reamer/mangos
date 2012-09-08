@@ -26,7 +26,7 @@
 #include "WorldRunnable.h"
 #include "Timer.h"
 #include "MapManager.h"
-#include "BattleGroundMgr.h"
+#include "BattleGround/BattleGroundMgr.h"
 
 #include "Database/DatabaseEnv.h"
 

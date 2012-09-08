@@ -48,7 +48,7 @@
 #include "ScriptMgr.h"
 #include "CreatureAIRegistry.h"
 #include "Policies/SingletonImp.h"
-#include "BattleGroundMgr.h"
+#include "BattleGround/BattleGroundMgr.h"
 #include "Language.h"
 #include "WorldPvP/WorldPvPMgr.h"
 #include "TemporarySummon.h"
