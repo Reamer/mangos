@@ -533,7 +533,7 @@ SpellAuraProcResult Unit::HandleSpellCritChanceAuraProc(Unit *pVictim, DamageInf
     if (!procSpell)
         return SPELL_AURA_PROC_FAILED;
 
-    SpellEntry const *triggeredByAuraSpell = triggeredByAura->GetSpellProto();
+    SpellEntry const* triggeredByAuraSpell = triggeredByAura->GetSpellProto();
 
     Item* castItem = triggeredByAura->GetCastItemGuid() && GetTypeId()==TYPEID_PLAYER
         ? ((Player*)this)->GetItemByGuid(triggeredByAura->GetCastItemGuid()) : NULL;
@@ -1540,7 +1540,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, DamageInfo* damageI
                 return SPELL_AURA_PROC_OK;
             }
             // Seed of Corruption (Mobs cast) - no die req
-            if (dummySpell->SpellIconID == 1932)
+            else if (dummySpell->SpellIconID == 1932)
             {
                 Modifier const* mod = triggeredByAura->GetModifier();
                 // if damage is more than need deal finish spell
@@ -3006,7 +3006,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, DamageInfo* damageI
                 // Glyph of Earth Shield
                 if(Unit* caster = triggeredByAura->GetCaster())
                 {
-                    if (Aura* aur = caster->GetDummyAura(63279))
+                    if (Aura const* aur = caster->GetDummyAura(63279))
                     {
                         int32 aur_mod = aur->GetModifier()->m_amount;
                         basepoints[0] = int32(basepoints[0] * (aur_mod + 100.0f) / 100.0f);
@@ -3201,7 +3201,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, DamageInfo* damageI
                 basepoints[0] = damage * triggerAmount / 100;
 
                 // Glyph of Unholy Blight
-                if (Aura *aura = GetDummyAura(63332))
+                if (Aura const* aura = GetDummyAura(63332))
                     basepoints[0] += basepoints[0] * aura->GetModifier()->m_amount / 100;
 
                 // Split between 10 ticks
@@ -4141,7 +4141,7 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(Unit *pVictim, DamageIn
                 // stacking
                 CastSpell(this, 37658, true, NULL, triggeredByAura);
 
-                Aura * dummy = GetDummyAura(37658);
+                Aura const* dummy = GetDummyAura(37658);
                 // release at 3 aura in stack (cont contain in basepoint of trigger aura)
                 if(!dummy || dummy->GetStackAmount() < uint32(triggerAmount))
                     return SPELL_AURA_PROC_FAILED;
@@ -4166,7 +4166,7 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(Unit *pVictim, DamageIn
                 CastSpell(this, 54842, true, NULL, triggeredByAura);
 
                 // counting
-                Aura * dummy = GetDummyAura(54842);
+                Aura const* dummy = GetDummyAura(54842);
                 // release at 3 aura in stack (cont contain in basepoint of trigger aura)
                 if(!dummy || dummy->GetStackAmount() < uint32(triggerAmount))
                     return SPELL_AURA_PROC_FAILED;
@@ -4446,7 +4446,7 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(Unit *pVictim, DamageIn
         {
             // Item - Shaman T10 Enhancement 4P Bonus
             // Calculate before roll_chance of ranks
-            if (Aura * dummy = GetDummyAura(70832))
+            if (Aura const* dummy = GetDummyAura(70832))
             {
               if (SpellAuraHolderPtr aurHolder = GetSpellAuraHolder(53817))
                 if ((aurHolder->GetStackAmount() == aurHolder->GetSpellProto()->StackAmount) && roll_chance_i(dummy->GetBasePoints()))
@@ -5126,7 +5126,8 @@ SpellAuraProcResult Unit::HandleModRating(Unit* /*pVictim*/, DamageInfo* damageI
 
 SpellAuraProcResult Unit::HandleRemoveByDamageProc(Unit* pVictim, DamageInfo* damageInfo, Aura const* triggeredByAura, SpellEntry const *procSpell, uint32 procFlag, uint32 procEx, uint32 cooldown)
 {
-    SpellEntry const* spellInfo = triggeredByAura->GetSpellProto();
+    SpellAuraHolderPtr holder    = triggeredByAura->GetHolder();
+    SpellEntry const*  spellInfo = triggeredByAura->GetSpellProto();
 
     // Hungering Cold - not break from diseases
     if (spellInfo->SpellIconID == 2797)
@@ -5141,6 +5142,7 @@ SpellAuraProcResult Unit::HandleRemoveByDamageProc(Unit* pVictim, DamageInfo* da
                 procSpell->HasAttribute(SPELL_ATTR_EX2_UNK28))
             return SPELL_AURA_PROC_FAILED;
     }
+    
 
     RemoveAurasByCasterSpell(triggeredByAura->GetSpellProto()->Id, triggeredByAura->GetCasterGuid());
 

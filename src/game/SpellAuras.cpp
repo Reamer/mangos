@@ -4249,12 +4249,12 @@ void Aura::HandleAuraModShapeshift(bool apply, bool Real)
             case FORM_BEAR:
             case FORM_DIREBEAR:
             case FORM_CAT:
-                if (Aura* dummy = target->GetDummyAura(37315))
+                if (Aura const* dummy = target->GetDummyAura(37315))
                     target->CastSpell(target, 37316, true, NULL, dummy);
                 break;
             // Nordrassil Regalia - bonus
             case FORM_MOONKIN:
-                if (Aura* dummy = target->GetDummyAura(37324))
+                if (Aura const* dummy = target->GetDummyAura(37324))
                     target->CastSpell(target, 37325, true, NULL, dummy);
                 break;
             // Shadow Dance - remove stealth mode stand flag
@@ -4532,9 +4532,9 @@ void Aura::HandleAuraTransform(bool apply, bool Real)
 
             target->SetDisplayId(model_id);
 
-            // creature case, need to update equipment
+            // creature case, need to update equipment if additional provided
             if (ci && target->GetTypeId() == TYPEID_UNIT)
-                ((Creature*)target)->LoadEquipment(ci->equipmentId, true);
+                ((Creature*)target)->LoadEquipment(ci->equipmentId, false);
 
             // Dragonmaw Illusion (set mount model also)
             if (GetId()==42016 && target->GetMountID() && !target->GetAurasByType(SPELL_AURA_MOD_FLIGHT_SPEED_MOUNTED).empty())
@@ -9816,8 +9816,8 @@ void Aura::PeriodicDummyTick()
                 {
                     // Sweep around
                     float newAngle = target->GetOrientation() + (spell->Id == 68875 ? 0.09f : 2*M_PI_F - 0.09f);
-                    if (newAngle > 2*M_PI_F)
-                        newAngle -= 2*M_PI_F;
+
+                    MapManager::NormalizeOrientation(newAngle);
 
                     target->SetFacingTo(newAngle);
 
@@ -10868,11 +10868,8 @@ void SpellAuraHolder::_RemoveSpellAuraHolder()
     if (slot >= MAX_AURAS)                                   // slot not set
         return;
 
-    {
-        MAPLOCK_READ(m_target,MAP_LOCK_TYPE_AURAS);
-        if (m_target->GetVisibleAura(slot) == 0)
-            return;
-    }
+    if (!m_target->GetVisibleAura(slot))
+        return;
 
     // unregister aura diminishing (and store last time)
     if (getDiminishGroup() != DIMINISHING_NONE )

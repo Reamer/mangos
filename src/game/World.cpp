@@ -1869,7 +1869,7 @@ namespace MaNGOS
     };
 }                                                           // namespace MaNGOS
 
-/// Send a System Message to all players (except self if mentioned)
+/// Sends a system message to all players
 void World::SendWorldText(int32 string_id, ...)
 {
     va_list ap;

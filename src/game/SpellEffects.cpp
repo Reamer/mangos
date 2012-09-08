@@ -757,7 +757,7 @@ void Spell::EffectSchoolDMG(SpellEffectIndex effect_idx)
                     // Shadow Prison
                     case 72999:
                     {
-                        if (Aura *aur = unitTarget->GetDummyAura(m_spellInfo->Id))
+                        if (Aura const* aur = unitTarget->GetDummyAura(m_spellInfo->Id))
                             damage += (aur->GetStackAmount() - 1) * aur->GetModifier()->m_amount;
 
                         break;
@@ -1032,7 +1032,7 @@ void Spell::EffectSchoolDMG(SpellEffectIndex effect_idx)
                     // consume from stack dozes not more that have combo-points
                     if (uint32 combo = m_caster->GetComboPoints())
                     {
-                        Aura *poison = 0;
+                        Aura const* poison = NULL;
                         // Lookup for Deadly poison (only attacker applied)
                         Unit::AuraList const& auras = unitTarget->GetAurasByType(SPELL_AURA_PERIODIC_DAMAGE);
                         for(Unit::AuraList::const_iterator itr = auras.begin(); itr!=auras.end(); ++itr)
