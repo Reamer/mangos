@@ -96,7 +96,7 @@ BattleGroundSA::~BattleGroundSA()
 {
 }
 
-void BattleGroundSA::FillInitialWorldStates(WorldPacket& data, uint32& count)
+void BattleGroundSA::FillInitialWorldStates()
 {
     for (uint8 i = 0; i < BG_SA_GRY_MAX; ++i)
     {
@@ -108,22 +108,22 @@ void BattleGroundSA::FillInitialWorldStates(WorldPacket& data, uint32& count)
 
     for (uint8 i = 0; i < BG_SA_MAX_WS; ++i)
     {
-        FillInitialWorldState(data, count, BG_SA_WorldStatusA[i], (GetDefender() == HORDE) ? 1 : 0);
-        FillInitialWorldState(data, count, BG_SA_WorldStatusH[i], (GetDefender() == HORDE) ? 0 : 1);
+        FillInitialWorldState(BG_SA_WorldStatusA[i], (GetDefender() == HORDE) ? 1 : 0);
+        FillInitialWorldState(BG_SA_WorldStatusH[i], (GetDefender() == HORDE) ? 0 : 1);
     }
 
     for (uint32 z = 0; z < BG_SA_GATE_MAX; ++z)
     {
-        FillInitialWorldState(data, count, BG_SA_GateStatus[z], GateStatus[z]);
+        FillInitialWorldState(BG_SA_GateStatus[z], GateStatus[z]);
         if ((z == 0) && (GetDefender() == HORDE))                                               // Ancient gate changes color depending on the defender
-            FillInitialWorldState(data, count, BG_SA_GateStatus[z], (GateStatus[z] + 3));
+            FillInitialWorldState(BG_SA_GateStatus[z], (GateStatus[z] + 3));
     }
 
     //Time will be sent on first update...
-    FillInitialWorldState(data, count, BG_SA_ENABLE_TIMER, TimerEnabled ? uint32(1) : uint32(0));
-    FillInitialWorldState(data, count, BG_SA_TIMER_MINUTES, uint32(0));
-    FillInitialWorldState(data, count, BG_SA_TIMER_10SEC, uint32(0));
-    FillInitialWorldState(data, count, BG_SA_TIMER_SEC, uint32(0));
+    FillInitialWorldState(BG_SA_ENABLE_TIMER, TimerEnabled ? uint32(1) : uint32(0));
+    FillInitialWorldState(BG_SA_TIMER_MINUTES, uint32(0));
+    FillInitialWorldState(BG_SA_TIMER_10SEC, uint32(0));
+    FillInitialWorldState(BG_SA_TIMER_SEC, uint32(0));
 }
 
 void BattleGroundSA::StartShips()
@@ -340,7 +340,7 @@ void BattleGroundSA::RemovePlayer(Player* /*plr*/, ObjectGuid /*guid*/)
 {
 }
 
-void BattleGroundSA::AddPlayer(Player *plr)
+void BattleGroundSA::AddPlayer(Player* plr)
 {
     BattleGround::AddPlayer(plr);
 
@@ -351,20 +351,21 @@ void BattleGroundSA::AddPlayer(Player *plr)
     m_PlayerScores[plr->GetObjectGuid()] = sc;
 }
 
-void BattleGroundSA::HandleAreaTrigger(Player * /*Source*/, uint32 /*Trigger*/)
+void BattleGroundSA::HandleAreaTrigger(Player* /*source*/, uint32 /*trigger*/)
 {
     // this is wrong way to implement these things. On official it done by gameobject spell cast.
     if (GetStatus() != STATUS_IN_PROGRESS)
         return;
 }
 
-void BattleGroundSA::UpdatePlayerScore(Player* Source, uint32 type, uint32 value)
+void BattleGroundSA::UpdatePlayerScore(Player* source, uint32 type, uint32 value)
 {
-    BattleGroundScoreMap::iterator itr = m_PlayerScores.find(Source->GetObjectGuid());
-    if(itr == m_PlayerScores.end())                         // player not found...
+
+    BattleGroundScoreMap::iterator itr = m_PlayerScores.find(source->GetObjectGuid());
+    if (itr == m_PlayerScores.end())                        // player not found...
         return;
 
-    switch(type)
+    switch (type)
     {
         case SCORE_DEMOLISHERS_DESTROYED:
             ((BattleGroundSAScore*)itr->second)->DemolishersDestroyed += value;
@@ -373,7 +374,7 @@ void BattleGroundSA::UpdatePlayerScore(Player* Source, uint32 type, uint32 value
             ((BattleGroundSAScore*)itr->second)->GatesDestroyed += value;
             break;
         default:
-            BattleGround::UpdatePlayerScore(Source,type,value);
+            BattleGround::UpdatePlayerScore(source, type, value);
             break;
     }
 }
@@ -499,6 +500,10 @@ bool BattleGroundSA::SetupShips()
 
     for (uint8 i = BG_SA_BOAT_ONE; i <= BG_SA_BOAT_TWO; ++i)
     {
+        // Remove old ships
+        if (Phase == SA_ROUND_TWO)
+            DelObject(i);
+
         uint32 boatid=0;
         switch (i)
         {

@@ -250,10 +250,10 @@ void BattleGroundIC::StartingEventOpenDoors()
     MakeInteractive(IC_EVENT_ADD_TELEPORT, 0, true);
 }
 
-void BattleGroundIC::AddPlayer(Player *plr)
+void BattleGroundIC::AddPlayer(Player* plr)
 {
     BattleGround::AddPlayer(plr);
-    //create score and add it to map, default values are set in constructor
+    // create score and add it to map, default values are set in constructor
     BattleGroundICScore* sc = new BattleGroundICScore;
 
     m_PlayerScores[plr->GetObjectGuid()] = sc;
@@ -276,27 +276,27 @@ void BattleGroundIC::RemovePlayer(Player* plr)
     }
 }
 
-void BattleGroundIC::HandleAreaTrigger(Player * Source, uint32 Trigger)
+void BattleGroundIC::HandleAreaTrigger(Player* source, uint32 trigger)
 {
     // this is wrong way to implement these things. On official it done by gameobject spell cast.
     if (GetStatus() != STATUS_IN_PROGRESS)
         return;
 
-    switch (Trigger)
+    switch (trigger)
     {
         case 5535:
-            if (Source->GetTeam() == ALLIANCE && hOpen == false)
-                Source->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, 68502);
+            if (source->GetTeam() == ALLIANCE && hOpen == false)
+                source->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, 68502);
             break;
         case 5555:
-            if (Source->GetTeam() == HORDE && aOpen == false)
-                Source->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, 68502);
+            if (source->GetTeam() == HORDE && aOpen == false)
+                source->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, 68502);
             break;
         case 5536:
             break;
         default:
-            sLog.outError("WARNING: Unhandled AreaTrigger in Battleground: %u", Trigger);
-            Source->GetSession()->SendAreaTriggerMessage("Warning: Unhandled AreaTrigger in Battleground: %u", Trigger);
+            sLog.outError("WARNING: Unhandled AreaTrigger in Battleground: %u", trigger);
+            source->GetSession()->SendAreaTriggerMessage("Warning: Unhandled AreaTrigger in Battleground: %u", trigger);
             break;
     }
 }
@@ -340,9 +340,9 @@ int32 BattleGroundIC::_GetNodeNameId(uint8 node)
     return 0;
 }
 
-void BattleGroundIC::UpdatePlayerScore(Player* Source, uint32 type, uint32 value, bool doAddHonor)
+void BattleGroundIC::UpdatePlayerScore(Player* source, uint32 type, uint32 value, bool doAddHonor)
 {
-    BattleGroundScoreMap::iterator itr = m_PlayerScores.find(Source->GetObjectGuid());
+    BattleGroundScoreMap::iterator itr = m_PlayerScores.find(source->GetObjectGuid());
 
     if (itr == m_PlayerScores.end())                         // player not found...
         return;
@@ -356,29 +356,29 @@ void BattleGroundIC::UpdatePlayerScore(Player* Source, uint32 type, uint32 value
             ((BattleGroundICScore*)itr->second)->BasesDefended += value;
             break;
         default:
-            BattleGround::UpdatePlayerScore(Source, type, value);
+            BattleGround::UpdatePlayerScore(source, type, value);
             break;
     }
 }
 
-void BattleGroundIC::FillInitialWorldStates(WorldPacket& data, uint32& count)
+void BattleGroundIC::FillInitialWorldStates()
 {
-    FillInitialWorldState(data, count, BG_TEAM_ALLIANCE_REINFORC_SET, BG_TEAM_ALLIANCE_REINFORC_SET);
-    FillInitialWorldState(data, count, BG_TEAM_HORDE_RENFORC_SET,     BG_TEAM_HORDE_RENFORC_SET);
-    FillInitialWorldState(data, count, BG_TEAM_ALLIANCE_REINFORC,     m_TeamScores[TEAM_INDEX_ALLIANCE]);
-    FillInitialWorldState(data, count, BG_TEAM_HORDE_REINFORC,        m_TeamScores[TEAM_INDEX_HORDE]);
+    FillInitialWorldState(BG_TEAM_ALLIANCE_REINFORC_SET, BG_TEAM_ALLIANCE_REINFORC_SET);
+    FillInitialWorldState(BG_TEAM_HORDE_RENFORC_SET,     BG_TEAM_HORDE_RENFORC_SET);
+    FillInitialWorldState(BG_TEAM_ALLIANCE_REINFORC,     m_TeamScores[TEAM_INDEX_ALLIANCE]);
+    FillInitialWorldState(BG_TEAM_HORDE_REINFORC,        m_TeamScores[TEAM_INDEX_HORDE]);
 
     // Gate icons
     for (uint8 z = 0; z < BG_IC_GATE_MAX; ++z)
-        FillInitialWorldState(data, count, BG_IC_GateStatus[z][GateStatus[z] == BG_IC_GO_GATES_DAMAGE ? 1 : 0], 1);
+        FillInitialWorldState(BG_IC_GateStatus[z][GateStatus[z] == BG_IC_GO_GATES_DAMAGE ? 1 : 0], 1);
 
     // Node icons
     for (uint8 node = 0; node < BG_IC_NODES_MAX; ++node)
-        FillInitialWorldState(data, count, BG_IC_OP_NODEICONS[node], m_Nodes[node] == 0);
+        FillInitialWorldState( BG_IC_OP_NODEICONS[node], m_Nodes[node] == 0);
 
     for (uint8 i = 0; i < BG_IC_NODES_MAX; ++i)
         for (uint8 j = 0; j < 4; j++)
-            FillInitialWorldState(data, count, BG_IC_NodeWorldStates[i][j], m_Nodes[i] == (j + 1));
+            FillInitialWorldState(BG_IC_NodeWorldStates[i][j], m_Nodes[i] == (j + 1));
 }
 
 bool BattleGroundIC::SetupBattleGround()
