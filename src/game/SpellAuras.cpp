@@ -1521,10 +1521,23 @@ void Aura::TriggerSpell()
                     }
 //                    // Pain Spike
 //                    case 25572: break;
-//                    // Rotate 360
-//                    case 26009: break;
-//                    // Rotate -360
-//                    case 26136: break;
+                    case 26009:                             // Rotate 360
+                    case 26136:                             // Rotate -360
+                    {
+                        float newAngle = target->GetOrientation();
+
+                        if (auraId == 26009)
+                            newAngle += M_PI_F/40;
+                        else
+                            newAngle -= M_PI_F/40;
+
+                        MapManager::NormalizeOrientation(newAngle);
+
+                        target->SetFacingTo(newAngle);
+
+                        target->CastSpell(target, 26029, true);
+                        return;
+                    }
 //                    // Consume
 //                    case 26196: break;
 //                    // Berserk
@@ -1998,7 +2011,7 @@ void Aura::TriggerSpell()
                         if (damage >= 0)
                             return;
 
-                        if (triggerTarget->GetPower(POWER_MANA) < -damage)
+                        if (triggerTarget->GetPower(POWER_MANA) < abs(damage))
                         {
                             damage = -int32(triggerTarget->GetPower(POWER_MANA));
                             triggerTarget->RemoveAurasDueToSpell(auraId);
@@ -4502,7 +4515,7 @@ void Aura::HandleAuraTransform(bool apply, bool Real)
                     break;
             }
         }
-        else
+        else                                                // m_modifier.m_miscvalue != 0
         {
             uint32 model_id;
 
@@ -4551,7 +4564,7 @@ void Aura::HandleAuraTransform(bool apply, bool Real)
                 target->RemoveSpellsCausingAura(SPELL_AURA_MOUNTED, GetHolder());
         }
     }
-    else
+    else                                                    // !apply
     {
         // ApplyModifier(true) will reapply it if need
         target->setTransForm(0);
@@ -4947,7 +4960,7 @@ void Aura::HandleModPossessPet(bool apply, bool Real)
         }
         else
         {
-            pet->GetMotionMaster()->MoveFollow(caster, PET_FOLLOW_DIST, PET_FOLLOW_ANGLE);
+            pet->GetMotionMaster()->MoveTargetedHome();
         }
     }
 }
@@ -6370,6 +6383,15 @@ void Aura::HandleAuraPeriodicDummy(bool apply, bool Real)
 
                     if (target->HasAura(64169))               // sanity well Aura
                         GetHolder()->ModStackAmount(20);
+                    return;
+                }
+                case 64217:                                 // Overcharged (spell from Emalon adds)
+                {
+                    if (GetHolder()->GetStackAmount() > 11)
+                    {
+                        target->CastSpell(target, 64219, true);
+                        target->DealDamage(target, target->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
+                    }
                     return;
                 }
             }
@@ -12766,7 +12788,7 @@ bool Aura::IsAffectedByCrowdControlEffect(uint32 damage)
     if (!IsCrowdControlAura(m_modifier.m_auraname))
         return false;
 
-    if (damage > m_modifier.m_baseamount)
+    if (damage > abs(m_modifier.m_baseamount))
     {
         m_modifier.m_baseamount = 0;
         return false;

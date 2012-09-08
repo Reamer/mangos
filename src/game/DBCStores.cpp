@@ -27,8 +27,8 @@
 
 #include <map>
 
-typedef std::map<uint16,uint32> AreaFlagByAreaID;
-typedef std::map<uint32,uint32> AreaFlagByMapID;
+typedef std::map<uint16, uint32> AreaFlagByAreaID;
+typedef std::map<uint32, uint32> AreaFlagByMapID;
 
 struct WMOAreaTableTripple
 {
@@ -38,7 +38,7 @@ struct WMOAreaTableTripple
 
     bool operator <(const WMOAreaTableTripple& b) const
     {
-        return memcmp(this, &b, sizeof(WMOAreaTableTripple))<0;
+        return memcmp(this, &b, sizeof(WMOAreaTableTripple)) < 0;
     }
 
     // ordered by entropy; that way memcmp will have a minimal medium runtime
