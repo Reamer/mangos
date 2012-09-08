@@ -48,7 +48,7 @@ enum AuraClassType
 struct Modifier
 {
     AuraType m_auraname;
-    int32 m_amount;
+    mutable int32 m_amount;
     int32 m_miscvalue;
     uint32 periodictime;
     int32 m_baseamount;
@@ -451,7 +451,7 @@ class MANGOS_DLL_SPEC Aura
             return maxDuration > 0 && m_modifier.periodictime > 0 ? maxDuration / m_modifier.periodictime : 0;
         }
 
-        void SetAuraPeriodicTimer(int32 timer) { SetInUse(true); m_modifier.periodictime = timer; SetInUse(false);}
+        void SetAuraPeriodicTimer(int32 timer) { m_modifier.periodictime = timer;}
 
         uint32 GetStackAmount() const { return GetHolder()->GetStackAmount(); }
         void SetLoadedState(int32 damage, uint32 periodicTime)
@@ -467,19 +467,8 @@ class MANGOS_DLL_SPEC Aura
         bool IsPersistent() const { return m_isPersistent; }
         bool IsAreaAura() const { return m_isAreaAura; }
         bool IsPeriodic() const { return m_isPeriodic; }
-        bool IsInUse() const { return (m_in_use > 0); }
         bool IsStacking() const { return m_stacking;}
 
-        void SetInUse(bool state)
-        {
-            if (state)
-                ++m_in_use;
-            else
-            {
-                if (m_in_use > 0)
-                    --m_in_use;
-            }
-        }
         void ApplyModifier(bool apply, bool Real = false);
 
         void UpdateAura(uint32 diff);
@@ -549,8 +538,6 @@ class MANGOS_DLL_SPEC Aura
         bool m_isAreaAura:1;
         bool m_isPersistent:1;
         bool m_stacking:1;                                  // Aura is not overwritten, but effects are not cumulative with similar effects
-
-        int32 m_in_use;                                     // > 0 while in Aura::ApplyModifier call/Aura::Update/etc
 
         bool IsEffectStacking();
 
