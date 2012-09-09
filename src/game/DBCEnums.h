@@ -454,6 +454,7 @@ enum SpellEffectIndex
     MAX_EFFECT_INDEX,
 };
 
+
 enum SpellFamily
 {
     SPELLFAMILY_GENERIC     = 0,

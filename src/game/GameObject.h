@@ -38,10 +38,10 @@ struct GameObjectInfo
     uint32  id;
     uint32  type;
     uint32  displayId;
-    char   *name;
-    char   *IconName;
-    char   *castBarCaption;
-    char   *unk1;
+    char*   name;
+    char*   IconName;
+    char*   castBarCaption;
+    char*   unk1;
     uint32  faction;
     uint32  flags;
     float   size;
@@ -379,7 +379,7 @@ struct GameObjectInfo
             uint32 empty10;                                 //20
             uint32 empty11;                                 //21
             uint32 damageEvent;                             //22
-            uint32 empty12;                                 //23
+            uint32 linkedWorldState;                        //23 Custom value - set linked WorldState for this object
         } destructibleBuilding;
         //34 GAMEOBJECT_TYPE_GUILDBANK - empty
         //35 GAMEOBJECT_TYPE_TRAPDOOR
@@ -404,7 +404,7 @@ struct GameObjectInfo
     // helpers
     bool IsDespawnAtAction() const
     {
-        switch(type)
+        switch (type)
         {
             case GAMEOBJECT_TYPE_CHEST:  return chest.consumable;
             case GAMEOBJECT_TYPE_GOOBER: return goober.consumable;
@@ -414,7 +414,7 @@ struct GameObjectInfo
 
     uint32 GetLockId() const
     {
-        switch(type)
+        switch (type)
         {
             case GAMEOBJECT_TYPE_DOOR:       return door.lockId;
             case GAMEOBJECT_TYPE_BUTTON:     return button.lockId;
@@ -425,7 +425,7 @@ struct GameObjectInfo
             case GAMEOBJECT_TYPE_AREADAMAGE: return areadamage.lockId;
             case GAMEOBJECT_TYPE_CAMERA:     return camera.lockId;
             case GAMEOBJECT_TYPE_FLAGSTAND:  return flagstand.lockId;
-            case GAMEOBJECT_TYPE_FISHINGHOLE:return fishinghole.lockId;
+            case GAMEOBJECT_TYPE_FISHINGHOLE: return fishinghole.lockId;
             case GAMEOBJECT_TYPE_FLAGDROP:   return flagdrop.lockId;
             default: return 0;
         }
@@ -433,7 +433,7 @@ struct GameObjectInfo
 
     bool GetDespawnPossibility() const                      // despawn at targeting of cast?
     {
-        switch(type)
+        switch (type)
         {
             case GAMEOBJECT_TYPE_DOOR:       return door.noDamageImmune;
             case GAMEOBJECT_TYPE_BUTTON:     return button.noDamageImmune;
@@ -447,7 +447,7 @@ struct GameObjectInfo
 
     uint32 GetCharges() const                               // despawn at uses amount
     {
-        switch(type)
+        switch (type)
         {
             case GAMEOBJECT_TYPE_TRAP:        return trap.charges;
             case GAMEOBJECT_TYPE_GUARDPOST:   return guardpost.charges;
@@ -458,7 +458,7 @@ struct GameObjectInfo
 
     uint32 GetCooldown() const                              // not triggering at detection target or use until coolodwn expire
     {
-        switch(type)
+        switch (type)
         {
             case GAMEOBJECT_TYPE_TRAP:        return trap.cooldown;
             case GAMEOBJECT_TYPE_GOOBER:      return goober.cooldown;
@@ -468,7 +468,7 @@ struct GameObjectInfo
 
     uint32 GetLinkedGameObjectEntry() const
     {
-        switch(type)
+        switch (type)
         {
             case GAMEOBJECT_TYPE_BUTTON:      return button.linkedTrapId;
             case GAMEOBJECT_TYPE_CHEST:       return chest.linkedTrapId;
@@ -481,7 +481,7 @@ struct GameObjectInfo
     uint32 GetAutoCloseTime() const
     {
         uint32 autoCloseTime = 0;
-        switch(type)
+        switch (type)
         {
             case GAMEOBJECT_TYPE_DOOR:          autoCloseTime = door.autoCloseTime; break;
             case GAMEOBJECT_TYPE_BUTTON:        autoCloseTime = button.autoCloseTime; break;
@@ -491,12 +491,12 @@ struct GameObjectInfo
             case GAMEOBJECT_TYPE_AREADAMAGE:    autoCloseTime = areadamage.autoCloseTime; break;
             default: break;
         }
-        return autoCloseTime / IN_MILLISECONDS;              // prior to 3.0.3, conversion was / 0x10000;
+        return autoCloseTime / IN_MILLISECONDS;             // prior to 3.0.3, conversion was / 0x10000;
     }
 
     uint32 GetLootId() const
     {
-        switch(type)
+        switch (type)
         {
             case GAMEOBJECT_TYPE_CHEST:       return chest.lootId;
             case GAMEOBJECT_TYPE_FISHINGHOLE: return fishinghole.lootId;
@@ -506,7 +506,7 @@ struct GameObjectInfo
 
     uint32 GetGossipMenuId() const
     {
-        switch(type)
+        switch (type)
         {
             case GAMEOBJECT_TYPE_QUESTGIVER:    return questgiver.gossipID;
             case GAMEOBJECT_TYPE_GOOBER:        return goober.gossipID;
@@ -516,7 +516,7 @@ struct GameObjectInfo
 
     uint32 GetEventScriptId() const
     {
-        switch(type)
+        switch (type)
         {
             case GAMEOBJECT_TYPE_GOOBER:        return goober.eventId;
             case GAMEOBJECT_TYPE_CHEST:         return chest.eventId;
@@ -556,7 +556,7 @@ struct QuaternionData
     QuaternionData() : x(0.f), y(0.f), z(0.f), w(0.f) {}
     QuaternionData(float X, float Y, float Z, float W) : x(X), y(Y), z(Z), w(W) {}
 
-    bool isUnit() const { return fabs(x*x + y*y + z*z + w*w - 1.f) < 1e-5;}
+    bool isUnit() const { return fabs(x * x + y * y + z * z + w * w - 1.f) < 1e-5;}
 };
 
 // from `gameobject`
@@ -598,20 +598,24 @@ enum LootState
 enum CapturePointState
 {
     CAPTURE_STATE_NEUTRAL = 0,
-    CAPTURE_STATE_PROGRESS,
-    CAPTURE_STATE_CONTEST,
-    CAPTURE_STATE_WIN
+    CAPTURE_STATE_PROGRESS_ALLIANCE,
+    CAPTURE_STATE_PROGRESS_HORDE,
+    CAPTURE_STATE_CONTEST_ALLIANCE,
+    CAPTURE_STATE_CONTEST_HORDE,
+    CAPTURE_STATE_WIN_ALLIANCE,
+    CAPTURE_STATE_WIN_HORDE
 };
 
-// slider values meaning
-// 0   = full horde
-// 100 = full alliance
-// 50  = middle
 enum CapturePointSlider
 {
-    CAPTURE_SLIDER_ALLIANCE = 100,
-    CAPTURE_SLIDER_HORDE    = 0,
-    CAPTURE_SLIDER_NEUTRAL  = 50
+    CAPTURE_SLIDER_ALLIANCE         = 100,                  // full alliance
+    CAPTURE_SLIDER_HORDE            = 0,                    // full horde
+    CAPTURE_SLIDER_NEUTRAL          = 50,                   // middle
+
+    CAPTURE_SLIDER_ALLIANCE_LOCKED  = -1,                   // used to store additional information
+    CAPTURE_SLIDER_HORDE_LOCKED     = -2,
+
+    CAPTURE_SLIDER_GET_VALUE        = INT8_MAX,             // used for get value from linked WorldState (or still intact)
 };
 
 class Unit;
@@ -632,8 +636,8 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
         void AddToWorld();
         void RemoveFromWorld();
 
-        bool Create(uint32 guidlow, uint32 name_id, Map *map, uint32 phaseMask, float x, float y, float z, float ang,
-            QuaternionData rotation = QuaternionData(), uint8 animprogress = GO_ANIMPROGRESS_DEFAULT, GOState go_state = GO_STATE_READY);
+        bool Create(uint32 guidlow, uint32 name_id, Map* map, uint32 phaseMask, float x, float y, float z, float ang,
+                    QuaternionData rotation = QuaternionData(), uint8 animprogress = GO_ANIMPROGRESS_DEFAULT, GOState go_state = GO_STATE_READY);
         void Update(uint32 update_diff, uint32 p_time) override;
         GameObjectInfo const* GetGOInfo() const;
 
@@ -654,7 +658,7 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
 
         void SaveToDB();
         void SaveToDB(uint32 mapid, uint8 spawnMask, uint32 phaseMask);
-        bool LoadFromDB(uint32 guid, Map *map);
+        bool LoadFromDB(uint32 guid, Map* map);
         void DeleteFromDB();
 
         void SetOwnerGuid(ObjectGuid ownerGuid)
@@ -678,7 +682,7 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
         time_t GetRespawnTimeEx() const
         {
             time_t now = time(NULL);
-            if(m_respawnTime > now)
+            if (m_respawnTime > now)
                 return m_respawnTime;
             else
                 return now;
@@ -694,10 +698,11 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
         bool isSpawned() const
         {
             return m_respawnDelayTime == 0 ||
-                (m_respawnTime > 0 && !m_spawnedByDefault) ||
-                (m_respawnTime == 0 && m_spawnedByDefault);
+                   (m_respawnTime > 0 && !m_spawnedByDefault) ||
+                   (m_respawnTime == 0 && m_spawnedByDefault);
         }
         bool isSpawnedByDefault() const { return m_spawnedByDefault; }
+        void SetSpawnedByDefault(bool SpawnedByDefault) { m_spawnedByDefault = SpawnedByDefault; } // set summoned object spawning/despawning after delay
         void SetRespawnDelay(uint32 delay) { m_respawnDelayTime = delay; };
         uint32 GetRespawnDelay() const { return m_respawnDelayTime; }
         void Refresh();
@@ -764,9 +769,9 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
 
         bool HasQuest(uint32 quest_id) const;
         bool HasInvolvedQuest(uint32 quest_id) const;
-        bool ActivateToQuest(Player *pTarget) const;
+        bool ActivateToQuest(Player* pTarget) const;
         void UseDoorOrButton(uint32 time_to_restore = 0, bool alternative = false);
-                                                            // 0 = use `gameobject`.`spawntimesecs`
+        // 0 = use `gameobject`.`spawntimesecs`
         void ResetDoorOrButton();
         void ResetCapturePoint();
 
@@ -780,7 +785,9 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
 
         GameObject* LookupFishingHoleAround(float range);
 
-        GridReference<GameObject> &GetGridRef() { return m_gridRef; }
+        void SetCapturePointSlider(int8 value);
+
+        GridReference<GameObject>& GetGridRef() { return m_gridRef; }
 
         bool IsInRange(float x, float y, float z, float radius) const;
         void DamageTaken(Unit *pDoneBy, uint32 uiDamage, uint32 spellId = 0);
@@ -790,14 +797,16 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
         uint32 GetMaxHealth() const { return m_goInfo->destructibleBuilding.intactNumHits + m_goInfo->destructibleBuilding.damagedNumHits; }
 
         float GetDeterminativeSize(bool b_priorityZ = false) const;
+        uint32 GetLinkedWorldState(bool stateId = false);
+        void SetLinkedWorldState(uint32 value);
+        Team GetTeam() const;
+        bool SetTeam(Team team);
 
         GameObjectModel* m_model;
 
     protected:
         uint32      m_captureTime;
         float       m_captureTicks;
-        CapturePointState m_captureState;
-        uint32      m_ownerFaction;                         // faction which has conquered the capture point
         uint32      m_spellId;
         time_t      m_respawnTime;                          // (secs) time of next respawn (or despawn if GO have owner()),
         uint32      m_respawnDelayTime;                     // (secs) if 0 then current GO state no dependent from timer
@@ -805,11 +814,11 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
         bool        m_spawnedByDefault;
         time_t      m_cooldownTime;                         // used as internal reaction delay time store (not state change reaction).
         uint32      m_health;
-                                                            // For traps/goober this: spell casting cooldown, for doors/buttons: reset time.
+        // For traps/goober this: spell casting cooldown, for doors/buttons: reset time.
 
-        typedef std::set<Player*> PlayersSet;
-
-        GuidSet m_capturePlayers[PVP_TEAM_COUNT];           // player sets for each faction
+        uint32      m_captureTimer;                         // (msecs) timer used for capture points
+        float       m_captureSlider;
+        CapturePointState m_captureState;
 
         GuidSet m_SkillupSet;                               // players that already have skill-up at GO use
 
@@ -834,6 +843,7 @@ class MANGOS_DLL_SPEC GameObject : public WorldObject
     private:
         void SwitchDoorOrButton(bool activate, bool alternative = false);
         void UpdateModel();                                 // updates model in case displayId were changed
+        void TickCapturePoint();
 
         GridReference<GameObject> m_gridRef;
 };

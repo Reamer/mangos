@@ -36,6 +36,7 @@
 #include "InstanceData.h"
 #include "ProgressBar.h"
 #include "LFGMgr.h"
+#include "WorldStateMgr.h"
 
 INSTANTIATE_SINGLETON_1( MapPersistentStateManager );
 
@@ -765,7 +766,7 @@ MapPersistentState* MapPersistentStateManager::AddPersistentState(MapEntry const
 
     DEBUG_LOG("MapPersistentStateManager::AddPersistentState: mapid = %d, instanceid = %d, reset time = '" UI64FMTD "', canRset = %u", mapEntry->MapID, instanceId, uint64(resetTime), canReset ? 1 : 0);
 
-    MapPersistentState *state;
+    MapPersistentState* state = NULL;
     if (mapEntry->IsDungeon() && instanceId)
     {
         DungeonPersistentState* dungeonState = new DungeonPersistentState(mapEntry->MapID, instanceId, difficulty, resetTime, canReset, completedEncountersMask);
@@ -791,6 +792,9 @@ MapPersistentState* MapPersistentStateManager::AddPersistentState(MapEntry const
 
     if (state && initPools)
         state->InitPools();
+
+    if (state)
+        sWorldStateMgr.CreateInstanceState(mapEntry->MapID, instanceId);
 
     return state;
 }
@@ -828,6 +832,7 @@ void MapPersistentStateManager::RemovePersistentState(uint32 mapId, uint32 insta
     if (lock_instLists)
         return;
 
+    sWorldStateMgr.DeleteInstanceState(mapId, instanceId);
     if (instanceId)
     {
         PersistentStateMap::iterator itr = m_instanceSaveByInstanceId.find(instanceId);
@@ -842,6 +847,7 @@ void MapPersistentStateManager::RemovePersistentState(uint32 mapId, uint32 insta
                 }
 
             _ResetSave(m_instanceSaveByInstanceId, itr);
+            sWorldStateMgr.DeleteInstanceState(mapId, instanceId);
         }
     }
     else

@@ -1998,10 +1998,16 @@ void ObjectMgr::LoadItemPrototypes()
         for (int j = 0; j < MAX_ITEM_PROTO_STATS; ++j)
         {
             // for ItemStatValue != 0
-            if(proto->ItemStat[j].ItemStatValue && proto->ItemStat[j].ItemStatType >= MAX_ITEM_MOD)
+            if (proto->ItemStat[j].ItemStatValue && proto->ItemStat[j].ItemStatType >= MAX_ITEM_MOD)
             {
                 sLog.outErrorDb("Item (Entry: %u) has wrong stat_type%d (%u)",i,j+1,proto->ItemStat[j].ItemStatType);
                 const_cast<ItemPrototype*>(proto)->ItemStat[j].ItemStatType = 0;
+            }
+
+            if (abs(proto->ItemStat[j].ItemStatValue) >= MAX_CLIENT_STAT_VALUE)
+            {
+                sLog.outErrorDb("Item (Entry: %u) has wrong stat_value%d (%u)",i,j+1,proto->ItemStat[j].ItemStatValue);
+                const_cast<ItemPrototype*>(proto)->ItemStat[j].ItemStatValue = 0;
             }
 
             switch(proto->ItemStat[j].ItemStatType)
@@ -2021,6 +2027,20 @@ void ObjectMgr::LoadItemPrototypes()
             {
                 sLog.outErrorDb("Item (Entry: %u) has wrong dmg_type%d (%u)",i,j+1,proto->Damage[j].DamageType);
                 const_cast<ItemPrototype*>(proto)->Damage[j].DamageType = 0;
+            }
+
+            if (proto->Damage[j].DamageMax >= (float)MAX_CLIENT_STAT_VALUE ||
+                proto->Damage[j].DamageMax < 0.0f ||
+                proto->Damage[j].DamageMax < proto->Damage[j].DamageMin)
+            {
+                sLog.outErrorDb("Item (Entry: %u) has wrong dmg_max%d (%f)",i,j+1,proto->Damage[j].DamageMax);
+                const_cast<ItemPrototype*>(proto)->Damage[j].DamageMax = 0;
+            }
+
+            if (proto->Damage[j].DamageMin < 0.0f || proto->Damage[j].DamageMin > proto->Damage[j].DamageMax)
+            {
+                sLog.outErrorDb("Item (Entry: %u) has wrong dmg_min%d (%f)",i,j+1,proto->Damage[j].DamageMin);
+                const_cast<ItemPrototype*>(proto)->Damage[j].DamageMin = 0;
             }
         }
 
@@ -4963,7 +4983,7 @@ void ObjectMgr::LoadInstanceTemplate()
             if (!parentEntry)
             {
                 sLog.outErrorDb("ObjectMgr::LoadInstanceTemplate: bad parent map id %u for instance template %d template!",
-                    parentEntry->MapID, temp->map);
+                    temp->parent, temp->map);
                 const_cast<InstanceTemplate*>(temp)->parent = 0;
                 continue;
             }
@@ -5800,8 +5820,8 @@ void ObjectMgr::LoadAreaTriggerTeleports()
     QueryResult *result = WorldDatabase.Query("SELECT id, required_level, required_item, required_item2, heroic_key, heroic_key2,"
     // 6                     7                              8                      9                            10     11
     "required_quest_done_A, required_quest_done_heroic_A, required_quest_done_H, required_quest_done_heroic_H, minGS, maxGS,"
-    // 12                    13          14                 15                 16                 17                18           19           20
-    "required_failed_text, target_map, target_position_x, target_position_y, target_position_z, target_orientation, achiev_id_0, achiev_id_0, combat_mode "
+    // 12       13                 14                 15                 16                  17           18           19
+    " target_map, target_position_x, target_position_y, target_position_z, target_orientation, achiev_id_0, achiev_id_0, combat_mode "
     //
     "FROM areatrigger_teleport");
     if (!result)
@@ -5841,15 +5861,14 @@ void ObjectMgr::LoadAreaTriggerTeleports()
         at.requiredQuestHeroicH = fields[9].GetUInt32();
         at.minGS                = fields[10].GetUInt32();
         at.maxGS                = fields[11].GetUInt32();
-        at.requiredFailedText   = fields[12].GetCppString();
-        at.target_mapId         = fields[13].GetUInt32();
-        at.target_X             = fields[14].GetFloat();
-        at.target_Y             = fields[15].GetFloat();
-        at.target_Z             = fields[16].GetFloat();
-        at.target_Orientation   = fields[17].GetFloat();
-        at.achiev0              = fields[18].GetUInt32();
-        at.achiev1              = fields[19].GetUInt32();
-        at.combatMode           = fields[20].GetUInt32();
+        at.target_mapId         = fields[12].GetUInt32();
+        at.target_X             = fields[13].GetFloat();
+        at.target_Y             = fields[14].GetFloat();
+        at.target_Z             = fields[15].GetFloat();
+        at.target_Orientation   = fields[16].GetFloat();
+        at.achiev0              = fields[17].GetUInt32();
+        at.achiev1              = fields[18].GetUInt32();
+        at.combatMode           = fields[19].GetUInt32();
 
         AreaTriggerEntry const* atEntry = sAreaTriggerStore.LookupEntry(Trigger_ID);
         if (!atEntry && !sWorld.getConfig(CONFIG_BOOL_ALLOW_CUSTOM_MAPS))
@@ -7220,6 +7239,11 @@ void ObjectMgr::LoadSpellTemplate()
             sLog.outErrorDb("Loading Spell Template for spell %u, index out of bounds (max = %u)", i, sSpellStore.GetNumRows());
             continue;
         }
+        else if (SpellEntry const* originalSpellEntry = sSpellStore.LookupEntry(i))
+        {
+            sLog.outErrorDb("Loading Spell Template for spell %u failed, index already handled (possible in spell_dbc)", i);
+            continue;
+        }
         else
             sSpellStore.InsertEntry(const_cast<SpellEntry*>(spellEntry), i);
     }
@@ -8219,6 +8243,31 @@ bool PlayerCondition::Meets(Player const * player) const
             FactionEntry const* faction = sFactionStore.LookupEntry(m_value1);
             return faction && player->GetReputationMgr().GetRank(faction) <= ReputationRank(m_value2);
         }
+        case CONDITION_COMPLETED_ENCOUNTER:
+        {
+            if (!player->GetMap()->IsDungeon())
+            {
+                sLog.outErrorDb("CONDITION_COMPLETED_ENCOUNTER (entry %u) is used outside of a dungeon (on Map %u) by %s", m_entry, player->GetMapId(), player->GetGuidStr().c_str());
+                return false;
+            }
+
+            uint32 completedEncounterMask = ((DungeonMap*)player->GetMap())->GetPersistanceState()->GetCompletedEncountersMask();
+            DungeonEncounterEntry const* dbcEntry1 = sDungeonEncounterStore.LookupEntry(m_value1);
+            DungeonEncounterEntry const* dbcEntry2 = sDungeonEncounterStore.LookupEntry(m_value2);
+            // Check that on proper map
+            if (dbcEntry1->mapId != player->GetMapId())
+            {
+                sLog.outErrorDb("CONDITION_COMPLETED_ENCOUNTER (entry %u, DungeonEncounterEntry %u) is used on wrong map (used on Map %u) by %s", m_entry, m_value1, player->GetMapId(), player->GetGuidStr().c_str());
+                return false;
+            }
+            // Select matching difficulties
+            if (player->GetDifficulty(player->GetMap()->IsRaid()) != Difficulty(dbcEntry1->Difficulty))
+                dbcEntry1 = NULL;
+            if (dbcEntry2 && player->GetDifficulty(player->GetMap()->IsRaid()) != Difficulty(dbcEntry2->Difficulty))
+                dbcEntry2 = NULL;
+
+            return completedEncounterMask & ((dbcEntry1 ? 1 << dbcEntry1->encounterIndex : 0) | (dbcEntry2 ? 1 << dbcEntry2->encounterIndex : 0));
+        }
         default:
             return false;
     }
@@ -8526,7 +8575,7 @@ bool PlayerCondition::IsValid(uint16 entry, ConditionType condition, uint32 valu
 
             if (bounds.first == bounds.second)
             {
-                sLog.outErrorDb("Learnable ability conditon (entry %u, type %u) has spell id %u defined, but this spell is not listed in SkillLineAbility and can not be used, skipping.", entry, condition, value1);
+                sLog.outErrorDb("Learnable ability condition (entry %u, type %u) has spell id %u defined, but this spell is not listed in SkillLineAbility and can not be used, skipping.", entry, condition, value1);
                 return false;
             }
 
@@ -8535,11 +8584,32 @@ bool PlayerCondition::IsValid(uint16 entry, ConditionType condition, uint32 valu
                 ItemPrototype const *proto = ObjectMgr::GetItemPrototype(value2);
                 if (!proto)
                 {
-                    sLog.outErrorDb("Learnable ability conditon (entry %u, type %u) has item entry %u defined but item does not exist, skipping.", entry, condition, value2);
+                    sLog.outErrorDb("Learnable ability condition (entry %u, type %u) has item entry %u defined but item does not exist, skipping.", entry, condition, value2);
                     return false;
                 }
             }
 
+            break;
+        }
+        case CONDITION_COMPLETED_ENCOUNTER:
+        {
+            DungeonEncounterEntry const* dbcEntry1 = sDungeonEncounterStore.LookupEntry(value1);
+            DungeonEncounterEntry const* dbcEntry2 = sDungeonEncounterStore.LookupEntry(value2);
+            if (!dbcEntry1)
+            {
+                sLog.outErrorDb("Completed Encounter condition (entry %u, type %u) has an unknown DungeonEncounter entry %u defined (in value1), skipping.", entry, condition, value1);
+                return false;
+            }
+            if (value2 && !dbcEntry2)
+            {
+                sLog.outErrorDb("Completed Encounter condition (entry %u, type %u) has an unknown DungeonEncounter entry %u defined (in value2), skipping.", entry, condition, value2);
+                return false;
+            }
+            if (dbcEntry2 && dbcEntry1->mapId != dbcEntry2->mapId)
+            {
+                sLog.outErrorDb("Completed Encounter condition (entry %u, type %u) has different mapIds for both encounters, skipping.", entry, condition);
+                return false;
+            }
             break;
         }
         case CONDITION_NONE:

@@ -37,7 +37,7 @@
     <Filter Include="Movement">
       <UniqueIdentifier>{0ac140f9-89c1-4830-b673-514c5e8b4d37}</UniqueIdentifier>
     </Filter>
-    <Filter Include="WorldPvP">
+    <Filter Include="OutdoorPvP">
       <UniqueIdentifier>{c25f76ed-c7d6-495a-a647-1f97b1261fa7}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -57,52 +57,52 @@
     <ClCompile Include="..\..\src\game\AuctionHouseHandler.cpp">
       <Filter>World/Handlers</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\BattleGround.cpp">
+    <ClCompile Include="..\..\src\game\BattleGround\BattleGround.cpp">
       <Filter>World/Handlers</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\BattleGroundAA.cpp">
+    <ClCompile Include="..\..\src\game\BattleGround\BattleGroundAA.cpp">
       <Filter>World/Handlers</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\BattleGroundAB.cpp">
+    <ClCompile Include="..\..\src\game\BattleGround\BattleGroundAB.cpp">
       <Filter>World/Handlers</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\BattleGroundAV.cpp">
+    <ClCompile Include="..\..\src\game\BattleGround\BattleGroundAV.cpp">
       <Filter>World/Handlers</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\BattleGroundBE.cpp">
+    <ClCompile Include="..\..\src\game\BattleGround\BattleGroundBE.cpp">
       <Filter>World/Handlers</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\BattleGroundDS.cpp">
+    <ClCompile Include="..\..\src\game\BattleGround\BattleGroundDS.cpp">
       <Filter>World/Handlers</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\BattleGroundEY.cpp">
+    <ClCompile Include="..\..\src\game\BattleGround\BattleGroundEY.cpp">
       <Filter>World/Handlers</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\BattleGroundHandler.cpp">
+    <ClCompile Include="..\..\src\game\BattleGround\BattleGroundHandler.cpp">
       <Filter>World/Handlers</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\BattleGroundIC.cpp">
+    <ClCompile Include="..\..\src\game\BattleGround\BattleGroundIC.cpp">
       <Filter>World/Handlers</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\BattleGroundMgr.cpp">
+    <ClCompile Include="..\..\src\game\BattleGround\BattleGroundMgr.cpp">
       <Filter>World/Handlers</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\BattleGroundNA.cpp">
+    <ClCompile Include="..\..\src\game\BattleGround\BattleGroundNA.cpp">
       <Filter>World/Handlers</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\BattleGroundRB.cpp">
+    <ClCompile Include="..\..\src\game\BattleGround\BattleGroundRB.cpp">
       <Filter>World/Handlers</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\BattleGroundRL.cpp">
+    <ClCompile Include="..\..\src\game\BattleGround\BattleGroundRL.cpp">
       <Filter>World/Handlers</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\BattleGroundRV.cpp">
+    <ClCompile Include="..\..\src\game\BattleGround\BattleGroundRV.cpp">
       <Filter>World/Handlers</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\BattleGroundSA.cpp">
+    <ClCompile Include="..\..\src\game\BattleGround\BattleGroundSA.cpp">
       <Filter>World/Handlers</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\BattleGroundWS.cpp">
+    <ClCompile Include="..\..\src\game\BattleGround\BattleGroundWS.cpp">
       <Filter>World/Handlers</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\game\CalendarHandler.cpp">
@@ -276,32 +276,32 @@
     <ClCompile Include="..\..\src\game\World.cpp">
       <Filter>World/Handlers</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\WorldPvP\WorldPvP.cpp">
-      <Filter>WorldPvP</Filter>
+    <ClCompile Include="..\..\src\game\OutdoorPvP\OutdoorPvP.cpp">
+      <Filter>OutdoorPvP</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\WorldPvP\WorldPvPEP.cpp">
-      <Filter>WorldPvP</Filter>
+    <ClCompile Include="..\..\src\game\OutdoorPvP\OutdoorPvPEP.cpp">
+      <Filter>OutdoorPvP</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\WorldPvP\WorldPvPGH.cpp">
-      <Filter>WorldPvP</Filter>
+    <ClCompile Include="..\..\src\game\OutdoorPvP\OutdoorPvPGH.cpp">
+      <Filter>OutdoorPvP</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\WorldPvP\WorldPvPHP.cpp">
-      <Filter>WorldPvP</Filter>
+    <ClCompile Include="..\..\src\game\OutdoorPvP\OutdoorPvPHP.cpp">
+      <Filter>OutdoorPvP</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\WorldPvP\WorldPvPMgr.cpp">
-      <Filter>WorldPvP</Filter>
+    <ClCompile Include="..\..\src\game\OutdoorPvP\OutdoorPvPMgr.cpp">
+      <Filter>OutdoorPvP</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\WorldPvP\WorldPvPNA.cpp">
-      <Filter>WorldPvP</Filter>
+    <ClCompile Include="..\..\src\game\OutdoorPvP\OutdoorPvPNA.cpp">
+      <Filter>OutdoorPvP</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\WorldPvP\WorldPvPSI.cpp">
-      <Filter>WorldPvP</Filter>
+    <ClCompile Include="..\..\src\game\OutdoorPvP\OutdoorPvPSI.cpp">
+      <Filter>OutdoorPvP</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\WorldPvP\WorldPvPTF.cpp">
-      <Filter>WorldPvP</Filter>
+    <ClCompile Include="..\..\src\game\OutdoorPvP\OutdoorPvPTF.cpp">
+      <Filter>OutdoorPvP</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\game\WorldPvP\WorldPvPZM.cpp">
-      <Filter>WorldPvP</Filter>
+    <ClCompile Include="..\..\src\game\OutdoorPvP\OutdoorPvPZM.cpp">
+      <Filter>OutdoorPvP</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\game\ConfusedMovementGenerator.cpp">
       <Filter>Motion generators</Filter>
@@ -453,6 +453,9 @@
     <ClCompile Include="..\..\src\game\DBCStores.cpp">
       <Filter>Server</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\game\DBCStructure.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\game\Opcodes.cpp">
       <Filter>Server</Filter>
     </ClCompile>
@@ -466,6 +469,9 @@
       <Filter>Server</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\game\WorldSocketMgr.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\WorldStateMgr.cpp">
       <Filter>Server</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\game\debugcmds.cpp">
@@ -622,6 +628,15 @@
     <ClCompile Include="..\..\src\game\vmap\GameObjectModel.cpp">
       <Filter>vmaps</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\game\TransportSystem.cpp">
+      <Filter>Object</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\UpdateFieldFlags.cpp">
+      <Filter>Object</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\game\WorldObjectEvents.cpp">
+      <Filter>World/Handlers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\game\AccountMgr.h">
@@ -633,49 +648,49 @@
     <ClInclude Include="..\..\src\game\AntiCheat.h">
       <Filter>World/Handlers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game\BattleGround.h">
+    <ClInclude Include="..\..\src\game\BattleGround\BattleGround.h">
       <Filter>World/Handlers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game\BattleGroundAA.h">
+    <ClInclude Include="..\..\src\game\BattleGround\BattleGroundAA.h">
       <Filter>World/Handlers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game\BattleGroundAB.h">
+    <ClInclude Include="..\..\src\game\BattleGround\BattleGroundAB.h">
       <Filter>World/Handlers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game\BattleGroundAV.h">
+    <ClInclude Include="..\..\src\game\BattleGround\BattleGroundAV.h">
       <Filter>World/Handlers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game\BattleGroundBE.h">
+    <ClInclude Include="..\..\src\game\BattleGround\BattleGroundBE.h">
       <Filter>World/Handlers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game\BattleGroundDS.h">
+    <ClInclude Include="..\..\src\game\BattleGround\BattleGroundDS.h">
       <Filter>World/Handlers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game\BattleGroundEY.h">
+    <ClInclude Include="..\..\src\game\BattleGround\BattleGroundEY.h">
       <Filter>World/Handlers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game\BattleGroundIC.h">
+    <ClInclude Include="..\..\src\game\BattleGround\BattleGroundIC.h">
       <Filter>World/Handlers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game\BattleGroundMgr.h">
+    <ClInclude Include="..\..\src\game\BattleGround\BattleGroundMgr.h">
       <Filter>World/Handlers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game\BattleGroundNA.h">
+    <ClInclude Include="..\..\src\game\BattleGround\BattleGroundNA.h">
       <Filter>World/Handlers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game\BattleGroundRB.h">
+    <ClInclude Include="..\..\src\game\BattleGround\BattleGroundRB.h">
       <Filter>World/Handlers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game\BattleGroundRL.h">
+    <ClInclude Include="..\..\src\game\BattleGround\BattleGroundRL.h">
       <Filter>World/Handlers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game\BattleGroundRV.h">
+    <ClInclude Include="..\..\src\game\BattleGround\BattleGroundRV.h">
       <Filter>World/Handlers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game\BattleGroundSA.h">
+    <ClInclude Include="..\..\src\game\BattleGround\BattleGroundSA.h">
       <Filter>World/Handlers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game\BattleGroundWS.h">
+    <ClInclude Include="..\..\src\game\BattleGround\BattleGroundWS.h">
       <Filter>World/Handlers</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\game\Cell.h">
@@ -792,35 +807,32 @@
     <ClInclude Include="..\..\src\game\World.h">
       <Filter>World/Handlers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game\WorldPvP\WorldPvP.h">
-      <Filter>WorldPvP</Filter>
+    <ClInclude Include="..\..\src\game\OutdoorPvP\OutdoorPvP.h">
+      <Filter>OutdoorPvP</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game\WorldPvP\WorldPvPEP.h">
-      <Filter>WorldPvP</Filter>
+    <ClInclude Include="..\..\src\game\OutdoorPvP\OutdoorPvPEP.h">
+      <Filter>OutdoorPvP</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game\WorldPvP\WorldPvPGH.h">
-      <Filter>WorldPvP</Filter>
+    <ClInclude Include="..\..\src\game\OutdoorPvP\OutdoorPvPGH.h">
+      <Filter>OutdoorPvP</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game\WorldPvP\WorldPvPHP.h">
-      <Filter>WorldPvP</Filter>
+    <ClInclude Include="..\..\src\game\OutdoorPvP\OutdoorPvPHP.h">
+      <Filter>OutdoorPvP</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game\WorldPvP\WorldPvPMgr.h">
-      <Filter>WorldPvP</Filter>
+    <ClInclude Include="..\..\src\game\OutdoorPvP\OutdoorPvPMgr.h">
+      <Filter>OutdoorPvP</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game\WorldPvP\WorldPvPNA.h">
-      <Filter>WorldPvP</Filter>
+    <ClInclude Include="..\..\src\game\OutdoorPvP\OutdoorPvPNA.h">
+      <Filter>OutdoorPvP</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game\WorldPvP\WorldPvPSI.h">
-      <Filter>WorldPvP</Filter>
+    <ClInclude Include="..\..\src\game\OutdoorPvP\OutdoorPvPSI.h">
+      <Filter>OutdoorPvP</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game\WorldPvP\WorldPvPTF.h">
-      <Filter>WorldPvP</Filter>
+    <ClInclude Include="..\..\src\game\OutdoorPvP\OutdoorPvPTF.h">
+      <Filter>OutdoorPvP</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\game\WorldPvP\WorldPvPZM.h">
-      <Filter>WorldPvP</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\game\ZoneScript.h">
-      <Filter>World/Handlers</Filter>
+    <ClInclude Include="..\..\src\game\OutdoorPvP\OutdoorPvPZM.h">
+      <Filter>OutdoorPvP</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\game\ConfusedMovementGenerator.h">
       <Filter>Motion generators</Filter>
@@ -1014,6 +1026,9 @@
     <ClInclude Include="..\..\src\game\WorldSocketMgr.h">
       <Filter>Server</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\game\WorldStateMgr.h">
+      <Filter>Server</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\src\game\Language.h">
       <Filter>Tool</Filter>
     </ClInclude>
@@ -1203,6 +1218,15 @@
     </ClInclude>
     <ClInclude Include="..\..\src\game\vmap\RegularGrid.h">
       <Filter>vmaps</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\TransportSystem.h">
+      <Filter>Object</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\UpdateFieldFlags.h">
+      <Filter>Object</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\game\WorldObjectEvents.h">
+      <Filter>World/Handlers</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

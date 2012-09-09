@@ -50,7 +50,7 @@
 #include "Policies/SingletonImp.h"
 #include "BattleGround/BattleGroundMgr.h"
 #include "Language.h"
-#include "WorldPvP/WorldPvPMgr.h"
+#include "OutdoorPvP/OutdoorPvP.h"
 #include "TemporarySummon.h"
 #include "VMapFactory.h"
 #include "MoveMap.h"
@@ -141,6 +141,14 @@ World::~World()
     MMAP::MMapFactory::clear();
 
     //TODO free addSessQueue
+}
+
+/// Cleanups before world stop
+void World::CleanupsBeforeStop()
+{
+    KickAll();                                       // save and kick all players
+    UpdateSessions(1);                               // real players unload required UpdateSessions call
+    sBattleGroundMgr.DeleteAllBattleGrounds();       // unload battleground templates before different singletons destroyed
 }
 
 /// Find a player in a specified zone
@@ -682,6 +690,8 @@ void World::LoadConfigSettings(bool reload)
     setConfig(CONFIG_UINT32_INSTANCE_RESET_TIME_HOUR, "Instance.ResetTimeHour", 4);
     setConfig(CONFIG_UINT32_INSTANCE_UNLOAD_DELAY,    "Instance.UnloadDelay", 30 * MINUTE * IN_MILLISECONDS);
 
+    setConfig(CONFIG_UINT32_WORLD_STATE_EXPIRETIME,    "WorldState.ExpireTime", WEEK);
+
     setConfigMinMax(CONFIG_UINT32_MAX_PRIMARY_TRADE_SKILL, "MaxPrimaryTradeSkill", 2, 0, 10);
 
     setConfigMinMax(CONFIG_UINT32_TRADE_SKILL_GMIGNORE_MAX_PRIMARY_COUNT, "TradeSkill.GMIgnore.MaxPrimarySkillsCount", SEC_CONSOLE, SEC_PLAYER, SEC_CONSOLE);
@@ -828,14 +838,21 @@ void World::LoadConfigSettings(bool reload)
     setConfig(CONFIG_BOOL_ARENA_QUEUE_ANNOUNCER_JOIN,                  "Arena.QueueAnnouncer.Join", false);
     setConfig(CONFIG_BOOL_ARENA_QUEUE_ANNOUNCER_EXIT,                  "Arena.QueueAnnouncer.Exit", false);
     setConfig(CONFIG_BOOL_ARENA_QUEUE_ANNOUNCER_START,                 "Arena.QueueAnnouncer.Start", false);
-    setConfig(CONFIG_UINT32_ARENA_SEASON_ID,                           "Arena.ArenaSeason.ID", 1);
-    setConfig(CONFIG_UINT32_ARENA_SEASON_PREVIOUS_ID,                  "Arena.ArenaSeasonPrevious.ID", 0);
     setConfigMin(CONFIG_INT32_ARENA_STARTRATING,                       "Arena.StartRating", -1, -1);
     setConfigMin(CONFIG_INT32_ARENA_STARTPERSONALRATING,               "Arena.StartPersonalRating", -1, -1);
     setConfig(CONFIG_UINT32_LOSERNOCHANGE,                             "Arena.LoserNoChange", 0);
     setConfig(CONFIG_UINT32_LOSERHALFCHANGE,                           "Arena.LoserHalfChange", 0);
 
     setConfigMinMax(CONFIG_UINT32_ARENA_AURAS_DURATION,                "Arena.RemoveAurasWithDurationLess", 30, 0, 60);
+
+    setConfig(CONFIG_BOOL_OUTDOORPVP_SI_ENABLED,                       "OutdoorPvp.SIEnabled", true);
+    setConfig(CONFIG_BOOL_OUTDOORPVP_EP_ENABLED,                       "OutdoorPvp.EPEnabled", true);
+    setConfig(CONFIG_BOOL_OUTDOORPVP_HP_ENABLED,                       "OutdoorPvp.HPEnabled", true);
+    setConfig(CONFIG_BOOL_OUTDOORPVP_ZM_ENABLED,                       "OutdoorPvp.ZMEnabled", true);
+    setConfig(CONFIG_BOOL_OUTDOORPVP_TF_ENABLED,                       "OutdoorPvp.TFEnabled", true);
+    setConfig(CONFIG_BOOL_OUTDOORPVP_NA_ENABLED,                       "OutdoorPvp.NAEnabled", true);
+    setConfig(CONFIG_BOOL_OUTDOORPVP_GH_ENABLED,                       "OutdoorPvp.GHEnabled", true);
+    setConfig(CONFIG_BOOL_OUTDOORPVP_WG_ENABLED,                       "OutdoorPvp.WGEnabled", true);
 
     setConfig(CONFIG_BOOL_OFFHAND_CHECK_AT_TALENTS_RESET, "OffhandCheckAtTalentsReset", false);
 
@@ -1115,6 +1132,9 @@ void World::SetInitialWorldSettings()
 
     sLog.outString("Loading GameObject models...");
     LoadGameObjectModelList();
+
+    sLog.outString( "Loading SpellDbc..." );
+    sSpellMgr.LoadSpellDbc();
 
     sLog.outString( "Loading SpellTemplate..." );
     sObjectMgr.LoadSpellTemplate();
@@ -1458,6 +1478,9 @@ void World::SetInitialWorldSettings()
     sLog.outString( "Loading AntiCheat config..." );
     sObjectMgr.LoadAntiCheatConfig();
 
+    sLog.outString( "Loading WorldState templates and data..." );
+    sWorldStateMgr.Initialize();
+
     ///- Handle outdated emails (delete/return)
     sLog.outString( "Returning old mails..." );
     sObjectMgr.ReturnOrDeleteOldMails(false);
@@ -1528,6 +1551,7 @@ void World::SetInitialWorldSettings()
     m_timers[WUPDATE_CORPSES].SetInterval(20*MINUTE*IN_MILLISECONDS);
     m_timers[WUPDATE_DELETECHARS].SetInterval(DAY*IN_MILLISECONDS); // check for chars to delete every day
     m_timers[WUPDATE_AUTOBROADCAST].SetInterval(abtimer);
+    m_timers[WUPDATE_WORLDSTATE].SetInterval(1*MINUTE*IN_MILLISECONDS);
 
     // for AhBot
     m_timers[WUPDATE_AHBOT].SetInterval(20*IN_MILLISECONDS); // every 20 sec
@@ -1542,7 +1566,6 @@ void World::SetInitialWorldSettings()
 
     ///- Initialize static helper structures
     AIRegistry::Initialize();
-    Player::InitVisibleBits();
 
     ///- Initialize MapManager
     sLog.outString( "Starting Map System" );
@@ -1553,12 +1576,12 @@ void World::SetInitialWorldSettings()
     sBattleGroundMgr.CreateInitialBattleGrounds();
     sBattleGroundMgr.InitAutomaticArenaPointDistribution();
 
-    ///- Initialize World PvP
-    sLog.outString( "Starting World PvP System" );
-    sWorldPvPMgr.InitWorldPvP();
+    ///- Initialize Outdoor PvP
+    sLog.outString("Starting Outdoor PvP System");
+    sOutdoorPvPMgr.InitOutdoorPvP();
 
-    //Not sure if this can be moved up in the sequence (with static data loading) as it uses MapManager
-    sLog.outString( "Loading Transports..." );
+    // Not sure if this can be moved up in the sequence (with static data loading) as it uses MapManager
+    sLog.outString("Loading Transports...");
     sMapMgr.LoadTransports();
 
     sLog.outString("Deleting expired bans..." );
@@ -1738,13 +1761,20 @@ void World::Update(uint32 diff)
     ///- Update objects (maps, transport, creatures,...)
     sMapMgr.Update(diff);
     sBattleGroundMgr.Update(diff);
-    sWorldPvPMgr.Update(diff);
+    sOutdoorPvPMgr.Update(diff);
 
     ///- Delete all characters which have been deleted X days before
     if (m_timers[WUPDATE_DELETECHARS].Passed())
     {
         m_timers[WUPDATE_DELETECHARS].Reset();
         Player::DeleteOldCharacters();
+    }
+
+    // Update WorldStates (cleanup and save)
+    if (m_timers[WUPDATE_WORLDSTATE].Passed())
+    {
+        m_timers[WUPDATE_WORLDSTATE].Reset();
+        sWorldStateMgr.Update();
     }
 
     // Check if any group can be created by dungeon finder
@@ -1907,22 +1937,62 @@ void World::SendWorldTextWithSecurity(AccountTypes security, int32 string_id, ..
     va_end(ap);
 }
 
-/// DEPRICATED, only for debug purpose. Send a System Message to all players (except self if mentioned)
-void World::SendGlobalText(const char* text, WorldSession* self)
+/// Sends a server message to the specified or all players
+void World::SendServerMessage(ServerMessageType type, const char* text /*=""*/, Player* player /*= NULL*/)
 {
-    WorldPacket data;
+    WorldPacket data(SMSG_SERVER_MESSAGE, 50);              // guess size
+    data << uint32(type);
+    data << text;
 
-    // need copy to prevent corruption by strtok call in LineFromMessage original string
-    char* buf = mangos_strdup(text);
-    char* pos = buf;
+    if (player)
+        player->GetSession()->SendPacket(&data);
+    else
+        SendGlobalMessage(&data);
+}
 
-    while (char* line = ChatHandler::LineFromMessage(pos))
+/// Sends a zone under attack message to all players not in an instance
+void World::SendZoneUnderAttackMessage(uint32 zoneId, Team team)
+{
+    WorldPacket data(SMSG_ZONE_UNDER_ATTACK, 4);
+    data << uint32(zoneId);
+
+    for (SessionMap::const_iterator itr = m_sessions.begin(); itr != m_sessions.end(); ++itr)
     {
-        ChatHandler::FillMessageData(&data, NULL, CHAT_MSG_SYSTEM, LANG_UNIVERSAL, line);
-        SendGlobalMessage(&data, self);
+        if (itr->second &&
+            itr->second->GetPlayer() &&
+            itr->second->GetPlayer()->IsInWorld() &&
+            (team == TEAM_NONE || itr->second->GetPlayer()->GetTeam() == team)
+// As says stfx && Schmoo, this packet sended to all players in world. but i think, not need
+// cause useless traffic, if this maked by blizz. this - WoW emulator, but not "Fools of blizz" emulator. (/dev/rsa)
+            && itr->second->GetPlayer()->GetZoneId() == zoneId)
+// This requirements wrong, as i remember. but may be need in 4/5x
+//                && !itr->second->GetPlayer()->GetMap()->Instanceable())
+        {
+            itr->second->SendPacket(&data);
+        }
     }
+}
 
-    delete[] buf;
+/// Sends a world defense message to all players not in an instance
+void World::SendDefenseMessage(uint32 zoneId, int32 textId)
+{
+    for (SessionMap::const_iterator itr = m_sessions.begin(); itr != m_sessions.end(); ++itr)
+    {
+        if (itr->second &&
+                itr->second->GetPlayer() &&
+                itr->second->GetPlayer()->IsInWorld() &&
+                !itr->second->GetPlayer()->GetMap()->Instanceable())
+        {
+            char const* message = itr->second->GetMangosString(textId);
+            uint32 messageLength = strlen(message) + 1;
+
+            WorldPacket data(SMSG_DEFENSE_MESSAGE, 4 + 4 + messageLength);
+            data << uint32(zoneId);
+            data << uint32(messageLength);
+            data << message;
+            itr->second->SendPacket(&data);
+        }
+    }
 }
 
 /// Send a packet to all players (or players selected team) in the zone (except self if mentioned)
@@ -2112,7 +2182,7 @@ void World::ShutdownServ(uint32 time, uint32 options, uint8 exitcode)
 }
 
 /// Display a shutdown message to the user(s)
-void World::ShutdownMsg(bool show, Player* player)
+void World::ShutdownMsg(bool show /*= false*/, Player* player /*= NULL*/)
 {
     // not show messages for idle shutdown mode
     if (m_ShutdownMask & SHUTDOWN_MASK_IDLE)
@@ -2152,20 +2222,7 @@ void World::ShutdownCancel()
     DEBUG_LOG("Server %s cancelled.",(m_ShutdownMask & SHUTDOWN_MASK_RESTART ? "restart" : "shutdown"));
 }
 
-/// Send a server message to the user(s)
-void World::SendServerMessage(ServerMessageType type, const char* text /*=""*/, Player* player /*= NULL*/)
-{
-    WorldPacket data(SMSG_SERVER_MESSAGE, 50);              // guess size
-    data << uint32(type);
-    data << text;
-
-    if (player)
-        player->GetSession()->SendPacket(&data);
-    else
-        SendGlobalMessage(&data);
-}
-
-void World::UpdateSessions( uint32 diff )
+void World::UpdateSessions(uint32 diff)
 {
     ///- Add new sessions
     WorldSession* sess;
@@ -2178,7 +2235,7 @@ void World::UpdateSessions( uint32 diff )
         next = itr;
         ++next;
         ///- and remove not active sessions from the list
-        WorldSession * pSession = itr->second;
+        WorldSession* pSession = itr->second;
         WorldSessionFilter updater(pSession);
 
         if(!pSession->Update(updater))
