@@ -8464,6 +8464,24 @@ void Aura::HandleSchoolAbsorb(bool apply, bool Real)
             uint32 trigger_spell_Id = GetId() == 62274 ? 62277 : 63967;
             target->CastSpell(target, trigger_spell_Id, true);
         }
+        // Kologarns Shield with comes with Stone Grip
+        else if ((GetId() == 64224 || GetId() == 64225) && m_removeMode == AURA_REMOVE_BY_SHIELD_BREAK)
+        {
+            target->MonsterSay("Ich bin das Target", 0);
+            if (VehicleKitPtr pVehicle = target->GetVehicleKit())
+            {
+                //pVehicle->RemoveAllPassengers();
+                for (uint8 i =  0; i < MAX_VEHICLE_SEAT; ++i)
+                {
+                    if (Unit* pPassenger = pVehicle->GetPassenger(i))
+                    {
+                        target->MonsterSay("Ich bin der Passagier", 0);
+                        pPassenger->RemoveAurasDueToSpell(62056);
+                        pPassenger->RemoveAurasDueToSpell(63985);
+                    }
+                }
+            }
+        }
     }
 }
 
