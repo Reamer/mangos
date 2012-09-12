@@ -899,9 +899,6 @@ class MANGOS_DLL_SPEC WorldSession
         uint32 _accountId;
         uint8 m_expansion;
 
-        // Warden
-        WardenBase *m_Warden;
-
         time_t _logoutTime;
         bool m_inQueue;                                     // session wait in auth.queue
         bool m_playerLoading;                               // code processed in LoginPlayer
@@ -916,6 +913,9 @@ class MANGOS_DLL_SPEC WorldSession
         TutorialDataState m_tutorialState;
         AddonsList m_addonsList;
         ACE_Based::LockedQueue<WorldPacket*, ACE_Thread_Mutex> _recvQueue;
+
+        // Warden
+        WardenBase *m_Warden;
 };
 #endif
 /// @}

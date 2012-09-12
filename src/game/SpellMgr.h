@@ -873,7 +873,7 @@ struct SpellLinkedEntry
 {
     uint32 spellId;
     uint32 linkedId;
-    uint32 type;
+    SpellLinkedType type;
     uint32 effectMask;
 };
 

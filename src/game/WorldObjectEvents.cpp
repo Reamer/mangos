@@ -435,7 +435,7 @@ bool PassengerEjectEvent::Execute(uint64 /*e_time*/, uint32 /*p_time*/)
 
 // BattleGround events
 BGQueueInviteEvent::BGQueueInviteEvent(ObjectGuid pl_guid, uint32 BgInstanceGUID, BattleGroundTypeId BgTypeId, ArenaType arenaType, uint32 removeTime) :
-    m_PlayerGuid(pl_guid), m_BgInstanceGUID(BgInstanceGUID), m_BgTypeId(BgTypeId), m_ArenaType(arenaType), m_RemoveTime(removeTime), BasicEvent(WORLDOBJECT_EVENT_TYPE_COMMON)
+    BasicEvent(WORLDOBJECT_EVENT_TYPE_COMMON), m_PlayerGuid(pl_guid), m_BgInstanceGUID(BgInstanceGUID), m_BgTypeId(BgTypeId), m_ArenaType(arenaType), m_RemoveTime(removeTime)
 {
 };
 
@@ -483,7 +483,7 @@ void BGQueueInviteEvent::Abort(uint64 /*e_time*/)
     we must remove player in the 5. case even if battleground object doesn't exist!
 */
 BGQueueRemoveEvent::BGQueueRemoveEvent(ObjectGuid plGuid, uint32 bgInstanceGUID, BattleGroundTypeId BgTypeId, BattleGroundQueueTypeId bgQueueTypeId, uint32 removeTime)
-    : m_PlayerGuid(plGuid), m_BgInstanceGUID(bgInstanceGUID), m_RemoveTime(removeTime), m_BgTypeId(BgTypeId), m_BgQueueTypeId(bgQueueTypeId), BasicEvent(WORLDOBJECT_EVENT_TYPE_COMMON)
+    : BasicEvent(WORLDOBJECT_EVENT_TYPE_COMMON), m_PlayerGuid(plGuid), m_BgInstanceGUID(bgInstanceGUID), m_RemoveTime(removeTime), m_BgTypeId(BgTypeId), m_BgQueueTypeId(bgQueueTypeId)
 {
 };
 
