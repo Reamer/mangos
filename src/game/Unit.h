@@ -901,7 +901,7 @@ struct DamageInfo
     public:
         // Constructors for use with spell and melee damage
         DamageInfo(Unit *_attacker, Unit *_target, uint32 _SpellID, uint32 _damage)
-            :  attacker(_attacker), target(_target), SpellID(_SpellID), m_spellInfo(NULL)
+            :  attacker(_attacker), target(_target), m_spellInfo(NULL), SpellID(_SpellID)
         { Reset(_damage); };
 
         DamageInfo(Unit *_attacker, Unit *_target, SpellEntry const* spellInfo, uint32 _damage = 0)
@@ -910,11 +910,11 @@ struct DamageInfo
 
         // Constructors for use on temporary operation
         DamageInfo(uint32 _damage)
-            : attacker(NULL), target(NULL), SpellID(0), m_spellInfo(NULL)
+            : attacker(NULL), target(NULL), m_spellInfo(NULL), SpellID(0)
         { Reset(_damage); };
 
         DamageInfo(uint32 _damage, uint32 _SpellID)
-            : attacker(NULL), target(NULL), SpellID(_SpellID), m_spellInfo(NULL)
+            : attacker(NULL), target(NULL), m_spellInfo(NULL), SpellID(_SpellID)
         { Reset(_damage); };
 
         DamageInfo(uint32 _damage, SpellEntry const* spellInfo)
@@ -1688,7 +1688,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
 
         bool isCharmed() const { return !GetCharmerGuid().IsEmpty(); }
 
-        CharmInfo* GetCharmInfo()       { return m_charmInfo; }
+        CharmInfo* GetCharmInfo() { return m_charmInfo; }
         uint8  GetCharmState(CharmStateType type) const { return m_charmInfo ? m_charmInfo->GetState(type) : 0; };
         CharmInfo* InitCharmInfo(Unit* charm);
 
@@ -1930,7 +1930,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
 
         SpellAuraHolderMap&       GetSpellAuraHolderMap()       { return m_spellAuraHolders; }
         SpellAuraHolderMap const& GetSpellAuraHolderMap() const { return m_spellAuraHolders; }
-        AuraList           const& GetAurasByType(AuraType type) const  { return m_modAuras[type]; }
+        AuraList           const& GetAurasByType(AuraType type) const { return m_modAuras[type]; }
         AuraList&                 GetAurasByType(AuraType type) { return m_modAuras[type]; }
         void ApplyAuraProcTriggerDamage(Aura* aura, bool apply);
 
@@ -2174,7 +2174,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         void _ExitVehicle();
 
         void ChangeSeat(int8 seatId, bool next = true);
-        VehicleKitPtr GetVehicle()    const { return m_pVehicle; }
+        VehicleKitPtr GetVehicle() const { return m_pVehicle; }
         VehicleKitPtr GetVehicleKit() const { return m_pVehicleKit; }
         void RemoveVehicleKit();
 
