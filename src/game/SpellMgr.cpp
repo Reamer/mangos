@@ -5412,12 +5412,12 @@ void SpellMgr::LoadSpellDbc()
             continue;
 
         // insert serverside spell data
-        if (sSpellStore.GetNumRows() <= i)
+        /*if (sSpellStore.GetNumRows() <= i)
         {
             sLog.outErrorDb("SpellMgr::LoadSpellDbc Loading Spell Template for spell %u, index out of bounds (max = %u)", i, sSpellStore.GetNumRows());
             continue;
         }
-        else if (/*SpellEntry const* originalSpellEntry = */sSpellStore.LookupEntry(i))
+        else */if (/*SpellEntry const* originalSpellEntry = */sSpellStore.LookupEntry(i))
         {
             sLog.outDetail("SpellMgr::LoadSpellDbc Index %u already exists in SpellStorage! replacing on spell_dbc data fields!", i);
             sSpellStore.EraseEntry(i);
