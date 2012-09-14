@@ -8315,10 +8315,7 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
         }
         case 46584: // Raise Dead
         {
-            Unit* pCorpseTarget = NULL;
-            MaNGOS::NearestCorpseInObjectRangeCheck u_check(*m_caster, radius);
-            MaNGOS::UnitLastSearcher<MaNGOS::NearestCorpseInObjectRangeCheck> searcher(pCorpseTarget, u_check);
-            Cell::VisitGridObjects(m_caster, searcher, radius);
+            Unit* pCorpseTarget = (Unit*)FindCorpseUsing<MaNGOS::RaiseDeadObjectCheck>(CREATURE_TYPEMASK_NONE);
 
             if (pCorpseTarget)
                 targetUnitMap.push_back(pCorpseTarget);
@@ -8523,7 +8520,7 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
         }
         case 61999: // Raise ally
         {
-            WorldObject* result = FindCorpseUsing<MaNGOS::RaiseAllyObjectCheck>();
+            WorldObject* result = FindCorpseUsing<MaNGOS::RaiseAllyObjectCheck>(CREATURE_TYPEMASK_NONE);
             if (result)
                 targetUnitMap.push_back((Unit*)result);
             else
