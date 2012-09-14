@@ -7881,6 +7881,7 @@ void Spell::EffectInterruptCast(SpellEffectIndex eff_idx)
             bool interruptible = false;
             switch (curSpellInfo->Id)
             {
+                case 55098:                                 // Transformation (Moorabi - Gundrak)
                 case 62661:                                 // Searing Flames (General Vezax - Ulduar)
                     interruptible = true;
                     break;
