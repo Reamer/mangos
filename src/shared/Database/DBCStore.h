@@ -31,7 +31,6 @@ class DBCStorage
 
         T const* LookupEntry(uint32 id) const { return (id >= nCount) ? NULL : indexTable[id]; }
         uint32  GetNumRows() const { return nCount; }
-        void SetNumRows(uint32 newRows) { nCount = newRows; };
         char const* GetFormat() const { return fmt; }
         uint32 GetFieldCount() const { return fieldCount; }
 

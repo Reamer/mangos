@@ -5415,9 +5415,8 @@ void SpellMgr::LoadSpellDbc()
         // insert serverside spell data
         if (sSpellStore.GetNumRows() <= i)
         {
-            sLog.outDetail("SpellMgr::LoadSpellDbc Loading Spell Template for spell %u, index out of bounds (max = %u). We have a Custom Spell!", i, sSpellStore.GetNumRows());
-            sSpellStore.SetNumRows(i);
-            sSpellStore.InsertEntry(const_cast<SpellEntry*>(spellEntry), i);
+            sLog.outErrorDb("SpellMgr::LoadSpellDbc Loading Spell Template for spell %u, index out of bounds (max = %u)", i, sSpellStore.GetNumRows());
+            continue;
         }
         else if (/*SpellEntry const* originalSpellEntry = */sSpellStore.LookupEntry(i))
         {
