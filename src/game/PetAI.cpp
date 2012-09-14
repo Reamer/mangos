@@ -97,6 +97,13 @@ void PetAI::Reset()
             continue;
         }
 
+        // Voracious Appetite && Cannibalize && Carrion Feeder
+        if (spellInfo->HasAttribute(SPELL_ATTR_ABILITY) && spellInfo->HasAttribute(SPELL_ATTR_EX2_ALLOW_DEAD_TARGET))
+        {
+            m_spellType[PET_SPELL_HEAL].insert(spellID);
+            continue;
+        }
+
         if (IsPositiveSpell(spellInfo) && IsSpellAppliesAura(spellInfo))
         {
             m_spellType[PET_SPELL_BUFF].insert(spellID);
@@ -181,6 +188,9 @@ void PetAI::Reset()
         attackDistance = 0.0f;
     }
     m_savedAIType = m_AIType;
+
+    if (!m_creature->IsInUnitState(UNIT_ACTION_HOME))
+        m_creature->GetMotionMaster()->MoveTargetedHome();
 
     DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS,"PetAI::Reset %s, AI %u dist %f, spells: %u %u %u %u %u %u %u %u %u %u %u %u",
         m_creature->GetObjectGuid().GetString().c_str(),
@@ -328,10 +338,7 @@ void PetAI::MoveToVictim(Unit* u)
             break;
         case PET_AI_RANGED:
             if (sWorld.getConfig(CONFIG_BOOL_PET_ADVANCED_AI))
-            {
-                if (Unit* owner = m_creature->GetCharmerOrOwner())
-                    m_creature->GetMotionMaster()->MoveChase(u, attackDistance, u->GetAngle(owner) + frand(-M_PI_F/4.0f, M_PI_F/4.0f));
-            }
+                m_creature->GetMotionMaster()->MoveChase(u, attackDistance, m_creature->GetAngle(u) + frand(-M_PI_F/4.0f, M_PI_F/4.0f));
             else
                 m_creature->GetMotionMaster()->MoveChase(u);
             break;
@@ -378,10 +385,13 @@ void PetAI::_stopAttack()
 {
     inCombat = false;
 
-    m_creature->CastStop(true);
-    m_creature->AttackStop();
-
-    m_creature->GetMotionMaster()->MoveTargetedHome();
+    if (IsInCombat())
+    {
+        m_creature->CastStop(true);
+        m_creature->AttackStop();
+        if (!m_creature->IsInUnitState(UNIT_ACTION_HOME))
+            m_creature->GetMotionMaster()->MoveTargetedHome();
+    }
 }
 
 void PetAI::UpdateAI(const uint32 diff)
@@ -442,8 +452,9 @@ void PetAI::UpdateAI(const uint32 diff)
         else if (sWorld.getConfig(CONFIG_BOOL_PET_ADVANCED_AI) && IsInCombat() && m_creature->getVictim() && m_creature->getVictim()->IsCrowdControlled())  // Stop attack if target under CC effect
         {
             m_savedTargetGuid = m_creature->getVictim()->GetObjectGuid();
-            m_creature->InterruptNonMeleeSpells(false);
-            _stopAttack();
+            m_creature->InterruptSpell(CURRENT_GENERIC_SPELL,true);
+            if (!m_creature->IsNonMeleeSpellCasted(false, false, true))
+                _stopAttack();
             return;
         }
         else if (m_creature->IsStopped() || meleeReach)
@@ -496,15 +507,28 @@ void PetAI::UpdateAI(const uint32 diff)
                 m_attackDistanceRecheckTimer -= diff;
         }
     }
-    else if (owner && m_creature->GetCharmInfo())
+    else if (owner && owner->IsInCombat())
     {
-        if (owner->isInCombat() && owner->getVictim() && owner->getVictim()->isAlive() &&
-            !(m_creature->GetCharmInfo()->HasState(CHARM_STATE_REACT,REACT_PASSIVE) || m_creature->GetCharmInfo()->HasState(CHARM_STATE_COMMAND,COMMAND_STAY)))
+        switch (m_creature->GetCharmState(CHARM_STATE_REACT))
         {
-            AttackStart(owner->getAttackerForHelper());
+            case REACT_DEFENSIVE:
+            {
+                if (!m_creature->getVictim() 
+                    || !m_creature->getVictim()->isAlive() 
+                    || (owner->getVictim() != m_creature->getVictim() && owner->getVictim()->isAlive()))
+                    AttackStart(owner->getAttackerForHelper());
+                break;
+            }
+            case REACT_AGGRESSIVE:
+            {
+                if (!m_creature->getVictim() || !m_creature->getVictim()->isAlive())
+                    AttackStart(owner->getAttackerForHelper());
+                break;
+            }
+            case REACT_PASSIVE:
+            default:
+                break;
         }
-        else 
-            m_creature->GetMotionMaster()->MoveTargetedHome();
     }
 
     UpdateAIType();

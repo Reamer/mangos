@@ -1507,9 +1507,11 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                 }
                 case 20577:                                 // Cannibalize
                 {
-                    if (unitTarget)
-                        m_caster->CastSpell(m_caster, 20578, false, NULL);
+                    if (!unitTarget)
+                        return;
 
+                    finish(false);
+                    m_caster->CastSpell(m_caster, 20578, false, NULL);
                     return;
                 }
                 case 21147:                                 // Arcane Vacuum (Azuregos)
@@ -1991,6 +1993,23 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     return;
 
                 }
+                case 42628:                                 // Fire Bomb (throw)
+                {
+                    if (!unitTarget)
+                        return;
+
+                    unitTarget->CastSpell(unitTarget, 42629, true);
+                    return;
+                }
+                case 42631:                                 // Fire Bomb (explode)
+                {
+                    if (!unitTarget)
+                        return;
+
+                    unitTarget->RemoveAurasDueToSpell(42629);
+                    unitTarget->CastSpell(unitTarget, 42630, true);
+                    return;
+                }
                 case 42793:                                 // Burn Body
                 {
                     if (!unitTarget || unitTarget->GetTypeId() != TYPEID_UNIT || m_caster->GetTypeId() != TYPEID_PLAYER)
@@ -2039,6 +2058,22 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                 {
                     // Towers of Certain Doom: Tower Caster Instakill
                     m_caster->CastSpell(m_caster, 43072, true);
+                    return;
+                }
+                case 43096:                                 // Summon All Players
+                {
+                    if (!unitTarget || unitTarget->GetTypeId() != TYPEID_PLAYER)
+                        return;
+
+                    m_caster->CastSpell(unitTarget, 43097, true);
+                    return;
+                }
+                case 43144:                                 // Hatch All Eggs
+                {
+                    if (!unitTarget)
+                        return;
+
+                    unitTarget->CastSpell(unitTarget, 42493, true, NULL, NULL, m_caster->GetObjectGuid());
                     return;
                 }
                 case 43209:                                 // Place Ram Meat
@@ -2953,19 +2988,22 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
 
                     return;
                 }
+                case 52748:                                 // Voracious Appetite
+                {
+                    if (!unitTarget)
+                        return;
+
+                    finish(false);
+                    CancelGlobalCooldown();
+                    m_caster->CastSpell(m_caster, 52749, false);
+                    return;
+                }
                 case 52759:                                 // Ancestral Awakening
                 {
                     if (!unitTarget)
                         return;
 
                     m_caster->CastCustomSpell(unitTarget, 52752, &damage, NULL, NULL, true);
-                    return;
-                }
-                case 54171:                                 //Divine Storm
-                {
-                    // split between targets
-                    int32 bp = damage / m_UniqueTargetInfo.size();
-                    m_caster->CastCustomSpell(unitTarget, 54172, &bp, NULL, NULL, true);
                     return;
                 }
                 case 52845:                                 // Brewfest Mount Transformation (Faction Swap)
@@ -3072,6 +3110,13 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     unitTarget->CastSpell(unitTarget, 48271, true);    // Target Summon Banshee
                     unitTarget->CastSpell(unitTarget, 48274, true);    // Target Summon Banshee
                     unitTarget->CastSpell(unitTarget, 48275, true);    // Target Summon Banshee
+                    return;
+                }
+                case 54171:                                 //Divine Storm
+                {
+                    // split between targets
+                    int32 bp = damage / m_UniqueTargetInfo.size();
+                    m_caster->CastCustomSpell(unitTarget, 54172, &bp, NULL, NULL, true);
                     return;
                 }
                 case 54245:                                 // Enough - Drakuru Overlord, Kill Trolls
@@ -4161,6 +4206,19 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                         return;
 
                     pet->CastSpell(unitTarget, m_spellInfo->CalculateSimpleValue(eff_idx), true);
+                    return;
+                }
+                case 54044:                                 // Carrion Feeder
+                {
+                    if (!unitTarget)
+                        return;
+
+                    finish(true);
+                    CancelGlobalCooldown();
+                    if (m_caster->GetObjectGuid().IsPet())
+                        m_caster->DoPetCastSpell(m_caster, 54045);
+                    else
+                        m_caster->CastSpell(m_caster, 54045, false);
                     return;
                 }
             }
@@ -6961,20 +7019,16 @@ void Spell::EffectTeleUnitsFaceCaster(SpellEffectIndex eff_idx)
     if (!unitTarget || unitTarget->IsTaxiFlying())
         return;
 
+    float fx, fy, fz;
     if (m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION)
-    {
-        unitTarget->NearTeleportTo(m_targets.m_destX, m_targets.m_destY, m_targets.m_destZ, -m_caster->GetOrientation(), unitTarget == m_caster);
-    }
+        m_targets.getDestination(fx, fy, fz);
     else
     {
         float dis = GetSpellRadius(sSpellRadiusStore.LookupEntry(m_spellInfo->EffectRadiusIndex[eff_idx]));
-
-        float fx, fy, fz;
         m_caster->GetClosePoint(fx, fy, fz, unitTarget->GetObjectBoundingRadius(), dis);
-
-        unitTarget->NearTeleportTo(fx, fy, fz, -m_caster->GetOrientation(), unitTarget == m_caster);
-//        DEBUG_LOG("Spell::EffectTeleUnitsFaceCaster teleport %s  desination point not setted. Use old method.", unitTarget->GetObjectGuid().GetString().c_str()););
     }
+
+    unitTarget->NearTeleportTo(fx, fy, fz, -m_caster->GetOrientation(), unitTarget == m_caster);
 }
 
 void Spell::EffectLearnSkill(SpellEffectIndex eff_idx)
@@ -11679,7 +11733,23 @@ void Spell::EffectLeapForward(SpellEffectIndex eff_idx)
 
     if (m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION)
     {
-        unitTarget->NearTeleportTo(m_targets.m_destX, m_targets.m_destY, m_targets.m_destZ, m_caster->GetOrientation(), unitTarget == m_caster);
+        float x,y,z;
+        m_targets.getDestination(x,y,z);
+
+        // Try to normalize Z coord 
+        m_caster->UpdateGroundPositionZ(x, y, z);
+        z += 0.2f;
+
+        if (sWorld.getConfig(CONFIG_BOOL_BLINK_ANIMATION_TYPE))
+        {
+            float speed = BASE_CHARGE_SPEED * 10.0f;
+            m_caster->MonsterMoveWithSpeed(x, y, z, speed, !m_caster->IsFalling(), true);
+        }
+        else
+        {
+            unitTarget->SetFallInformation(0, unitTarget->GetPositionZ());
+            unitTarget->NearTeleportTo(x, y, z, m_caster->GetOrientation(), unitTarget == m_caster);
+        }
     }
     else
         sLog.outError("Spell::EffectLeapForward teleport %s failed - desination point not setted.", unitTarget->GetObjectGuid().GetString().c_str());

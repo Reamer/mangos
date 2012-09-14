@@ -6923,15 +6923,7 @@ void Unit::AttackedBy(Unit* attacker)
 
     // trigger pet AI reaction
     if (attacker->IsHostileTo(this))
-    {
-        GroupPetList m_groupPets = GetPets();
-        if (!m_groupPets.empty())
-        {
-            for (GroupPetList::const_iterator itr = m_groupPets.begin(); itr != m_groupPets.end(); ++itr)
-                if (Pet* _pet = GetMap()->GetPet(*itr))
-                    _pet->AttackedBy(attacker);
-        }
-    }
+        CallForAllControlledUnits(AttackedByHelper(attacker),CONTROLLED_PET|CONTROLLED_GUARDIANS|CONTROLLED_CHARM);
 
     // Place reaction on attacks in combat state here
 }
@@ -11550,8 +11542,6 @@ void Unit::DoPetAction( Player* owner, uint8 flag, uint32 spellid, ObjectGuid pe
                         }
                         else
                         {
-                            GetMotionMaster()->Clear();
-
                             if (((Creature*)this)->AI())
                                 ((Creature*)this)->AI()->AttackStart(TargetUnit);
 
@@ -11708,15 +11698,15 @@ void Unit::DoPetCastSpell(Player *owner, uint8 cast_count, SpellCastTargets* tar
     // target corrects
     if (!unit_target && !(targets->m_targetMask & TARGET_FLAG_DEST_LOCATION))
     {
-        DEBUG_LOG("Unit::DoPetCastSpell %s guid %u tryed to cast spell %u without target! Trying auto-search",GetObjectGuid().IsPet() ? "Pet" : "Creature",GetObjectGuid().GetCounter(), spellInfo->Id);
+        DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST,"Unit::DoPetCastSpell %s guid %u tryed to cast spell %u without target! Trying auto-search",GetObjectGuid().IsPet() ? "Pet" : "Creature",GetObjectGuid().GetCounter(), spellInfo->Id);
     }
     else if (targets && !unit_target && (targets->m_targetMask & TARGET_FLAG_DEST_LOCATION))
     {
-        DEBUG_LOG("Unit::DoPetCastSpell %s tryed to cast spell %u with setted dest. location without target. Trying auto-search.",GetObjectGuid().GetString().c_str(), spellInfo->Id);
+        DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST,"Unit::DoPetCastSpell %s tryed to cast spell %u with setted dest. location without target. Trying auto-search.",GetObjectGuid().GetString().c_str(), spellInfo->Id);
     }
-    else if (unit_target && IsFriendlyTo(unit_target) != IsPositiveSpell(spellInfo))
+    else if (unit_target && unit_target->isAlive() && IsFriendlyTo(unit_target) != IsPositiveSpell(spellInfo))
     {
-        DEBUG_LOG("Unit::DoPetCastSpell %s tryed to cast spell %u, but target not good. Trying auto-search.",GetObjectGuid().GetString().c_str(), spellInfo->Id);
+        DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST,"Unit::DoPetCastSpell %s tryed to cast spell %u, but target not good. Trying auto-search.",GetObjectGuid().GetString().c_str(), spellInfo->Id);
         unit_target = NULL;
     }
 
@@ -11725,20 +11715,23 @@ void Unit::DoPetCastSpell(Player *owner, uint8 cast_count, SpellCastTargets* tar
     {
         unit_target =  GetObjectGuid().IsPet() ? ((Pet*)this)->SelectPreferredTargetForSpell(spellInfo) :
                                                    pet->SelectPreferredTargetForSpell(spellInfo);
-        DEBUG_LOG("Unit::DoPetCastSpell %s, spell %u preferred %u Target %s",
-                            GetObjectGuid().GetString().c_str(),
-                            spellInfo->Id,
-                            GetPreferredTargetForSpell(spellInfo),
-                            unit_target ? unit_target->GetObjectGuid().GetString().c_str() : "<none>");
         targets->setUnitTarget(unit_target);
     }
 
-    Spell *spell = new Spell(this, spellInfo, triggered, GetObjectGuid(), triggeredBy);
+    Spell* spell = new Spell(this, spellInfo, triggered, GetObjectGuid(), triggeredBy);
     spell->m_cast_count = cast_count;                       // probably pending spell cast
 
     Unit* unit_target2 = spell->m_targets.getUnitTarget();
 
     SpellCastResult result = triggered ? SPELL_CAST_OK : spell->CheckPetCast(unit_target);
+
+    DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST,"Unit::DoPetCastSpell %s, spell %u preferred target %u target %s default target %s cast result %u",
+                            GetObjectGuid().GetString().c_str(),
+                            spellInfo->Id,
+                            GetPreferredTargetForSpell(spellInfo),
+                            unit_target ? unit_target->GetObjectGuid().GetString().c_str() : "<none>",
+                            unit_target2 ? unit_target2->GetObjectGuid().GetString().c_str() : "<none>",
+                            result);
 
     //auto turn to target unless possessed
     if (result == SPELL_FAILED_UNIT_NOT_INFRONT && !HasAuraType(SPELL_AURA_MOD_POSSESS))
@@ -11761,8 +11754,10 @@ void Unit::DoPetCastSpell(Player *owner, uint8 cast_count, SpellCastTargets* tar
         result = SPELL_CAST_OK;
     }
 
-    if (targets)
-        spell->m_targets = *targets;
+    SpellCastTargets tmpTargets = targets ? *targets : SpellCastTargets();
+
+    if (!targets)
+        tmpTargets.setUnitTarget(unit_target ? unit_target : unit_target2);
 
     clearUnitState(UNIT_STAT_MOVING);
 
@@ -11779,7 +11774,7 @@ void Unit::DoPetCastSpell(Player *owner, uint8 cast_count, SpellCastTargets* tar
                 SendPetAIReaction();
         }
 
-        if ( unit_target && owner && !owner->IsFriendlyTo(unit_target) && !HasAuraType(SPELL_AURA_MOD_POSSESS))
+        if (unit_target && owner && !owner->IsFriendlyTo(unit_target) && !HasAuraType(SPELL_AURA_MOD_POSSESS))
         {
             // This is true if pet has no target or has target but targets differs.
             if (getVictim() != unit_target)
@@ -11789,12 +11784,12 @@ void Unit::DoPetCastSpell(Player *owner, uint8 cast_count, SpellCastTargets* tar
 
                 GetMotionMaster()->Clear();
 
-                if (pet->AI())
+                if (pet->AI() && unit_target->isAlive())
                     pet->AI()->AttackStart(unit_target);
             }
         }
 
-        spell->prepare(&(spell->m_targets), triggeredByAura);
+        spell->prepare(&tmpTargets, triggeredByAura);
     }
     else if (pet)
     {
@@ -11933,6 +11928,11 @@ void Unit::ProcDamageAndSpellFor(bool isVictim, DamageInfo* damageInfo)
                 {
                     AddComboPoints(pTarget, 1);
                     StartReactiveTimer( REACTIVE_OVERPOWER );
+                }
+                // Wolverine Bite and similate
+                else if ((procExtra & PROC_EX_CRITICAL_HIT) && GetObjectGuid().IsPet() && isCharmedOwnedByPlayerOrPlayer())
+                {
+                    AddComboPoints(pTarget,1);
                 }
             }
         }
@@ -12873,6 +12873,7 @@ void Unit::MonsterMoveWithSpeed(float x, float y, float z, float speed, bool gen
     MaNGOS::NormalizeMapCoord(y);
 
     GetMotionMaster()->MoveWithSpeed(x, y, z, speed, generatePath, forceDestination);
+    SetFallInformation(0,z);
 }
 
 void Unit::MonsterMoveToDestination(float x, float y, float z, float o, float speed, float height, bool isKnockBack, Unit* target)
@@ -12886,6 +12887,7 @@ void Unit::MonsterMoveToDestination(float x, float y, float z, float o, float sp
         InterruptNonMeleeSpells(false);
     }
 
+    SetFallInformation(0,z);
     GetMotionMaster()->MoveToDestination(x, y, z, o, target, speed, height, 0);
 }
 
@@ -13161,6 +13163,7 @@ void Unit::KnockBackWithAngle(float angle, float horizontalSpeed, float vertical
 {
     if (GetTypeId() == TYPEID_PLAYER)
     {
+        SetFallInformation(0, GetPositionZ());
         ((Player*)this)->GetAntiCheat()->SetImmune(uint32((3 * verticalSpeed / Movement::gravity) * 1000));
         ((Player*)this)->GetSession()->SendKnockBack(angle, horizontalSpeed, verticalSpeed);
     }
@@ -13179,6 +13182,7 @@ void Unit::KnockBackWithAngle(float angle, float horizontalSpeed, float vertical
         float fy = oy + dis * vsin;
         float fz = oz;
 
+        SetFallInformation(0, fz);
         MonsterMoveToDestination(fx,fy,fz,GetOrientation(),horizontalSpeed,max_height, true);
     }
 }

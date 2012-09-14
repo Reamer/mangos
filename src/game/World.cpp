@@ -663,6 +663,8 @@ void World::LoadConfigSettings(bool reload)
 
     setConfig(CONFIG_BOOL_RESILENCE_ALTERNATIVE_CALCULATION, "ResilenceAlternativeCalculation", false);
 
+    setConfig(CONFIG_BOOL_BLINK_ANIMATION_TYPE, "BlinkAnimationType", false);
+
     setConfig(CONFIG_BOOL_FACTION_AND_RACE_CHANGE_WITHOUT_RENAMING, "FactiomAndRaceChangeWithoutRenaming", false);
 
     setConfigMinMax(CONFIG_UINT32_START_PLAYER_MONEY, "StartPlayerMoney", 0, 0, MAX_MONEY_AMOUNT);
