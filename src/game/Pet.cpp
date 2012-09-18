@@ -56,6 +56,8 @@ m_declinedname(NULL)
 
 Pet::~Pet()
 {
+    m_spells.clear();
+
     delete m_declinedname;
 
     if (m_PetScalingData)
@@ -1343,7 +1345,9 @@ void Pet::_SaveSpells()
 
 void Pet::_LoadAuras(uint32 timediff)
 {
-    RemoveAllAuras();
+    // Remove auras before load only for permanent pets! Some temp pets has additional auras in creature_addon
+    if (getPetType() == HUNTER_PET || m_duration == 0 )
+        RemoveAllAuras();
 
     QueryResult *result = CharacterDatabase.PQuery("SELECT caster_guid,item_guid,spell,stackcount,remaincharges,basepoints0,basepoints1,basepoints2,periodictime0,periodictime1,periodictime2,maxduration,remaintime,effIndexMask FROM pet_aura WHERE guid = '%u'", m_charmInfo->GetPetNumber());
 

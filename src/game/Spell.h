@@ -664,6 +664,7 @@ class Spell
         void AddGOTarget(GameObject* target, SpellEffectIndex effIndex);
         void AddGOTarget(ObjectGuid goGuid, SpellEffectIndex effIndex);
         void AddItemTarget(Item* target, SpellEffectIndex effIndex);
+
         void DoAllEffectOnTarget(TargetInfo *target);
         void HandleDelayedSpellLaunch(TargetInfo *target);
         void InitializeDamageMultipliers();

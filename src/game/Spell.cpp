@@ -1511,8 +1511,6 @@ void Spell::DoSpellHitOnUnit(Unit *unit, uint32 effectMask)
         m_spellAuraHolder->setDiminishGroup(m_diminishGroup);
         m_spellAuraHolder->SetInUse(true);
     }
-    else
-        m_spellAuraHolder = SpellAuraHolderPtr(NULL);
 
     for(int effectNumber = 0; effectNumber < MAX_EFFECT_INDEX; ++effectNumber)
     {
