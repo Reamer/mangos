@@ -2124,27 +2124,29 @@ bool GameObject::CalculateCurrentCollisionState() const
     if (!m_model || !isSpawned())
         return false;
 
-    bool startOpen;
-    bool result;
+    bool result = true;
 
     switch (GetGoType())
     {
         case GAMEOBJECT_TYPE_DOOR:
         case GAMEOBJECT_TYPE_BUTTON:
-            startOpen = GetGOInfo()->door.startOpen;
+        {
+            if (GetGOInfo()->door.startOpen)
+                result = false;
+            GameObjectData const* data = sObjectMgr.GetGOData(GetGUIDLow());
+            if (data)
+            {
+                if (data->go_state)
+                    result = !result;
+            }
+            if (GetGoState() == GO_STATE_READY)
+                result = !result;
             break;
-            // place custom collision rules here
+        }
+        // place custom collision rules here
         default:
-            startOpen = false;
             break;
     }
-
-    if ((GetGoState() == GO_STATE_ACTIVE || GetGoState() == GO_STATE_ACTIVE_ALTERNATIVE) ||
-        (getLootState()  == GO_ACTIVATED || getLootState()  == GO_JUST_DEACTIVATED))
-        result = startOpen;
-    else if (GetGoState() == GO_STATE_READY ||
-            getLootState()  == GO_READY)
-        result = !startOpen;
 
     return result;
 }
