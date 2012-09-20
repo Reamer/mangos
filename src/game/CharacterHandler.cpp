@@ -745,17 +745,15 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
     }
 
 
-    if (pCurrChar->GetMap()->Instanceable() || !pCurrChar->GetMap()->Add(pCurrChar))
+    bool mapAddResult = pCurrChar->GetMap()->Add(pCurrChar);
+    AreaLockStatus lockStatus = pCurrChar->GetAreaTriggerLockStatus(sObjectMgr.GetMapEntranceTrigger(pCurrChar->GetMapId()), pCurrChar->GetDifficulty(pCurrChar->GetMap()->IsRaid()));
+    if (!mapAddResult || (lockStatus != AREA_LOCKSTATUS_OK && !pCurrChar->GetMap()->Instanceable()))
     {
-        AreaLockStatus lockStatus = pCurrChar->GetAreaTriggerLockStatus(sObjectMgr.GetMapEntranceTrigger(pCurrChar->GetMapId()), pCurrChar->GetDifficulty(pCurrChar->GetMap()->IsRaid()));
-        if (lockStatus != AREA_LOCKSTATUS_OK)
-        {
-            // normal delayed teleport protection not applied (and this correct) for this case (Player object just created)
-            AreaTrigger const* at = sObjectMgr.GetGoBackTrigger(pCurrChar->GetMapId());
-            // TODO Send something to client?
-            if (!at || !pCurrChar->TeleportTo(at->target_mapId, at->target_X, at->target_Y, at->target_Z, at->target_Orientation))
-                pCurrChar->TeleportToHomebind();
-        }
+        // normal delayed teleport protection not applied (and this correct) for this case (Player object just created)
+        AreaTrigger const* at = sObjectMgr.GetGoBackTrigger(pCurrChar->GetMapId());
+        // TODO Send something to client?
+        if (!at || !pCurrChar->TeleportTo(at->target_mapId, at->target_X, at->target_Y, at->target_Z, at->target_Orientation))
+            pCurrChar->TeleportToHomebind();
     }
 
     sObjectAccessor.AddObject(pCurrChar);
