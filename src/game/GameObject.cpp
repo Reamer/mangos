@@ -2129,7 +2129,6 @@ bool GameObject::CalculateCurrentCollisionState() const
     switch (GetGoType())
     {
         case GAMEOBJECT_TYPE_DOOR:
-        case GAMEOBJECT_TYPE_BUTTON:
         {
             if (GetGOInfo()->door.startOpen)
                 result = false;
@@ -2139,6 +2138,14 @@ bool GameObject::CalculateCurrentCollisionState() const
                 if (data->go_state)
                     result = !result;
             }
+            if (GetGoState() == GO_STATE_READY)
+                result = !result;
+            break;
+        }
+        case GAMEOBJECT_TYPE_BUTTON:
+        {
+            if (GetGOInfo()->button.startOpen)
+                result = false;
             if (GetGoState() == GO_STATE_READY)
                 result = !result;
             break;
