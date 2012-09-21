@@ -2793,7 +2793,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     if (unitTarget->GetEntry() != 28379)
                         return;
 
-                    m_caster->CastSpell(m_caster, 51658, true);
+                    m_caster->CastSpell(unitTarget, 51658, true);
                     return;
                 }
                 case 51840:                                 // Despawn Fruit Tosser
