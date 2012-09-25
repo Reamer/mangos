@@ -126,8 +126,15 @@ CreatureEventAI::CreatureEventAI(Creature* c) : CreatureAI(c)
     if (!m_bEmptyList)
     {
         for (CreatureEventAIList::iterator i = m_CreatureEventAIList.begin(); i != m_CreatureEventAIList.end(); ++i)
+        {
             if (SpawnedEventConditionsCheck((*i).Event))
                 ProcessEvent(*i);
+            if (i->Event.event_type == EVENT_T_TIMER_GENERIC)
+            {
+                if (i->UpdateRepeatTimer(m_creature, i->Event.timer.initialMin, i->Event.timer.initialMax))
+                    i->Enabled = true;
+            }
+        }
     }
     Reset();
 }
