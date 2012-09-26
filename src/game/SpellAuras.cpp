@@ -3240,11 +3240,6 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                 }
                 return;
             }
-            case 50442:                                     // Crystal Spike Pre-visual
-            {
-                target->CastSpell(target, target->GetMap()->IsRegularDifficulty() ? 47944 : 57067, true);
-                return;
-            }
             case 53463:                                     // Flesh Return - Tharonja
             {
                 if (Unit* caster = GetCaster())
@@ -8479,7 +8474,7 @@ void Aura::HandleSchoolAbsorb(bool apply, bool Real)
                 {
                     if (Unit* pPassenger = pVehicle->GetPassenger(i))
                     {
-                        pPassenger->MonsterSay("Ich bin der Passagier", 0);
+                        target->MonsterSay("Ich bin der Passagier", 0);
                         pPassenger->RemoveAurasDueToSpell(62056);
                         pPassenger->RemoveAurasDueToSpell(63985);
                     }
