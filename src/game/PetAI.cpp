@@ -37,7 +37,7 @@ int PetAI::Permissible(const Creature *creature)
     return PERMIT_BASE_NO;
 }
 
-PetAI::PetAI(Creature *c) : CreatureAI(c), i_tracker(TIME_INTERVAL_LOOK), inCombat(false)
+PetAI::PetAI(Creature *c) : CreatureAI(c), inCombat(false)
 {
     m_AllySet.clear();
     Reset();
@@ -46,15 +46,18 @@ PetAI::PetAI(Creature *c) : CreatureAI(c), i_tracker(TIME_INTERVAL_LOOK), inComb
 void PetAI::Reset()
 {
     m_savedTargetGuid.Clear();
+    m_attackDistanceRecheckTimer.SetInterval(TIME_INTERVAL_LOOK);
+    m_attackDistanceRecheckTimer.Reset();
+    m_updateAlliesTimer.SetInterval(ALLIES_UPDATE_TIME);
+    m_updateAlliesTimer.Reset();
     UpdateAllies();
 
     for (uint8 i = PET_SPELL_PASSIVE; i < PET_SPELL_MAX; ++i)
         m_spellType[i].clear();
 
     m_AIType = PET_AI_PASSIVE;
-    attackDistance  = 0.0f;
+    m_attackDistance  = 0.0f;
     float f_range   = 0.0f;
-    m_attackDistanceRecheckTimer = TIME_INTERVAL_LOOK;
 
     if (!m_creature->GetCharmInfo())
         return;
@@ -178,24 +181,21 @@ void PetAI::Reset()
     if (m_spellType[PET_SPELL_RANGED].size() > 0 && (m_spellType[PET_SPELL_MELEE].size() < m_spellType[PET_SPELL_RANGED].size()))
     {
         m_AIType = PET_AI_RANGED;
-        attackDistance = f_range - m_creature->GetObjectBoundingRadius() - 2.0f;
-        if (attackDistance < 20.0f)
-            attackDistance = 18.0f;
+        m_attackDistance = f_range - m_creature->GetObjectBoundingRadius() - 2.0f;
+        if (m_attackDistance < 20.0f)
+            m_attackDistance = 18.0f;
     }
     else
     {
         m_AIType = PET_AI_MELEE;
-        attackDistance = 0.0f;
+        m_attackDistance = 0.0f;
     }
     m_savedAIType = m_AIType;
-
-    if (!m_creature->IsInUnitState(UNIT_ACTION_HOME))
-        m_creature->GetMotionMaster()->MoveTargetedHome();
 
     DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS,"PetAI::Reset %s, AI %u dist %f, spells: %u %u %u %u %u %u %u %u %u %u %u %u",
         m_creature->GetObjectGuid().GetString().c_str(),
         m_AIType,
-        attackDistance,
+        m_attackDistance,
         m_spellType[PET_SPELL_PASSIVE].size(),
         m_spellType[PET_SPELL_NONCOMBAT].size(),
         m_spellType[PET_SPELL_BUFF].size(),
@@ -237,25 +237,25 @@ void PetAI::MoveInLineOfSight(Unit *u)
     }
 }
 
-void PetAI::AttackStart(Unit *u)
+void PetAI::AttackStart(Unit* pTarget)
 {
     m_savedTargetGuid.Clear();
 
-    if(!u || (m_creature->IsPet() && ((Pet*)m_creature)->getPetType() == MINI_PET))
+    if(!pTarget || (m_creature->IsPet() && ((Pet*)m_creature)->getPetType() == MINI_PET))
         return;
 
     m_creature->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_ENTER_COMBAT);
 
     Unit* owner = m_creature->GetCharmerOrOwner();
-    if (!u->isVisibleForOrDetect(m_creature,m_creature,true) && 
-        (owner && !u->isVisibleForOrDetect(owner,owner,true)))
+    if (!pTarget->isVisibleForOrDetect(m_creature,m_creature,true) &&
+        (owner && !pTarget->isVisibleForOrDetect(owner,owner,true)))
         return;
 
-    if(m_creature->Attack(u,(m_AIType != PET_AI_RANGED)))
+    if(m_creature->Attack(pTarget,(m_AIType != PET_AI_RANGED)))
     {
         inCombat = true;
         if (!UpdateAIType())
-            MoveToVictim(u);
+            MoveToVictim(pTarget);
     }
 }
 
@@ -281,27 +281,6 @@ bool PetAI::UpdateAIType()
         return false;
     }
 
-    if (sWorld.getConfig(CONFIG_BOOL_PET_ADVANCED_AI) &&
-        m_AIType != PET_AI_SLACKER &&
-        !m_creature->GetCharmInfo()->HasState(CHARM_STATE_REACT,REACT_AGGRESSIVE) &&
-        m_creature->HasAuraState(AURA_STATE_HEALTHLESS_20_PERCENT))
-    {
-        m_savedAIType = m_AIType;
-        m_AIType = PET_AI_SLACKER;
-        MoveToVictim(m_creature->getVictim());
-        return true;
-    }
-    else if (sWorld.getConfig(CONFIG_BOOL_PET_ADVANCED_AI) &&
-        m_AIType == PET_AI_SLACKER &&
-        (!m_creature->HasAuraState(AURA_STATE_HEALTHLESS_20_PERCENT) ||
-        m_creature->GetCharmInfo()->HasState(CHARM_STATE_REACT,REACT_AGGRESSIVE)))
-    {
-        m_AIType = m_savedAIType;
-        m_creature->GetMotionMaster()->MoveIdle();
-        MoveToVictim(m_creature->getVictim());
-        return true;
-    }
-
     if (m_AIType == PET_AI_RANGED)
     {
         if (m_creature->GetPower(POWER_MANA) < m_creature->GetMaxPower(POWER_MANA)/10)
@@ -323,33 +302,31 @@ bool PetAI::UpdateAIType()
     return false;
 }
 
-void PetAI::MoveToVictim(Unit* u)
+void PetAI::MoveToVictim(Unit* pTarget)
 {
-    if (!u)
+    if (!pTarget)
         return;
 
     switch (m_AIType)
     {
         case PET_AI_PASSIVE:
-        case PET_AI_SLACKER:
         case PET_AI_HEALER:
-            if (Unit* owner = m_creature->GetCharmerOrOwner())
-                m_creature->GetMotionMaster()->MoveChase(owner, PET_FOLLOW_DIST, m_creature->IsPet() ? ((Pet*)m_creature)->GetPetFollowAngle() : PET_FOLLOW_ANGLE);
+            m_creature->GetMotionMaster()->MoveTargetedHome();
             break;
         case PET_AI_RANGED:
             if (sWorld.getConfig(CONFIG_BOOL_PET_ADVANCED_AI))
-                m_creature->GetMotionMaster()->MoveChase(u, attackDistance, m_creature->GetAngle(u) + frand(-M_PI_F/4.0f, M_PI_F/4.0f));
+                m_creature->GetMotionMaster()->MoveChase(pTarget, m_attackDistance, m_creature->GetAngle(pTarget) + frand(-M_PI_F/4.0f, M_PI_F/4.0f));
             else
-                m_creature->GetMotionMaster()->MoveChase(u);
+                m_creature->GetMotionMaster()->MoveChase(pTarget);
             break;
         case PET_AI_MELEE:
         case PET_AI_RANGED_NOAMMO:
         default:
-            m_creature->GetMotionMaster()->MoveChase(u);
+            m_creature->GetMotionMaster()->MoveChase(pTarget);
             break;
     }
     DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS,"PetAI::MoveToVictim pet %s move to %s, distance %f,  AI type %u",
-        m_creature->GetObjectGuid().GetString().c_str(),u ? u->GetObjectGuid().GetString().c_str() : "<none>",attackDistance, m_AIType);
+        m_creature->GetObjectGuid().GetString().c_str(),pTarget ? pTarget->GetObjectGuid().GetString().c_str() : "<none>",m_attackDistance, m_AIType);
 }
 
 void PetAI::EnterEvadeMode()
@@ -388,10 +365,10 @@ void PetAI::_stopAttack()
 
     if (IsInCombat())
     {
-        m_creature->CastStop(true);
+        m_creature->CastStop();
         m_creature->AttackStop();
-        if (!m_creature->IsInUnitState(UNIT_ACTION_HOME))
-            m_creature->GetMotionMaster()->MoveTargetedHome();
+        m_creature->GetMotionMaster()->Clear();
+        m_creature->GetMotionMaster()->MoveTargetedHome();
     }
 }
 
@@ -402,11 +379,12 @@ void PetAI::UpdateAI(const uint32 diff)
 
     Unit* owner = m_creature->GetCharmerOrOwner();
 
-    if (m_updateAlliesTimer <= diff)
-        // UpdateAllies self set update timer
+    m_updateAlliesTimer.Update(diff);
+    if (m_updateAlliesTimer.Passed())
+    {
         UpdateAllies();
-    else
-        m_updateAlliesTimer -= diff;
+        m_updateAlliesTimer.Reset();
+    }
 
     if (!inCombat && !m_savedTargetGuid.IsEmpty())
     {
@@ -484,15 +462,16 @@ void PetAI::UpdateAI(const uint32 diff)
 
         if (!m_creature->IsNonMeleeSpellCasted(true))
         {
-            if ( m_attackDistanceRecheckTimer <= diff)
+            m_attackDistanceRecheckTimer.Update(diff);
+            if (m_attackDistanceRecheckTimer.Passed())
             {
-                m_attackDistanceRecheckTimer = TIME_INTERVAL_LOOK;
+                m_attackDistanceRecheckTimer.Reset();
                 if (sWorld.getConfig(CONFIG_BOOL_PET_ADVANCED_AI) && m_AIType == PET_AI_RANGED)
                 {
                     float dist = m_creature->GetDistance(m_creature->getVictim());
                     if ((m_creature->CanReachWithMeleeAttack(m_creature->getVictim()) &&
                         m_creature->IsWithinDist(m_creature->GetOwner(), m_creature->GetMap()->GetVisibilityDistance()/2.0f)) ||
-                        dist > (attackDistance + 2.0f))
+                        dist > (m_attackDistance + 2.0f))
                     {
                         MoveToVictim(m_creature->getVictim());
                         return;
@@ -504,8 +483,6 @@ void PetAI::UpdateAI(const uint32 diff)
                     // AOE check
                 }
             }
-            else
-                m_attackDistanceRecheckTimer -= diff;
         }
     }
     else if (owner && owner->IsInCombat())
@@ -629,18 +606,6 @@ void PetAI::UpdateAI(const uint32 diff)
             case PET_AI_PASSIVE:
             {
                 currentSpells.push_back(GetSpellType(PET_SPELL_BUFF));
-                break;
-            }
-            case PET_AI_SLACKER:
-            {
-                if (!IsInCombat())
-                    break;
-                if (m_creature->IsCrowdControlled() || m_creature->GetCharmerOrOwner()->IsCrowdControlled())
-                    currentSpells.push_back(GetSpellType(PET_SPELL_FREEACTION));
-                currentSpells.push_back(GetSpellType(PET_SPELL_DEFENCE));
-                currentSpells.push_back(GetSpellType(PET_SPELL_BUFF));
-                currentSpells.push_back(GetSpellType(PET_SPELL_DEBUFF));
-                currentSpells.push_back(GetSpellType(PET_SPELL_RANGED));
                 break;
             }
             case PET_AI_HEALER:
@@ -835,12 +800,6 @@ void PetAI::UpdateAllies()
 
 void PetAI::AttackedBy(Unit* attacker)
 {
-    if (m_AIType == PET_AI_SLACKER)
-    {
-        // special reaction (like change movement type) here
-        return;
-    }
-
     //when attacked, fight back in case 1)no victim already AND 2)not set to passive AND 3)not set to stay, unless can it can reach attacker with melee attack anyway
     if(!m_creature->getVictim() && m_creature->GetCharmInfo() && !m_creature->GetCharmInfo()->HasState(CHARM_STATE_REACT,REACT_PASSIVE) &&
         (!m_creature->GetCharmInfo()->HasState(CHARM_STATE_COMMAND,COMMAND_STAY) || m_creature->CanReachWithMeleeAttack(attacker)))
@@ -904,4 +863,4 @@ uint32 PetAI::GetSpellType(PetAutoSpellType type)
 bool PetAI::IsInCombat() 
 {
     return (inCombat || m_creature->isInCombat());
-};
+}
