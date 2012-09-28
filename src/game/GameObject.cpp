@@ -2155,7 +2155,7 @@ bool GameObject::CalculateCurrentCollisionState() const
             break;
     }
     // some special gameobjects (HACKS!!!)
-    switch (GetGUIDLow())
+    switch (GetEntry())
     {
         case 196485:                // Saronit Rock from Garfrost Encounter
             result = true;

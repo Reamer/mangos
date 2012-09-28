@@ -7970,6 +7970,8 @@ void Spell::EffectSummonObjectWild(SpellEffectIndex eff_idx)
     else
         m_caster->GetClosePoint(x, y, z, DEFAULT_WORLD_OBJECT_SIZE);
 
+    m_caster->UpdateAllowedPositionZ(x,y,z);
+
     Map *map = target->GetMap();
 
     if(!pGameObj->Create(map->GenerateLocalLowGuid(HIGHGUID_GAMEOBJECT), gameobject_id, map,
