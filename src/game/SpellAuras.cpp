@@ -1970,7 +1970,15 @@ void Aura::TriggerSpell()
 //                    case 67546: break;
                     case 69012:                             // Explosive Barrage - Krick and Ick
                     {
-                        if (Unit* pTarget = triggerTarget->SelectRandomUnfriendlyTarget(NULL, DEFAULT_VISIBILITY_DISTANCE))
+                        if (triggerTarget->GetTypeId() == TYPEID_UNIT)
+                        {
+                            if (Unit* pTarget = ((Creature*)triggerTarget)->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+                            {
+                                triggerTarget->CastSpell(pTarget, 69015, true);
+                            }
+                        }
+                        // in case player (GM) cast spell
+                        else if (Unit* pTarget = triggerTarget->SelectRandomUnfriendlyTarget(NULL, DEFAULT_VISIBILITY_DISTANCE))
                         {
                             triggerTarget->CastSpell(pTarget, 69015, true);
                         }
