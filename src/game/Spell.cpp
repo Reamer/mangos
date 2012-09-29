@@ -8717,6 +8717,14 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
             }
             break;
         }
+        case 68987:                            // Pursuit (Pit of Saron, Ick)
+        {
+            if (i != EFFECT_INDEX_2)
+                return false;
+
+            targetUnitMap.push_back(m_caster);
+            break;
+        }
         /*case 69057:                                 // Bone Spike Graveyard (Icecrown Citadel, Lord Marrowgar encounter, 10N)
         case 70826:                                 // Bone Spike Graveyard (Icecrown Citadel, Lord Marrowgar encounter, 25N)
         case 72088:                                 // Bone Spike Graveyard (Icecrown Citadel, Lord Marrowgar encounter, 10H)
