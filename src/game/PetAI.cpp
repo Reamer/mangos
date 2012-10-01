@@ -192,6 +192,8 @@ void PetAI::Reset()
     }
     m_savedAIType = m_AIType;
 
+    m_creature->GetMotionMaster()->MoveTargetedHome();
+
     DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS,"PetAI::Reset %s, AI %u dist %f, spells: %u %u %u %u %u %u %u %u %u %u %u %u",
         m_creature->GetObjectGuid().GetString().c_str(),
         m_AIType,
