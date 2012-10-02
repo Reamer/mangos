@@ -1064,14 +1064,14 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, DamageInfo* damageI
                     // TODO: maybe add some modifier (damage *(+) X)
                     if (Unit* caster = triggeredByAura->GetCaster())
                     {
-                        if (procSpell && IsPositiveSpell(procSpell))
+                        if ((procFlag & (PROC_FLAG_TAKEN_POSITIVE_AOE | PROC_FLAG_TAKEN_POSITIVE_SPELL)) || ((procEx & PROC_EX_PERIODIC_POSITIVE) && (procFlag & PROC_FLAG_ON_DO_PERIODIC)))
                         {
                             // heal spell
                             target = caster;
                             basepoints[0] = damage;
                             triggered_spell_id = 69190;
                         }
-                        else
+                        else if (procFlag & (PROC_FLAG_SUCCESSFUL_MELEE_HIT | PROC_FLAG_SUCCESSFUL_MELEE_SPELL_HIT | PROC_FLAG_SUCCESSFUL_RANGED_HIT | PROC_FLAG_SUCCESSFUL_RANGED_SPELL_HIT | PROC_FLAG_SUCCESSFUL_NEGATIVE_SPELL_HIT | PROC_FLAG_ON_DO_PERIODIC))
                         {
                             // damage
                             if (target->getVictim())
