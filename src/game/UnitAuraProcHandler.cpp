@@ -1066,7 +1066,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, DamageInfo* damageI
                     {
                         caster->MonsterSay("ich bin der caster", LANG_UNIVERSAL);
 
-                        if (IsPositiveSpell(procSpell))
+                        if (procSpell && IsPositiveSpell(procSpell))
                         {
                             MonsterSay("We have a heal spell", LANG_UNIVERSAL);
                             target = caster;
@@ -1076,7 +1076,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, DamageInfo* damageI
                         }
                         else
                         {
-                            MonsterSay("We have a damage spell", LANG_UNIVERSAL);
+                            MonsterSay("We have a damage", LANG_UNIVERSAL);
                             if (target->getVictim())
                             {
                                 target = caster->getVictim();
