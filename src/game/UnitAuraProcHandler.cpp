@@ -1059,6 +1059,38 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, DamageInfo* damageI
                 case 68160:
                     triggered_spell_id = 66809;
                     break;
+                case 69172:                                     // Overlord's Brand - Tyrannus Pit of Saron
+                {
+                    MonsterSay("We have a proc", LANG_UNIVERSAL);
+                    if (Unit* caster = triggeredByAura->GetCaster())
+                    {
+                        caster->MonsterSay("ich bin der caster", LANG_UNIVERSAL);
+
+                        if (IsPositiveSpell(procSpell))
+                        {
+                            MonsterSay("We have a heal spell", LANG_UNIVERSAL);
+                            target = caster;
+                            basepoints[0] = damage;
+                            triggered_spell_id = 69190;
+
+                        }
+                        else
+                        {
+                            MonsterSay("We have a damage spell", LANG_UNIVERSAL);
+                            if (target->getVictim())
+                            {
+                                target = caster->getVictim();
+                                basepoints[0] = damage;
+                                triggered_spell_id = 69189;
+                            }
+                            else
+                                MonsterSay("ich habe kein Opfer", LANG_UNIVERSAL);
+                        }
+                    }
+                    else
+                        MonsterSay("ich habe keinen Caster", LANG_UNIVERSAL);
+                    break;
+                }
                 // Dark Hunger (Lich King)
                 case 69383:
                     basepoints[0] = 0.5f * damage;
