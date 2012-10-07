@@ -7741,16 +7741,20 @@ void Spell::EffectWeaponDmg(SpellEffectIndex eff_idx)
                     {
                         // Effect 3 damage is bonus
                         bonus = count * CalculateDamage(EFFECT_INDEX_2, unitTarget) / 100.0f;
+                        sLog.outError("Boni davor: %f", bonus);
                         // Blood Strike and Obliterate store bonus*2
                         if (m_spellInfo->GetSpellFamilyFlags().test<CF_DEATHKNIGHT_BLOOD_STRIKE, CF_DEATHKNIGHT_OBLITERATE>())
                             bonus /= 2.0f;
-                           if (Aura const* dummy = m_caster->GetDummyAura(64736)) // Item - Death Knight T8 Melee 4P Bonus
-                               bonus *= ((float)dummy->GetModifier()->m_amount+100.0f)/100.0f;
+                        if (Aura const* dummy = m_caster->GetDummyAura(64736)) // Item - Death Knight T8 Melee 4P Bonus
+                        {
+                            sLog.outError("Boni setzt sich zusammen aus %u mit Count: %u", dummy->GetModifier()->m_amount, count);
+                            bonus += dummy->GetModifier()->m_amount * count / 100.0f;
+                        }
                     }
                     else // Blood-Caked Blade damage info taken from http://www.wowhead.com/forums&topic=54152.2 and Dr.Damage addon.
                        bonus= count * 0.5f;//Blood-Caked Blade damage = (0.25(base) + diseaseCount * 0.125)= 0.25*(1+diseaseCount * 0.5)
 
-
+                    sLog.outError("Boni danach: %f", bonus);
                     totalDamagePercentMod *= 1.0f + bonus;
                 }
 
