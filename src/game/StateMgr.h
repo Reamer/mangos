@@ -79,7 +79,6 @@ public:
 };
 
 typedef std::map<UnitActionPriority, ActionInfo> UnitActionStorage;
-//typedef std::vector<ActionInfo> UnitActionStorage;
 
 class UnitStateMgr
 {

@@ -309,6 +309,19 @@ void Map::LoadGrid(const Cell& cell, bool no_unload)
         getNGrid(cell.GridX(), cell.GridY())->setUnloadExplicitLock(true);
 }
 
+bool Map::PreloadGrid(float x, float y)
+{
+    CellPair pair = MaNGOS::ComputeCellPair(x, y);
+    if(pair.x_coord >= TOTAL_NUMBER_OF_CELLS_PER_MAP || pair.y_coord >= TOTAL_NUMBER_OF_CELLS_PER_MAP )
+    {
+        sLog.outError("Map::PreloadGrid: invalid coordinates X:%f Y:%f grid cell [%u:%u]", x, y, pair.x_coord, pair.y_coord);
+        return false;
+    }
+    Cell cell(pair);
+    EnsureGridLoaded(cell);
+    return IsLoadingObjectsQueueEmpty();
+}
+
 bool Map::Add(Player *player)
 {
     player->GetMapRef().link(this, player);
@@ -473,26 +486,27 @@ void Map::Update(const uint32 &t_diff)
     BattleGround* bg = this->IsBattleGroundOrArena() ? ((BattleGroundMap*)this)->GetBG() : NULL;
     while(!i_loadingObjectQueue.empty())
     {
-        LoadingObjectQueue& loadingObject = i_loadingObjectQueue.front();
-        switch(loadingObject.objectTypeID)
+        LoadingObjectQueueMember* loadingObject = i_loadingObjectQueue.top();
+        switch(loadingObject->objectTypeID)
         {
             case TYPEID_UNIT:
             {
-                LoadObjectToGrid<Creature>(loadingObject.guid, loadingObject.grid, bg);
+                LoadObjectToGrid<Creature>(loadingObject->guid, loadingObject->grid, bg);
                 break;
             }
             case TYPEID_GAMEOBJECT:
             {
-                LoadObjectToGrid<GameObject>(loadingObject.guid, loadingObject.grid, bg);
+                LoadObjectToGrid<GameObject>(loadingObject->guid, loadingObject->grid, bg);
                 break;
             }
             default:
-                sLog.outError("loadingObject.guid = %u, loadingObject.objectTypeID = %u", loadingObject.guid, loadingObject.objectTypeID);
+                sLog.outError("loadingObject->guid = %u, loadingObject.objectTypeID = %u", loadingObject->guid, loadingObject->objectTypeID);
                 break;
         }
 
         i_loadingObjectQueue.pop();
-        if ((WorldTimer::getMSTime() - loadingObjectToGridUpdateTime) > 10) // Only 10ms for loading object in one tick
+        delete loadingObject;
+        if (WorldTimer::getMSTimeDiff(loadingObjectToGridUpdateTime, WorldTimer::getMSTime()) > sWorld.getConfig(CONFIG_UINT32_OBJECTLOADINGSPLITTER_ALLOWEDTIME))
             break;
     }
 
@@ -893,6 +907,13 @@ bool Map::UnloadGrid(const uint32 &x, const uint32 &y, bool pForce)
 
 void Map::UnloadAll(bool pForce)
 {
+    while (!i_loadingObjectQueue.empty())
+    {
+        LoadingObjectQueueMember* member = i_loadingObjectQueue.top();
+        i_loadingObjectQueue.pop();
+        delete member;
+    }
+
     for (GridRefManager<NGridType>::iterator i = GridRefManager<NGridType>::begin(); i != GridRefManager<NGridType>::end(); )
     {
         NGridType &grid(*i->getSource());

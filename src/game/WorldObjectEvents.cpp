@@ -33,6 +33,12 @@
 
 // Event processor
 
+WorldObjectEventProcessor::WorldObjectEventProcessor()
+{
+    //m_time = WorldTimer::getMSTime();
+    m_events.clear();
+}
+
 void WorldObjectEventProcessor::Update(uint32 p_time, bool force)
 {
     if (force)
@@ -247,6 +253,7 @@ bool RelocationNotifyEvent::Execute(uint64 /*e_time*/, uint32 /*p_time*/)
 void RelocationNotifyEvent::Abort(uint64)
 {
     m_owner._SetAINotifyScheduled(false);
+    to_Abort = true;
 };
 
 bool ManaUseEvent::Execute(uint64 /*e_time*/, uint32 /*p_time*/)
@@ -374,7 +381,7 @@ bool EvadeDelayEvent::Execute(uint64 /*e_time*/, uint32 /*p_time*/)
             if (!c_owner)
                 return true;
 
-            if (m_owner.GetOwner() && m_owner.GetOwner()->SelectHostileTarget(false))
+            if (m_owner.GetOwner() && m_owner.GetOwner()->GetTypeId() == TYPEID_UNIT && m_owner.GetOwner()->SelectHostileTarget(false))
                 return true;
 
             if (c_owner->IsAILocked())
@@ -429,6 +436,13 @@ bool PassengerEjectEvent::Execute(uint64 /*e_time*/, uint32 /*p_time*/)
         if (!m_vehicle.RemoveSpellsCausingAuraByCaster(SPELL_AURA_CONTROL_VEHICLE, passenger->GetObjectGuid()))
             passenger->ExitVehicle();
     }
+    return true;
+}
+
+// Player events
+bool TeleportDelayEvent::Execute(uint64 /*e_time*/, uint32 /*p_time*/)
+{
+    m_owner.TeleportTo(m_location, m_options);
     return true;
 }
 

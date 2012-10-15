@@ -97,11 +97,7 @@ bool FleeingMovementGenerator<T>::_getPoint(T& owner, float& x, float& y, float&
 
     float curr_x, curr_y, curr_z;
     owner.GetPosition(curr_x, curr_y, curr_z);
-
-    x = curr_x + dist * cos(angle);
-    y = curr_y + dist * sin(angle);
-    z = curr_z;
-
+    owner.GetNearPoint(&owner, x, y, z, owner.GetObjectBoundingRadius(), dist, angle);
     if (owner.GetTypeId() == TYPEID_PLAYER)
         owner.GetMap()->GetHitPosition(curr_x, curr_y, curr_z, x,y,z, owner.GetPhaseMask(), -0.1f);
 

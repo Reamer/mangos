@@ -7137,7 +7137,7 @@ void Spell::EffectEnchantItemPerm(SpellEffectIndex eff_idx)
     // add new enchanting if equipped
     item_owner->ApplyEnchantment(itemTarget,PERM_ENCHANTMENT_SLOT,true);
 
-    itemTarget->SetSoulboundTradeable(NULL, item_owner, false);
+    itemTarget->SetNotSoulboundTradeable(item_owner);
 }
 
 void Spell::EffectEnchantItemPrismatic(SpellEffectIndex eff_idx)
@@ -7197,7 +7197,7 @@ void Spell::EffectEnchantItemPrismatic(SpellEffectIndex eff_idx)
     // add new enchanting if equipped
     item_owner->ApplyEnchantment(itemTarget,PRISMATIC_ENCHANTMENT_SLOT,true);
 
-    itemTarget->SetSoulboundTradeable(NULL, item_owner, false);
+    itemTarget->SetNotSoulboundTradeable(item_owner);
 }
 
 void Spell::EffectEnchantItemTmp(SpellEffectIndex eff_idx)
@@ -8492,20 +8492,20 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                         m_caster->CastCustomSpell(unitTarget, 28375, &damage, NULL, NULL, true);
                     return;
                 }
-                case 28526:                                 // Icebolt - Saphiron (Naxxramas)
+                case 28526:                                 // Icebolt (Naxxramas: Sapphiron)
                 {
                     if (!unitTarget)
                         return;
 
-                    Unit* pTarget = unitTarget->SelectRandomUnfriendlyTarget(0, 100.0f);
-                    for (int i = 0; i < 10; i++)
+                    if (unitTarget->GetTypeId() == TYPEID_UNIT)
                     {
-                        if (pTarget->GetTypeId() == TYPEID_PLAYER)
-                            break;
-                        pTarget = unitTarget->SelectRandomUnfriendlyTarget(0, 100.0f);
+                        Creature* pCreature = (Creature*)unitTarget;
+                        if (pCreature && pCreature->AI())
+                        {
+                            if (Unit* pTarget = pCreature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, uint32(0), SELECT_FLAG_PLAYER))
+                                pCreature->CastSpell(pTarget, 28522, true);
+                        }
                     }
-                    if (pTarget->GetTypeId() == TYPEID_PLAYER)
-                        unitTarget->CastSpell(pTarget, 28522, false);
                     return;
                 }
                 case 28560:                                 // Summon Blizzard
@@ -8572,6 +8572,14 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     if (item)
                         DoCreateItem(eff_idx,item);
 
+                    break;
+                }
+                case 30541:                                 // Blaze
+                {
+                    if (!unitTarget)
+                        return;
+
+                    unitTarget->CastSpell(unitTarget, 30542, true);
                     break;
                 }
                 case 30769:                                 // Pick Red Riding Hood

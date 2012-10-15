@@ -283,6 +283,27 @@ bool PetAI::UpdateAIType()
         return false;
     }
 
+    if (sWorld.getConfig(CONFIG_BOOL_PET_ADVANCED_AI_SLACKER) &&
+        m_AIType != PET_AI_SLACKER &&
+        !m_creature->GetCharmInfo()->HasState(CHARM_STATE_REACT,REACT_AGGRESSIVE) &&
+        m_creature->HasAuraState(AURA_STATE_HEALTHLESS_20_PERCENT))
+    {
+        m_savedAIType = m_AIType;
+        m_AIType = PET_AI_SLACKER;
+        MoveToVictim(m_creature->getVictim());
+        return true;
+    }
+    else if (sWorld.getConfig(CONFIG_BOOL_PET_ADVANCED_AI_SLACKER) &&
+        m_AIType == PET_AI_SLACKER &&
+        (!m_creature->HasAuraState(AURA_STATE_HEALTHLESS_20_PERCENT) ||
+        m_creature->GetCharmInfo()->HasState(CHARM_STATE_REACT,REACT_AGGRESSIVE)))
+    {
+        m_AIType = m_savedAIType;
+        m_creature->GetMotionMaster()->MoveIdle();
+        MoveToVictim(m_creature->getVictim());
+        return true;
+    }
+
     if (m_AIType == PET_AI_RANGED)
     {
         if (m_creature->GetPower(POWER_MANA) < m_creature->GetMaxPower(POWER_MANA)/10)
@@ -312,6 +333,7 @@ void PetAI::MoveToVictim(Unit* pTarget)
     switch (m_AIType)
     {
         case PET_AI_PASSIVE:
+        case PET_AI_SLACKER:
         case PET_AI_HEALER:
             m_creature->GetMotionMaster()->MoveTargetedHome();
             break;
@@ -610,6 +632,18 @@ void PetAI::UpdateAI(const uint32 diff)
                 currentSpells.push_back(GetSpellType(PET_SPELL_BUFF));
                 break;
             }
+            case PET_AI_SLACKER:
+            {
+                if (!IsInCombat())
+                    break;
+                if (m_creature->IsCrowdControlled() || m_creature->GetCharmerOrOwner()->IsCrowdControlled())
+                    currentSpells.push_back(GetSpellType(PET_SPELL_FREEACTION));
+                currentSpells.push_back(GetSpellType(PET_SPELL_DEFENCE));
+                currentSpells.push_back(GetSpellType(PET_SPELL_BUFF));
+                currentSpells.push_back(GetSpellType(PET_SPELL_DEBUFF));
+                currentSpells.push_back(GetSpellType(PET_SPELL_RANGED));
+                break;
+            }
             case PET_AI_HEALER:
             {
                 if (!IsInCombat())
@@ -800,6 +834,12 @@ void PetAI::UpdateAllies()
 
 void PetAI::AttackedBy(Unit* attacker)
 {
+    if (m_AIType == PET_AI_SLACKER)
+    {
+        // special reaction (like change movement type) here
+        return;
+    }
+
     //when attacked, fight back in case 1)no victim already AND 2)not set to passive AND 3)not set to stay, unless can it can reach attacker with melee attack anyway
     if(!m_creature->getVictim() && m_creature->GetCharmInfo() && !m_creature->GetCharmInfo()->HasState(CHARM_STATE_REACT,REACT_PASSIVE) &&
         (!m_creature->GetCharmInfo()->HasState(CHARM_STATE_COMMAND,COMMAND_STAY) || m_creature->CanReachWithMeleeAttack(attacker)))

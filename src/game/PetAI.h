@@ -34,6 +34,7 @@ enum PetAIType
     PET_AI_RANGED,
     PET_AI_RANGED_NOAMMO,
     PET_AI_HEALER,
+    PET_AI_SLACKER,
     PET_AI_MAX
 };
 

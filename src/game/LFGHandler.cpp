@@ -238,7 +238,7 @@ void WorldSession::HandleLfgPlayerLockInfoRequestOpcode(WorldPacket &/*recv_data
             {
                 Quest const* pQuest = sObjectMgr.GetQuestTemplate(reward->reward[0].questId);
 
-                if (!GetPlayer()->CanTakeQuest(pQuest, false))
+                if (!pQuest || !GetPlayer()->CanTakeQuest(pQuest, false))
                     done = 1;
 
                 qRew = sObjectMgr.GetQuestTemplate(reward->reward[done].questId);
