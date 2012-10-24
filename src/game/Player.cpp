@@ -14261,7 +14261,11 @@ void Player::RewardQuest(Quest const *pQuest, uint32 reward, Object* questGiver,
         // Give player extra money (for max level already included in pQuest->GetRewMoneyMaxLevel())
         if (pQuest->GetRewOrReqMoney() > 0)
         {
-            ModifyMoney(pQuest->GetRewOrReqMoney());
+            // Cyber Custom Stuff - Cyber Ring with Gold
+            float modGold = 1;
+            if (HasAura(80000))
+                modGold = 2.5;
+            ModifyMoney(pQuest->GetRewOrReqMoney() * modGold);
             GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_MONEY_FROM_QUEST_REWARD, uint32(pQuest->GetRewOrReqMoney()));
         }
     }
