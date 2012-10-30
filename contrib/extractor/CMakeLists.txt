@@ -11,16 +11,21 @@
 cmake_minimum_required (VERSION 2.6)
 project (MANGOS_MAP_EXTRACTOR)
 
-add_subdirectory (libmpq)
+add_subdirectory ("${MANGOS_MAP_EXTRACTOR_SOURCE_DIR}/../../dep/StormLib" "${MANGOS_MAP_EXTRACTOR_SOURCE_DIR}/build/StromLib")
 add_subdirectory (loadlib)
 
-include_directories (${MANGOS_MAP_EXTRACTOR_SOURCE_DIR}/libmpq)
+include_directories (${MANGOS_MAP_EXTRACTOR_SOURCE_DIR}/../../dep/StormLib/src)
 include_directories (${MANGOS_MAP_EXTRACTOR_SOURCE_DIR}/loadlib)
 
-link_directories (${MANGOS_MAP_EXTRACTOR_SOURCE_DIR}/libmpq)
+link_directories (${MANGOS_MAP_EXTRACTOR_SOURCE_DIR}/../../dep/StormLib)
 link_directories (${MANGOS_MAP_EXTRACTOR_SOURCE_DIR}/loadlib)
 
-add_executable (ad dbcfile.cpp mpq_libmpq.cpp System.cpp)
+add_executable (ad dbcfile.cpp System.cpp)
 
-target_link_libraries (ad libmpq)
+if(WIN32)
+    target_link_libraries (ad StormLib)
+else()
+    target_link_libraries (ad storm)
+endif()
+
 target_link_libraries (ad loadlib)

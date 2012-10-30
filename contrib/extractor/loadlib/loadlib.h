@@ -1,7 +1,15 @@
 #ifndef LOAD_LIB_H
 #define LOAD_LIB_H
 
-#if defined (WIN32) && !defined (__MINGW32__)
+#ifdef _DLL
+#undef _DLL
+#endif
+
+#include <string>
+#include "StormLib.h"
+#include <deque>
+
+#ifdef WIN32
 typedef __int64            int64;
 typedef __int32            int32;
 typedef __int16            int16;
@@ -12,10 +20,10 @@ typedef unsigned __int16   uint16;
 typedef unsigned __int8    uint8;
 #else
 #include <stdint.h>
-#if defined (__MINGW32__)
-    #include <sys/types.h>
-#elif defined(__linux__)
-    #include <linux/types.h>
+#ifndef uint64_t
+#ifdef __linux__
+#include <linux/types.h>
+#endif
 #endif
 typedef int64_t            int64;
 typedef int32_t            int32;
@@ -26,6 +34,15 @@ typedef uint32_t           uint32;
 typedef uint16_t           uint16;
 typedef uint8_t            uint8;
 #endif
+
+typedef std::deque<HANDLE> ArchiveSet;
+typedef std::pair<ArchiveSet::const_iterator,ArchiveSet::const_iterator> ArchiveSetBounds;
+
+bool OpenArchive(char const* mpqFileName, HANDLE* mpqHandlePtr = NULL);
+bool OpenNewestFile(char const* filename, HANDLE* fileHandlerPtr);
+ArchiveSetBounds GetArchivesBounds();
+bool ExtractFile( char const* mpq_name, std::string const& filename );
+void CloseArchives();
 
 #define FILE_FORMAT_VERSION    18
 
@@ -47,12 +64,12 @@ class FileLoader{
     uint32  data_size;
 public:
     virtual bool prepareLoadedData();
-    uint8 *GetData()     {return data;}
+    uint8* GetData()     {return data;}
     uint32 GetDataSize() {return data_size;}
 
     file_MVER *version;
     FileLoader();
-    ~FileLoader();
+    virtual ~FileLoader();
     bool loadFile(char *filename, bool log = true);
     virtual void free();
 };

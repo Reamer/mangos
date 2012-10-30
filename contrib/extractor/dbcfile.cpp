@@ -1,51 +1,84 @@
 #define _CRT_SECURE_NO_DEPRECATE
 
 #include "dbcfile.h"
-#include "mpq_libmpq.h"
+#include "loadlib/loadlib.h"
 
-DBCFile::DBCFile(const std::string &filename):
-    filename(filename),
-    data(0)
+DBCFile::DBCFile(const std::string &filename) : filename(filename)
 {
-
+    data = NULL;
 }
+
 bool DBCFile::open()
 {
-    MPQFile f(filename.c_str());
+    HANDLE fileHandle = 0;
+
+    if (!OpenNewestFile(filename.c_str(), &fileHandle))
+        return false;
+
     char header[4];
     unsigned int na,nb,es,ss;
 
-    if(f.read(header,4)!=4)                                 // Number of records
+    if (!SFileReadFile(fileHandle, header, 4, NULL, NULL))              // Magic header
+    {
+        SFileCloseFile(fileHandle);
         return false;
+    }
 
-    if(header[0]!='W' || header[1]!='D' || header[2]!='B' || header[3]!='C')
+    if (header[0]!='W' || header[1]!='D' || header[2]!='B' || header[3]!='C')
+    {
+        SFileCloseFile(fileHandle);
+        printf("Critical Error: An error occured while trying to read the DBCFile %s.", filename.c_str());
         return false;
+    }
 
-    if(f.read(&na,4)!=4)                                    // Number of records
+    if (!SFileReadFile(fileHandle, &na, 4, NULL, NULL))                 // Number of records
+    {
+        SFileCloseFile(fileHandle);
         return false;
-    if(f.read(&nb,4)!=4)                                    // Number of fields
+    }
+
+    if (!SFileReadFile(fileHandle, &nb, 4, NULL, NULL))                 // Number of fields
+    {
+        SFileCloseFile(fileHandle);
         return false;
-    if(f.read(&es,4)!=4)                                    // Size of a record
+    }
+
+    if (!SFileReadFile(fileHandle, &es, 4, NULL, NULL))                 // Size of a record
+    {
+        SFileCloseFile(fileHandle);
         return false;
-    if(f.read(&ss,4)!=4)                                    // String size
+    }
+
+    if (!SFileReadFile(fileHandle, &ss, 4, NULL, NULL))                 // String size
+    {
+        SFileCloseFile(fileHandle);
         return false;
+    }
 
     recordSize = es;
     recordCount = na;
     fieldCount = nb;
     stringSize = ss;
-    if(fieldCount*4 != recordSize)
+    if (fieldCount * 4 != recordSize)
+    {
+        SFileCloseFile(fileHandle);
         return false;
+    }
 
     data = new unsigned char[recordSize*recordCount+stringSize];
     stringTable = data + recordSize*recordCount;
 
     size_t data_size = recordSize*recordCount+stringSize;
-    if(f.read(data,data_size)!=data_size)
+    if (!SFileReadFile(fileHandle, data, data_size, NULL, NULL))
+    {
+        SFileCloseFile(fileHandle);
         return false;
-    f.close();
+    }
+
+    SFileCloseFile(fileHandle);
     return true;
 }
+
 DBCFile::~DBCFile()
 {
     delete [] data;
@@ -75,6 +108,7 @@ DBCFile::Iterator DBCFile::begin()
     assert(data);
     return Iterator(*this, data);
 }
+
 DBCFile::Iterator DBCFile::end()
 {
     assert(data);

@@ -2,31 +2,31 @@
 
 #include <stdio.h>
 #include <deque>
+#include <map>
 #include <set>
 #include <cstdlib>
 
 #ifdef WIN32
 #include "direct.h"
+#include <windows.h>
 #else
+#include <dirent.h>
 #include <sys/stat.h>
 #endif
 
 #include "dbcfile.h"
-#include "mpq_libmpq.h"
 
 #include "loadlib/adt.h"
 #include "loadlib/wdt.h"
 #include <fcntl.h>
 
-#if defined( __GNUC__ ) && !defined(WIN32)
-    #define _open   fopen
-    #define _close  fclose
+#if defined( __GNUC__ )
+    #define _open   open
+    #define _close close
     #ifndef O_BINARY
         #define O_BINARY 0
     #endif
-    #define _FILE FILE*
 #else
-    #define _FILE int
     #include <io.h>
 #endif
 
@@ -35,7 +35,6 @@
 #else
     #define OPEN_FLAGS (O_RDONLY | O_BINARY)
 #endif
-extern ArchiveSet gOpenArchives;
 
 typedef struct
 {
@@ -49,14 +48,17 @@ uint16 *LiqType;
 char output_path[128] = ".";
 char input_path[128] = ".";
 uint32 maxAreaId = 0;
+int32 build = 0;
+int32 locale = -1;
 
 //**************************************************
 // Extractor options
 //**************************************************
 enum Extract
 {
-    EXTRACT_MAP = 1,
-    EXTRACT_DBC = 2
+    EXTRACT_MAP = 0x1,
+    EXTRACT_DBC = 0x2,
+    EXTRACT_VMAP = 0x4,
 };
 
 // Select data for extract
@@ -87,7 +89,6 @@ const char *CONF_mpq_list[]={
 };
 
 static const char* const langs[] = {"enGB", "enUS", "deDE", "esES", "frFR", "koKR", "zhCN", "zhTW", "enCN", "enTW", "esMX", "ruRU" };
-#define LANG_COUNT 12
 
 void CreateDir( const std::string& Path )
 {
@@ -100,12 +101,8 @@ void CreateDir( const std::string& Path )
 
 bool FileExists( const char* FileName )
 {
-    _FILE fp = _open(FileName, OPEN_FLAGS);
-#if !defined(WIN32)
-    if (fp)
-#else
-    if (fp != -1)
-#endif
+    int fp = _open(FileName, OPEN_FLAGS);
+    if(fp != -1)
     {
         _close(fp);
         return true;
@@ -173,21 +170,65 @@ void HandleArgs(int argc, char * arg[])
     }
 }
 
-uint32 ReadBuild(int locale)
+void AppendDBCFileListTo(HANDLE mpqHandle, std::set<std::string>& filelist)
+{
+    SFILE_FIND_DATA findFileData;
+
+    HANDLE searchHandle = SFileFindFirstFile(mpqHandle, "*.dbc", &findFileData, NULL);
+    if (!searchHandle)
+        return;
+
+    filelist.insert(findFileData.cFileName);
+
+    while (SFileFindNextFile(searchHandle, &findFileData))
+        filelist.insert(findFileData.cFileName);
+
+    SFileFindClose(searchHandle);
+}
+
+// for Cata we need DB2 files
+void AppendDB2FileListTo(HANDLE mpqHandle, std::set<std::string>& filelist)
+{
+    SFILE_FIND_DATA findFileData;
+
+    HANDLE searchHandle = SFileFindFirstFile(mpqHandle, "*.db2", &findFileData, NULL);
+    if (!searchHandle)
+        return;
+
+    filelist.insert(findFileData.cFileName);
+
+    while (SFileFindNextFile(searchHandle, &findFileData))
+        filelist.insert(findFileData.cFileName);
+
+    SFileFindClose(searchHandle);
+}
+
+void ReadBuild()
 {
     // include build info file also
     std::string filename  = std::string("component.wow-")+langs[locale]+".txt";
     //printf("Read %s file... ", filename.c_str());
 
-    MPQFile m(filename.c_str());
-    if(m.isEof())
+    HANDLE fileHandle;
+
+    if (!OpenNewestFile(filename.c_str(), &fileHandle))
     {
         printf("Fatal error: Not found %s file!\n", filename.c_str());
         exit(1);
     }
 
-    std::string text = m.getPointer();
-    m.close();
+    unsigned int data_size = SFileGetFileSize(fileHandle, NULL);
+
+    std::string text;
+    text.resize(data_size);
+
+    if (!SFileReadFile(fileHandle, &text[0], data_size, NULL, NULL))
+    {
+        printf("Fatal error: Can't read %s file!\n", filename.c_str());
+        exit(1);
+    }
+
+    SFileCloseFile(fileHandle);
 
     size_t pos = text.find("version=\"");
     size_t pos1 = pos + strlen("version=\"");
@@ -200,14 +241,12 @@ uint32 ReadBuild(int locale)
 
     std::string build_str = text.substr(pos1,pos2-pos1);
 
-    int build = atoi(build_str.c_str());
+    build = atoi(build_str.c_str());
     if (build <= 0)
     {
         printf("Fatal error: Invalid  %s file format!\n", filename.c_str());
         exit(1);
     }
-
-    return build;
 }
 
 uint32 ReadMapDBC()
@@ -228,7 +267,7 @@ uint32 ReadMapDBC()
         map_ids[x].id = dbc.getRecord(x).getUInt(0);
         strcpy(map_ids[x].name, dbc.getRecord(x).getString(1));
     }
-    printf("Done! (%u maps loaded)\n", map_count);
+    printf("Done! (%zu maps loaded)\n", map_count);
     return map_count;
 }
 
@@ -253,7 +292,7 @@ void ReadAreaTableDBC()
 
     maxAreaId = dbc.getMaxId();
 
-    printf("Done! (%u areas loaded)\n", area_count);
+    printf("Done! (%zu areas loaded)\n", area_count);
 }
 
 void ReadLiquidTypeTableDBC()
@@ -274,7 +313,7 @@ void ReadLiquidTypeTableDBC()
     for(uint32 x = 0; x < LiqType_count; ++x)
         LiqType[dbc.getRecord(x).getUInt(0)] = dbc.getRecord(x).getUInt(3);
 
-    printf("Done! (%u LiqTypes loaded)\n", LiqType_count);
+    printf("Done! (%zu LiqTypes loaded)\n", LiqType_count);
 }
 
 //
@@ -288,7 +327,7 @@ static char const* MAP_AREA_MAGIC    = "AREA";
 static char const* MAP_HEIGHT_MAGIC  = "MHGT";
 static char const* MAP_LIQUID_MAGIC  = "MLIQ";
 
-struct map_fileheader
+struct GridMapFileHeader
 {
     uint32 mapMagic;
     uint32 versionMagic;
@@ -305,7 +344,7 @@ struct map_fileheader
 
 #define MAP_AREA_NO_AREA      0x0001
 
-struct map_areaHeader
+struct GridMapAreaHeader
 {
     uint32 fourcc;
     uint16 flags;
@@ -316,7 +355,7 @@ struct map_areaHeader
 #define MAP_HEIGHT_AS_INT16   0x0002
 #define MAP_HEIGHT_AS_INT8    0x0004
 
-struct map_heightHeader
+struct GridMapHeightHeader
 {
     uint32 fourcc;
     uint32 flags;
@@ -329,7 +368,6 @@ struct map_heightHeader
 #define MAP_LIQUID_TYPE_OCEAN       0x02
 #define MAP_LIQUID_TYPE_MAGMA       0x04
 #define MAP_LIQUID_TYPE_SLIME       0x08
-
 #define MAP_LIQUID_TYPE_DARK_WATER  0x10
 #define MAP_LIQUID_TYPE_WMO_WATER   0x20
 
@@ -337,7 +375,7 @@ struct map_heightHeader
 #define MAP_LIQUID_NO_TYPE    0x0001
 #define MAP_LIQUID_NO_HEIGHT  0x0002
 
-struct map_liquidHeader
+struct GridMapLiquidHeader
 {
     uint32 fourcc;
     uint16 flags;
@@ -358,32 +396,34 @@ float selectUInt16StepStore(float maxDiff)
 {
     return 65535 / maxDiff;
 }
-// Temporary grid data store
-uint16 area_flags[ADT_CELLS_PER_GRID][ADT_CELLS_PER_GRID];
 
-float V8[ADT_GRID_SIZE][ADT_GRID_SIZE];
-float V9[ADT_GRID_SIZE+1][ADT_GRID_SIZE+1];
-uint16 uint16_V8[ADT_GRID_SIZE][ADT_GRID_SIZE];
-uint16 uint16_V9[ADT_GRID_SIZE+1][ADT_GRID_SIZE+1];
-uint8  uint8_V8[ADT_GRID_SIZE][ADT_GRID_SIZE];
-uint8  uint8_V9[ADT_GRID_SIZE+1][ADT_GRID_SIZE+1];
-
-uint16 liquid_entry[ADT_CELLS_PER_GRID][ADT_CELLS_PER_GRID];
-uint8 liquid_flags[ADT_CELLS_PER_GRID][ADT_CELLS_PER_GRID];
-bool  liquid_show[ADT_GRID_SIZE][ADT_GRID_SIZE];
-float liquid_height[ADT_GRID_SIZE+1][ADT_GRID_SIZE+1];
-
-bool ConvertADT(char *filename, char *filename2, int cell_y, int cell_x, uint32 build)
+bool ConvertADT(char* mpq_filename, char* output_filename, int cell_y, int cell_x)
 {
+    // Temporary grid data store
+    uint16 area_flags[ADT_CELLS_PER_GRID][ADT_CELLS_PER_GRID];
+
+    float V8[ADT_GRID_SIZE][ADT_GRID_SIZE];
+    float V9[ADT_GRID_SIZE+1][ADT_GRID_SIZE+1];
+    uint16 uint16_V8[ADT_GRID_SIZE][ADT_GRID_SIZE];
+    uint16 uint16_V9[ADT_GRID_SIZE+1][ADT_GRID_SIZE+1];
+    uint8  uint8_V8[ADT_GRID_SIZE][ADT_GRID_SIZE];
+    uint8  uint8_V9[ADT_GRID_SIZE+1][ADT_GRID_SIZE+1];
+
+    uint16 liquid_entry[ADT_CELLS_PER_GRID][ADT_CELLS_PER_GRID];
+    uint8 liquid_flags[ADT_CELLS_PER_GRID][ADT_CELLS_PER_GRID];
+    bool  liquid_show[ADT_GRID_SIZE][ADT_GRID_SIZE];
+    float liquid_height[ADT_GRID_SIZE+1][ADT_GRID_SIZE+1];
+
+
     ADT_file adt;
 
-    if (!adt.loadFile(filename))
+    if (!adt.loadFile(mpq_filename))
         return false;
 
     adt_MCIN *cells = adt.a_grid->getMCIN();
     if (!cells)
     {
-        printf("Can't find cells in '%s'\n", filename);
+        printf("Can't find cells in '%s'\n", mpq_filename);
         return false;
     }
 
@@ -392,7 +432,7 @@ bool ConvertADT(char *filename, char *filename2, int cell_y, int cell_x, uint32 
     memset(liquid_entry, 0, sizeof(liquid_entry));
 
     // Prepare map header
-    map_fileheader map;
+    GridMapFileHeader map;
     map.mapMagic = *(uint32 const*)MAP_MAGIC;
     map.versionMagic = *(uint32 const*)MAP_VERSION_MAGIC;
     map.buildMagic = build;
@@ -411,7 +451,7 @@ bool ConvertADT(char *filename, char *filename2, int cell_y, int cell_x, uint32 
                     area_flags[i][j] = areas[areaid];
                     continue;
                 }
-                printf("File: %s\nCan't find area flag for areaid %u [%d, %d].\n", filename, areaid, cell->ix, cell->iy);
+                printf("File: %s\nCan't find area flag for areaid %u [%d, %d].\n", mpq_filename, areaid, cell->ix, cell->iy);
             }
             area_flags[i][j] = 0xffff;
         }
@@ -434,9 +474,9 @@ bool ConvertADT(char *filename, char *filename2, int cell_y, int cell_x, uint32 
     }
 
     map.areaMapOffset = sizeof(map);
-    map.areaMapSize   = sizeof(map_areaHeader);
+    map.areaMapSize   = sizeof(GridMapAreaHeader);
 
-    map_areaHeader areaHeader;
+    GridMapAreaHeader areaHeader;
     areaHeader.fourcc = *(uint32 const*)MAP_AREA_MAGIC;
     areaHeader.flags = 0;
     if (fullAreaData)
@@ -563,9 +603,9 @@ bool ConvertADT(char *filename, char *filename2, int cell_y, int cell_x, uint32 
     }
 
     map.heightMapOffset = map.areaMapOffset + map.areaMapSize;
-    map.heightMapSize = sizeof(map_heightHeader);
+    map.heightMapSize = sizeof(GridMapHeightHeader);
 
-    map_heightHeader heightHeader;
+    GridMapHeightHeader heightHeader;
     heightHeader.fourcc = *(uint32 const*)MAP_HEIGHT_MAGIC;
     heightHeader.flags = 0;
     heightHeader.gridHeight    = minHeight;
@@ -685,6 +725,9 @@ bool ConvertADT(char *filename, char *filename2, int cell_y, int cell_x, uint32 
         }
     }
 
+    adt_MMDX* mdx = adt.a_grid->getMMDX();
+    if (mdx)
+        mdx->getFileNames();
     // Get liquid map for grid (in WOTLK used MH2O chunk)
     adt_MH2O * h2o = adt.a_grid->getMH2O();
     if (h2o)
@@ -693,18 +736,18 @@ bool ConvertADT(char *filename, char *filename2, int cell_y, int cell_x, uint32 
         {
             for(int j = 0; j < ADT_CELLS_PER_GRID; j++)
             {
-                adt_liquid_header *h = h2o->getLiquidData(i,j);
-                if (!h)
+                adt_liquid_header* liquid_header = h2o->getLiquidData(i,j);
+                if (!liquid_header)
                     continue;
 
                 int count = 0;
-                uint64 show = h2o->getLiquidShowMap(h);
-                for (int y = 0; y < h->height; y++)
+                uint64 show = h2o->getLiquidShowMap(liquid_header);
+                for (int y = 0; y < liquid_header->height; y++)
                 {
-                    int cy = i * ADT_CELL_SIZE + y + h->yOffset;
-                    for (int x = 0; x < h->width; x++)
+                    int cy = i * ADT_CELL_SIZE + y + liquid_header->yOffset;
+                    for (int x = 0; x < liquid_header->width; x++)
                     {
-                        int cx = j * ADT_CELL_SIZE + x + h->xOffset;
+                        int cx = j * ADT_CELL_SIZE + x + liquid_header->xOffset;
                         if (show & 1)
                         {
                             liquid_show[cy][cx] = true;
@@ -714,21 +757,21 @@ bool ConvertADT(char *filename, char *filename2, int cell_y, int cell_x, uint32 
                     }
                 }
 
-                liquid_entry[i][j] = h->liquidType;
-                switch (LiqType[h->liquidType])
+                liquid_entry[i][j] = liquid_header->liquidType;
+                switch (LiqType[liquid_header->liquidType])
                 {
                     case LIQUID_TYPE_WATER: liquid_flags[i][j] |= MAP_LIQUID_TYPE_WATER; break;
                     case LIQUID_TYPE_OCEAN: liquid_flags[i][j] |= MAP_LIQUID_TYPE_OCEAN; break;
                     case LIQUID_TYPE_MAGMA: liquid_flags[i][j] |= MAP_LIQUID_TYPE_MAGMA; break;
                     case LIQUID_TYPE_SLIME: liquid_flags[i][j] |= MAP_LIQUID_TYPE_SLIME; break;
                     default:
-                        printf("\nCan't find Liquid type %u for map %s\nchunk %d,%d\n", h->liquidType, filename, i, j);
+                        printf("\nCan't find Liquid type %u for map %s\nchunk %d,%d\n", liquid_header->liquidType, mpq_filename, i, j);
                         break;
                 }
                 // Dark water detect
-                if (LiqType[h->liquidType] == LIQUID_TYPE_OCEAN)
+                if (LiqType[liquid_header->liquidType] == LIQUID_TYPE_OCEAN)
                 {
-                    uint8 *lm = h2o->getLiquidLightMap(h);
+                    uint8 *lm = h2o->getLiquidLightMap(liquid_header);
                     if (!lm)
                         liquid_flags[i][j] |= MAP_LIQUID_TYPE_DARK_WATER;
                 }
@@ -736,18 +779,18 @@ bool ConvertADT(char *filename, char *filename2, int cell_y, int cell_x, uint32 
                 if (!count && liquid_flags[i][j])
                     printf("Wrong liquid detect in MH2O chunk");
 
-                float *height = h2o->getLiquidHeightMap(h);
+                float *height = h2o->getLiquidHeightMap(liquid_header);
                 int pos = 0;
-                for (int y=0; y<=h->height;y++)
+                for (int y=0; y<=liquid_header->height;y++)
                 {
-                    int cy = i*ADT_CELL_SIZE + y + h->yOffset;
-                    for (int x=0; x<= h->width; x++)
+                    int cy = i*ADT_CELL_SIZE + y + liquid_header->yOffset;
+                    for (int x=0; x<= liquid_header->width; x++)
                     {
-                        int cx = j*ADT_CELL_SIZE + x + h->xOffset;
+                        int cx = j*ADT_CELL_SIZE + x + liquid_header->xOffset;
                         if (height)
                             liquid_height[cy][cx] = height[pos];
                         else
-                            liquid_height[cy][cx] = h->heightLevel1;
+                            liquid_height[cy][cx] = liquid_header->heightLevel1;
                         pos++;
                     }
                 }
@@ -772,7 +815,7 @@ bool ConvertADT(char *filename, char *filename2, int cell_y, int cell_x, uint32 
         }
     }
 
-    map_liquidHeader liquidHeader;
+    GridMapLiquidHeader liquidHeader;
 
     // no water data (if all grid have 0 liquid type)
     if (type == 0 && !fullType)
@@ -806,7 +849,7 @@ bool ConvertADT(char *filename, char *filename2, int cell_y, int cell_x, uint32 
             }
         }
         map.liquidMapOffset = map.heightMapOffset + map.heightMapSize;
-        map.liquidMapSize = sizeof(map_liquidHeader);
+        map.liquidMapSize = sizeof(GridMapLiquidHeader);
         liquidHeader.fourcc = *(uint32 const*)MAP_LIQUID_MAGIC;
         liquidHeader.flags = 0;
         liquidHeader.liquidType = 0;
@@ -858,10 +901,10 @@ bool ConvertADT(char *filename, char *filename2, int cell_y, int cell_x, uint32 
     }
 
     // Ok all data prepared - store it
-    FILE *output=fopen(filename2, "wb");
+    FILE* output=fopen(output_filename, "wb");
     if(!output)
     {
-        printf("Can't create the output file '%s'\n", filename2);
+        printf("Can't create the output file '%s'\n", output_filename);
         return false;
     }
     fwrite(&map, sizeof(map), 1, output);
@@ -915,7 +958,7 @@ bool ConvertADT(char *filename, char *filename2, int cell_y, int cell_x, uint32 
     return true;
 }
 
-void ExtractMapsFromMpq(uint32 build)
+void ExtractMapsFromMpq()
 {
     char mpq_filename[1024];
     char output_filename[1024];
@@ -941,7 +984,7 @@ void ExtractMapsFromMpq(uint32 build)
         WDT_file wdt;
         if (!wdt.loadFile(mpq_map_name, false))
         {
-//            printf("Error loading %s map wdt data\n", map_ids[z].name);
+            printf("Error loading %s map wdt data\n", map_ids[z].name);
             continue;
         }
 
@@ -953,7 +996,7 @@ void ExtractMapsFromMpq(uint32 build)
                     continue;
                 sprintf(mpq_filename, "World\\Maps\\%s\\%s_%u_%u.adt", map_ids[z].name, map_ids[z].name, x, y);
                 sprintf(output_filename, "%s/maps/%03u%02u%02u.map", output_path, map_ids[z].id, y, x);
-                ConvertADT(mpq_filename, output_filename, y, x, build);
+                ConvertADT(mpq_filename, output_filename, y, x);
             }
             // draw progress bar
             printf("Processing........................%d%%\r", (100 * (y+1)) / WDT_MAP_SIZE);
@@ -963,85 +1006,69 @@ void ExtractMapsFromMpq(uint32 build)
     delete [] map_ids;
 }
 
-bool ExtractFile( char const* mpq_name, std::string const& filename )
-{
-    FILE *output = fopen(filename.c_str(), "wb");
-    if(!output)
-    {
-        printf("Can't create the output file '%s'\n", filename.c_str());
-        return false;
-    }
-    MPQFile m(mpq_name);
-    if(!m.isEof())
-        fwrite(m.getPointer(), 1, m.getSize(), output);
-
-    fclose(output);
-    return true;
-}
-
-void ExtractDBCFiles(int locale, bool basicLocale)
+void ExtractDBCFiles()
 {
     printf("Extracting dbc files...\n");
 
     std::set<std::string> dbcfiles;
 
     // get DBC file list
-    for(ArchiveSet::iterator i = gOpenArchives.begin(); i != gOpenArchives.end();++i)
-    {
-        vector<string> files;
-        (*i)->GetFileListTo(files);
-        for (vector<string>::iterator iter = files.begin(); iter != files.end(); ++iter)
-            if (iter->rfind(".dbc") == iter->length() - strlen(".dbc"))
-                    dbcfiles.insert(*iter);
-    }
+    ArchiveSetBounds archives = GetArchivesBounds();
+    for(ArchiveSet::const_iterator i = archives.first; i != archives.second;++i)
+        AppendDBCFileListTo(*i, dbcfiles);
 
     std::string path = output_path;
     path += "/dbc/";
     CreateDir(path);
-    if(!basicLocale)
-    {
-        path += langs[locale];
-        path += "/";
-        CreateDir(path);
-    }
-
-    // extract Build info file
-    {
-        string mpq_name = std::string("component.wow-") + langs[locale] + ".txt";
-        string filename = path + mpq_name;
-
-        ExtractFile(mpq_name.c_str(), filename);
-    }
 
     // extract DBCs
     int count = 0;
-    for (set<string>::iterator iter = dbcfiles.begin(); iter != dbcfiles.end(); ++iter)
+    for (std::set<std::string>::iterator iter = dbcfiles.begin(); iter != dbcfiles.end(); ++iter)
     {
-        string filename = path;
+        std::string filename = path;
         filename += (iter->c_str() + strlen("DBFilesClient\\"));
 
-        if(ExtractFile(iter->c_str(), filename))
+        if (ExtractFile(iter->c_str(), filename))
             ++count;
     }
     printf("Extracted %u DBC files\n\n", count);
 }
 
-void LoadLocaleMPQFiles(int const locale)
+void LoadLocaleMPQFiles()
 {
-    char filename[512];
-
-    sprintf(filename,"%s/Data/%s/locale-%s.MPQ", input_path, langs[locale], langs[locale]);
-    new MPQArchive(filename);
-
-    for(int i = 1; i < 5; ++i)
+    for (int i = 0; i < sizeof(langs)/sizeof(langs[0]); i++)
     {
-        char ext[3] = "";
-        if(i > 1)
-            sprintf(ext, "-%i", i);
+        char filename[512];
 
-        sprintf(filename,"%s/Data/%s/patch-%s%s.MPQ", input_path, langs[locale], langs[locale], ext);
-        if(FileExists(filename))
-            new MPQArchive(filename);
+        sprintf(filename,"%s/Data/%s/locale-%s.MPQ", input_path, langs[i], langs[i]);
+        if (FileExists(filename))
+        {
+            printf("Detected locale: %s\n", langs[i]);
+            locale = i;
+            HANDLE localMpqHandle;
+            if (!OpenArchive(filename, &localMpqHandle))
+            {
+                printf("Error open archive: %s\n\n", filename);
+                return;
+            }
+
+            for(int j = 0; j < 99; ++j)
+            {
+                char ext[3] = "";
+                if(j > 1)
+                    sprintf(ext, "-%i", j);
+
+                sprintf(filename,"%s/Data/%s/patch-%s%s.MPQ", input_path, langs[i], langs[i], ext);
+                if(FileExists(filename))
+                {
+                    HANDLE localPatchMpqHandle;
+                    if (!OpenArchive(filename, &localPatchMpqHandle))
+                    {
+                        printf("Error open archive: %s\n\n", filename);
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1053,14 +1080,15 @@ void LoadCommonMPQFiles()
     {
         sprintf(filename, "%s/Data/%s", input_path, CONF_mpq_list[i]);
         if(FileExists(filename))
-            new MPQArchive(filename);
+        {
+            HANDLE worldMpqHandle;
+            if (!OpenArchive(filename, &worldMpqHandle))
+            {
+                printf("Error open archive: %s\n\n", filename);
+            }
+        }
     }
-}
 
-inline void CloseMPQFiles()
-{
-    for(ArchiveSet::iterator j = gOpenArchives.begin(); j != gOpenArchives.end();++j) (*j)->close();
-        gOpenArchives.clear();
 }
 
 int main(int argc, char * arg[])
@@ -1070,64 +1098,28 @@ int main(int argc, char * arg[])
 
     HandleArgs(argc, arg);
 
-    int FirstLocale = -1;
-    uint32 build = 0;
+    //Open MPQs
+    LoadLocaleMPQFiles();
+    LoadCommonMPQFiles();
+    ReadBuild();
 
-    for (int i = 0; i < LANG_COUNT; i++)
+    if(CONF_extract & EXTRACT_DBC)
     {
-        char tmp1[512];
-        sprintf(tmp1, "%s/Data/%s/locale-%s.MPQ", input_path, langs[i], langs[i]);
-        if (FileExists(tmp1))
-        {
-            printf("Detected locale: %s\n", langs[i]);
-
-            //Open MPQs
-            LoadLocaleMPQFiles(i);
-
-            if((CONF_extract & EXTRACT_DBC) == 0)
-            {
-                FirstLocale = i;
-                build = ReadBuild(FirstLocale);
-                printf("Detected client build: %u\n", build);
-                break;
-            }
-
-            //Extract DBC files
-            if(FirstLocale < 0)
-            {
-                FirstLocale = i;
-                build = ReadBuild(FirstLocale);
-                printf("Detected client build: %u\n", build);
-                ExtractDBCFiles(i, true);
-            }
-            else
-                ExtractDBCFiles(i, false);
-
-            //Close MPQs
-            CloseMPQFiles();
-        }
-    }
-
-    if(FirstLocale < 0)
-    {
-        printf("No locales detected\n");
-        return 0;
+        ExtractDBCFiles();
     }
 
     if (CONF_extract & EXTRACT_MAP)
     {
-        printf("Using locale: %s\n", langs[FirstLocale]);
-
-        // Open MPQs
-        LoadLocaleMPQFiles(FirstLocale);
-        LoadCommonMPQFiles();
-
         // Extract maps
-        ExtractMapsFromMpq(build);
-
-        // Close MPQs
-        CloseMPQFiles();
+        ExtractMapsFromMpq();
     }
+
+    if (CONF_extract & EXTRACT_VMAP)
+    {
+
+    }
+    //Close MPQs
+    CloseArchives();
 
     return 0;
 }
