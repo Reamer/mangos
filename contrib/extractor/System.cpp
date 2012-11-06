@@ -5,6 +5,7 @@
 #include <map>
 #include <set>
 #include <cstdlib>
+#include <string>
 
 #ifdef WIN32
 #include "direct.h"
@@ -725,9 +726,31 @@ bool ConvertADT(char* mpq_filename, char* output_filename, int cell_y, int cell_
         }
     }
 
+    std::vector<FilenameInfo> m2Models;
     adt_MMDX* mdx = adt.a_grid->getMMDX();
-    if (mdx)
-        mdx->getFileNames();
+    adt_MMID* mdi = adt.a_grid->getMMID();
+    if (mdi && mdx)
+    {
+        for (uint32 i = 0; i < mdi->getMaxM2Models(); ++i)
+        {
+            FilenameInfo info = mdi->getMMDXInfo(i);
+            mdx->getM2Model(&info);
+            m2Models.push_back(info);
+            //printf("Model: %s\n", info.filename.c_str());
+        }
+    }
+    adt_MWMO* mwmo = adt.a_grid->getMWMO();
+    adt_MWID* mwid = adt.a_grid->getMWID();
+    if (mwmo && mwid)
+    {
+        for (uint32 i = 0; i < mwid->getMaxWMO(); ++i)
+        {
+            FilenameInfo info = mwid->getMWMOInfo(i);
+            mwmo->getWMO(&info);
+            //printf("WMO: %s\n", info.filename.c_str());
+        }
+    }
+
     // Get liquid map for grid (in WOTLK used MH2O chunk)
     adt_MH2O * h2o = adt.a_grid->getMH2O();
     if (h2o)
@@ -992,7 +1015,7 @@ void ExtractMapsFromMpq()
         {
             for(uint32 x = 0; x < WDT_MAP_SIZE; ++x)
             {
-                if (!wdt.main->adt_list[y][x].exist)
+                if (!wdt.getMAIN()->adt_list[y][x].exist)
                     continue;
                 sprintf(mpq_filename, "World\\Maps\\%s\\%s_%u_%u.adt", map_ids[z].name, map_ids[z].name, x, y);
                 sprintf(output_filename, "%s/maps/%03u%02u%02u.map", output_path, map_ids[z].id, y, x);

@@ -11,23 +11,20 @@ bool wdt_MWMO::prepareLoadedData()
 
 bool wdt_MPHD::prepareLoadedData()
 {
-    if (fcc != 'MPHD')
+    if (wdtMPHDHeader.fcc != 'MPHD')
         return false;
     return true;
 }
 
 bool wdt_MAIN::prepareLoadedData()
 {
-    if (fcc != 'MAIN')
+    if (wdtMainHeader.fcc != 'MAIN')
         return false;
     return true;
 }
 
 WDT_file::WDT_file()
 {
-    mphd = 0;
-    main = 0;
-    wmo  = 0;
 }
 
 WDT_file::~WDT_file()
@@ -37,9 +34,6 @@ WDT_file::~WDT_file()
 
 void WDT_file::free()
 {
-    mphd = 0;
-    main = 0;
-    wmo  = 0;
     FileLoader::free();
 }
 
@@ -49,14 +43,11 @@ bool WDT_file::prepareLoadedData()
     if (!FileLoader::prepareLoadedData())
         return false;
 
-    mphd = (wdt_MPHD *)((uint8*)version+version->size+8);
-    if (!mphd->prepareLoadedData())
+    if (!getMPHD()->prepareLoadedData())
         return false;
-    main = (wdt_MAIN *)((uint8*)mphd + mphd->size+8);
-    if (!main->prepareLoadedData())
+    if (!getMAIN()->prepareLoadedData())
         return false;
-    wmo = (wdt_MWMO *)((uint8*)main+ main->size+8);
-    if (!wmo->prepareLoadedData())
+    if (!getMWMO()->prepareLoadedData())
         return false;
     return true;
 }

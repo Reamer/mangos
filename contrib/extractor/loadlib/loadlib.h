@@ -46,16 +46,21 @@ void CloseArchives();
 
 #define FILE_FORMAT_VERSION    18
 
-//
-// File version chunk
-//
-struct file_MVER
+
+struct chunkHeader
 {
     union{
         uint32 fcc;
         char   fcc_txt[4];
     };
     uint32 size;
+};
+//
+// File version chunk
+//
+struct file_MVER
+{
+    chunkHeader header;
     uint32 ver;
 };
 
