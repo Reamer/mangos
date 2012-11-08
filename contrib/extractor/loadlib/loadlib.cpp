@@ -66,6 +66,27 @@ bool ExtractFile( char const* mpq_name, std::string const& filename )
     return false;
 }
 
+std::set<std::string> getFileNamesWithContains(std::string contains)
+{
+    std::set<std::string> result;
+    result.clear();
+    for(ArchiveSet::const_iterator i = gOpenArchives.begin(); i != gOpenArchives.end();++i)
+    {
+        SFILE_FIND_DATA findData;
+        if (HANDLE findHandle = SListFileFindFirstFile(*i, NULL,contains.c_str(), &findData))
+        {
+            result.insert(findData.cFileName);
+            while (SListFileFindNextFile(findHandle,&findData))
+            {
+                result.insert(findData.cFileName);
+            }
+            SListFileFindClose(findHandle);
+        }
+
+    }
+    return result;
+}
+
 
 void CloseArchives()
 {
@@ -135,10 +156,16 @@ bool FileLoader::prepareLoadedData()
     version = (file_MVER *) data;
 
     if (version->header.fcc != 'MVER')
+    {
+        printf("ERROR: no MVER tag");
         return false;
+    }
 
     if (version->ver != FILE_FORMAT_VERSION)
+    {
+        printf("ERROR: wrong FILE_FORMAT_VERSION %u != %u", version->ver, FILE_FORMAT_VERSION);
         return false;
+    }
     return true;
 }
 

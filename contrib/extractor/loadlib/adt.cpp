@@ -47,7 +47,7 @@ void changeWhitespaceToUnderscore(std::string name)
 }
 
 //oldname fixnamen
-void fixnamen(char* name, size_t len)
+void transformToPath(char* name, size_t len)
 {
     for (size_t i=0; i<len-3; i++)
     {
@@ -67,7 +67,7 @@ void fixnamen(char* name, size_t len)
 }
 
 //oldname fixnamen
-void fixnamen(std::string name)
+void transformToPath(std::string name)
 {
     for (size_t i=0; i<name.size()-3; i++)
     {
@@ -197,18 +197,37 @@ bool adt_MHDR::prepareLoadedData()
         }
     }
 
-    if (offsMapObejcts && !getMWMO()->prepareLoadedData())
+    /* check for WMOs (MapObjects) */
+    adt_MWMO* wmo = getMWMO();
+    adt_MWID* wid = getMWID();
+    adt_MODF* odf = getMODF();
+    // single checks
+    if (wmo && !wmo->prepareLoadedData())
     {
         printf("ERROR: MWMO-Check failed\n");
         return false;
     }
-    if (offsMapObejctsIds && !getMWID()->prepareLoadedData())
+    if (wid && !wid->prepareLoadedData())
     {
         printf("ERROR: MWID-Check failed\n");
         return false;
     }
-
-
+    if (odf && !odf->prepareLoadedData())
+    {
+        printf("ERROR: MODF-Check failed\n");
+        return false;
+    }
+    // mix check
+    if (wmo && wid && odf)
+    {
+        uint32 wmoSize = wmo->getFileNames().size();
+        uint32 widSize = wid->getMaxWMO();
+        if (wmoSize != widSize)
+        {
+            printf("ERROR: Entry amount is wrong, should be equal: MWMO (%u), MWID (%u)\n", wmoSize, widSize);
+            return false;
+        }
+    }
     return true;
 }
 
@@ -286,6 +305,37 @@ bool adt_MMID::prepareLoadedData()
     return true;
 }
 
+std::vector<uint32> adt_MMID::getOffsetList()
+{
+    std::vector<uint32> result;
+    uint32 values = getMaxM2Models();
+    for (uint32 i = 0; i < values; ++i)
+    {
+        uint32 j;
+        memcpy(&j, ((uint8*)this + sizeof(chunkHeader) + sizeof(uint32)*i), sizeof(uint32));
+        result.push_back(j);
+    }
+    return result;
+}
+
+FilenameInfo adt_MMID::getMMDXInfo(uint32 value)
+{
+    // create Info
+    FilenameInfo info;
+    if (header.size)
+    {
+        memcpy(&info.offset, ((uint8*)this + sizeof(chunkHeader) + sizeof(uint32)*value), sizeof(info.offset));
+        value++;
+        if (value < getMaxM2Models())
+        {
+            uint32 nextoffset;
+            memcpy(&nextoffset, ((uint8*)this + sizeof(chunkHeader) + sizeof(uint32)*value), sizeof(uint32));
+            info.length = nextoffset - info.offset;
+        }
+    }
+    return info;
+}
+
 bool adt_MMDX::prepareLoadedData()
 {
     if (header.fcc != 'MMDX')
@@ -294,12 +344,103 @@ bool adt_MMDX::prepareLoadedData()
     return true;
 }
 
+std::vector<char*> adt_MMDX::getFileNames()
+{
+    std::vector<char*> result;
+    result.clear();
+    if (header.size)
+    {
+        char allFilenames[header.size];
+        memcpy(allFilenames, ((uint8*)this + sizeof(chunkHeader)), header.size);
+        result = splitFileNamesAtDelim(allFilenames, header.size, '\0');
+    }
+    return result;
+}
+
+void adt_MMDX::getM2Model(FilenameInfo* info)
+{
+    if (!header.size)
+        return;
+
+    if (info->offset >= header.size)
+    {
+        printf("WARNING: offset %u >= size %u\n", info->offset, header.size);
+        return;
+    }
+
+    // calculate length
+    uint32 length;
+    if (info->length == 0)
+        length = header.size-info->offset;
+    else
+        length = info->length;
+
+
+    /*TODO: verify why the length makes problems
+    char modelname[length];
+    memcpy(modelname, ((uint8*)this + 8 + info->offset), length);
+    changeWhitespaceToUnderscore(modelname, length);
+    fixnamen(modelname, length);
+    info->filename.append(modelname, length);
+    */
+
+    char modelname[512];
+    memcpy(modelname, ((uint8*)this + sizeof(chunkHeader) + info->offset), 512);
+    info->filename.append(modelname);
+    return;
+}
+
 bool adt_MWMO::prepareLoadedData()
 {
     if (header.fcc != 'MWMO')
         return false;
 
     return true;
+}
+
+std::vector<char*> adt_MWMO::getFileNames()
+{
+    std::vector<char*> result;
+    result.clear();
+    if (header.size)
+    {
+        char allFilenames[header.size];
+        memcpy(allFilenames, ((uint8*)this + sizeof(chunkHeader)), header.size);
+        result = splitFileNamesAtDelim(allFilenames, header.size, '\0');
+    }
+    return result;
+}
+
+void adt_MWMO::getWMOFilename(FilenameInfo* info)
+{
+    if (!header.size)
+        return;
+
+    if (info->offset >= header.size)
+    {
+        printf("WARNING: offset %u >= size %u\n", info->offset, header.size);
+        return;
+    }
+
+    // calculate length
+    uint32 length;
+    if (info->length == 0)
+        length = header.size-info->offset;
+    else
+        length = info->length;
+
+    /*TODO: verify why the length makes problems
+    char name[length];
+    memcpy(name, ((uint8*)this + 8 + info->offset), length);
+    changeWhitespaceToUnderscore(name, length);
+    fixnamen(name, length);
+    info->filename.append(name, length);
+    */
+
+    char name[512];
+    memcpy(name, ((uint8*)this + 8 + info->offset), 512);
+    info->filename.append(name);
+    return;
 }
 
 bool adt_MWID::prepareLoadedData()
@@ -316,6 +457,41 @@ bool adt_MWID::prepareLoadedData()
     return true;
 }
 
+std::vector<uint32> adt_MWID::getOffsetList()
+{
+    std::vector<uint32> result;
+    for (uint32 i = 0; i < getMaxWMO(); ++i)
+    {
+        uint32 j;
+        memcpy(&j, ((uint8*)this + 8 + 4*i), sizeof(uint32));
+        result.push_back(j);
+    }
+    return result;
+}
+
+FilenameInfo adt_MWID::getMWMOInfo(uint32 value)
+{
+    // create Info
+    FilenameInfo info;
+    if (value > getMaxWMO())
+    {
+        printf("Value: %u , MaxValue: %u\n", value, getMaxWMO());
+        return info;
+    }
+    if (header.size)
+    {
+        memcpy(&info.offset, ((uint8*)this + sizeof(chunkHeader) + sizeof(uint32)*value), sizeof(info.offset));
+        value++;
+        if (value < getMaxWMO())
+        {
+            uint32 nextoffset;
+            memcpy(&nextoffset, ((uint8*)this + sizeof(chunkHeader) + sizeof(uint32)*value), sizeof(uint32));
+            info.length = nextoffset - info.offset;
+        }
+    }
+    return info;
+}
+
 bool adt_MDDF::prepareLoadedData()
 {
     if (header.fcc != 'MDDF')
@@ -328,4 +504,58 @@ bool adt_MDDF::prepareLoadedData()
     }
 
     return true;
+}
+
+MDDF_Entry adt_MDDF::getMDDF_Entry(uint32 value)
+{
+    MDDF_Entry entry;
+    if (value < getMaxEntries())
+        memcpy(&entry, ((uint8*)this + sizeof(chunkHeader) + sizeof(MDDF_Entry)*value), sizeof(MDDF_Entry));
+    return entry;
+}
+
+bool adt_MODF::prepareLoadedData()
+{
+    if (header.fcc != 'MODF')
+        return false;
+
+    if (header.size && header.size % sizeof(MODF_Entry) != 0)
+    {
+        printf("ERROR: MDDF size check failed");
+        return false;
+    }
+
+    return true;
+}
+
+MODF_Entry adt_MODF::getMODF_Entry(uint32 value)
+{
+    MODF_Entry entry;
+    if (value < getMaxEntries())
+        memcpy(&entry, ((uint8*)this + sizeof(chunkHeader) + sizeof(MODF_Entry)*value), sizeof(MODF_Entry));
+    return entry;
+
+}
+
+void MODF_Entry::printMODF_Entry(MODF_Entry* entry)
+{
+    printf("ID: %u\n"
+            "uniqueId %u\n"
+            "position %f ; %f ; %f\n"
+            "rotation %f ; %f ; %f\n"
+            "flags %u ; doodadSet %u ;"
+            "nameSet %u ; padding %u"
+            , entry->mwidEntry, entry->uniqueId, entry->position[0], entry->position[1], entry->position[2] , entry->rotation[0], entry->rotation[1], entry->rotation[2],
+            entry->flags, entry->doodadSet, entry->nameSet, entry->padding);
+}
+
+void MDDF_Entry::printMDDF_Entry(MDDF_Entry* entry)
+{
+    printf("ID: %u\n"
+            "uniqueId %u\n"
+            "position %f ; %f ; %f\n"
+            "rotation %f ; %f ; %f\n"
+            "scale %u ; flags %u"
+            , entry->mmidEntry, entry->uniqueId, entry->position[0], entry->position[1], entry->position[2] , entry->rotation[0], entry->rotation[1], entry->rotation[2],
+            entry->scale, entry->flags);
 }

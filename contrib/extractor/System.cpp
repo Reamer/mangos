@@ -59,7 +59,7 @@ enum Extract
 {
     EXTRACT_MAP = 0x1,
     EXTRACT_DBC = 0x2,
-    EXTRACT_VMAP = 0x4,
+    EXTRACT_BUILDINGS = 0x4,
 };
 
 // Select data for extract
@@ -68,6 +68,8 @@ int   CONF_extract = EXTRACT_MAP | EXTRACT_DBC;
 // see contrib/mmap/src/Tilebuilder.h, INVALID_MAP_LIQ_HEIGHT
 bool  CONF_allow_height_limit = true;
 float CONF_use_minHeight = -500.0f;
+const char* szWorkDirWmo = "./Buildings";
+const char* szRawVMAPMagic = "VMAP004";
 
 // This option allow use float to int conversion
 bool  CONF_allow_float_to_int   = true;
@@ -398,8 +400,36 @@ float selectUInt16StepStore(float maxDiff)
     return 65535 / maxDiff;
 }
 
-bool ConvertADT(char* mpq_filename, char* output_filename, int cell_y, int cell_x)
+
+bool ParseBuildings(ADT_file* adt, char* mpq_filename, char* output_filename, int cell_y, int cell_x)
 {
+    adt_MODF* modf = adt->a_grid->getMODF();
+    adt_MWMO* mwmo = adt->a_grid->getMWMO();
+    adt_MWID* mwid = adt->a_grid->getMWID();
+    if (modf && mwmo && mwid)
+    {
+        for (uint32 i = 0; i < modf->getMaxEntries(); ++i)
+        {
+            MODF_Entry entry = modf->getMODF_Entry(i);
+            FilenameInfo info = mwid->getMWMOInfo(&entry);
+            mwmo->getWMOFilename(&info);
+            printf("Filename: %s\n", info.filename.c_str());
+            //ExtractSingleWmo(info->filename);
+        }
+    }
+
+    return true;
+}
+
+bool ParseMap(ADT_file* adt, char* mpq_filename, char* output_filename, int cell_y, int cell_x)
+{
+    adt_MCIN *cells = adt->a_grid->getMCIN();
+    if (!cells)
+    {
+        printf("Can't find cells in '%s'\n", mpq_filename);
+        return false;
+    }
+
     // Temporary grid data store
     uint16 area_flags[ADT_CELLS_PER_GRID][ADT_CELLS_PER_GRID];
 
@@ -415,18 +445,6 @@ bool ConvertADT(char* mpq_filename, char* output_filename, int cell_y, int cell_
     bool  liquid_show[ADT_GRID_SIZE][ADT_GRID_SIZE];
     float liquid_height[ADT_GRID_SIZE+1][ADT_GRID_SIZE+1];
 
-
-    ADT_file adt;
-
-    if (!adt.loadFile(mpq_filename))
-        return false;
-
-    adt_MCIN *cells = adt.a_grid->getMCIN();
-    if (!cells)
-    {
-        printf("Can't find cells in '%s'\n", mpq_filename);
-        return false;
-    }
 
     memset(liquid_show, 0, sizeof(liquid_show));
     memset(liquid_flags, 0, sizeof(liquid_flags));
@@ -726,33 +744,8 @@ bool ConvertADT(char* mpq_filename, char* output_filename, int cell_y, int cell_
         }
     }
 
-    std::vector<FilenameInfo> m2Models;
-    adt_MMDX* mdx = adt.a_grid->getMMDX();
-    adt_MMID* mdi = adt.a_grid->getMMID();
-    if (mdi && mdx)
-    {
-        for (uint32 i = 0; i < mdi->getMaxM2Models(); ++i)
-        {
-            FilenameInfo info = mdi->getMMDXInfo(i);
-            mdx->getM2Model(&info);
-            m2Models.push_back(info);
-            //printf("Model: %s\n", info.filename.c_str());
-        }
-    }
-    adt_MWMO* mwmo = adt.a_grid->getMWMO();
-    adt_MWID* mwid = adt.a_grid->getMWID();
-    if (mwmo && mwid)
-    {
-        for (uint32 i = 0; i < mwid->getMaxWMO(); ++i)
-        {
-            FilenameInfo info = mwid->getMWMOInfo(i);
-            mwmo->getWMO(&info);
-            //printf("WMO: %s\n", info.filename.c_str());
-        }
-    }
-
     // Get liquid map for grid (in WOTLK used MH2O chunk)
-    adt_MH2O * h2o = adt.a_grid->getMH2O();
+    adt_MH2O * h2o = adt->a_grid->getMH2O();
     if (h2o)
     {
         for (int i = 0; i < ADT_CELLS_PER_GRID; i++)
@@ -981,6 +974,35 @@ bool ConvertADT(char* mpq_filename, char* output_filename, int cell_y, int cell_
     return true;
 }
 
+bool ConvertADT(char* mpq_filename, char* output_filename, int cell_y, int cell_x)
+{
+    ADT_file adt;
+
+     if (!adt.loadFile(mpq_filename))
+         return false;
+
+     bool result1 = ParseMap(&adt, mpq_filename, output_filename, cell_y, cell_x);
+     bool result2 = ParseBuildings(&adt, mpq_filename, output_filename, cell_y, cell_x);
+     return result1;
+}
+
+bool ExtractWmo()
+{
+    bool success = true;
+
+    std::set<std::string> result = getFileNamesWithContains("*.wmo");
+    for (std::set<std::string>::const_iterator itr = result.begin(); itr != result.end(); ++itr)
+    {
+        //printf("%s\n", (*itr).c_str());
+    }
+
+    if (success)
+        printf("\nExtract wmo complete (No (fatal) errors)\n");
+
+    return success;
+}
+
+
 void ExtractMapsFromMpq()
 {
     char mpq_filename[1024];
@@ -1133,11 +1155,12 @@ int main(int argc, char * arg[])
 
     if (CONF_extract & EXTRACT_MAP)
     {
+        ExtractWmo();
         // Extract maps
         ExtractMapsFromMpq();
     }
 
-    if (CONF_extract & EXTRACT_VMAP)
+    if (CONF_extract & EXTRACT_BUILDINGS)
     {
 
     }

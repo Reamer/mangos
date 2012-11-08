@@ -6,6 +6,7 @@
 #endif
 
 #include <string>
+#include <set>
 #include "StormLib.h"
 #include <deque>
 
@@ -43,6 +44,7 @@ bool OpenNewestFile(char const* filename, HANDLE* fileHandlerPtr);
 ArchiveSetBounds GetArchivesBounds();
 bool ExtractFile( char const* mpq_name, std::string const& filename );
 void CloseArchives();
+std::set<std::string> getFileNamesWithContains(std::string contains);
 
 #define FILE_FORMAT_VERSION    18
 
