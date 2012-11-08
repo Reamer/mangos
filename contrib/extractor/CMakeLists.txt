@@ -20,12 +20,12 @@ include_directories (${MANGOS_MAP_EXTRACTOR_SOURCE_DIR}/loadlib)
 link_directories (${MANGOS_MAP_EXTRACTOR_SOURCE_DIR}/../../dep/StormLib)
 link_directories (${MANGOS_MAP_EXTRACTOR_SOURCE_DIR}/loadlib)
 
-add_executable (ad dbcfile.cpp System.cpp)
+add_executable (extractor dbcfile.cpp extractor.cpp)
 
 if(WIN32)
-    target_link_libraries (ad StormLib)
+    target_link_libraries (extractor StormLib)
 else()
-    target_link_libraries (ad storm)
+    target_link_libraries (extractor storm)
 endif()
 
-target_link_libraries (ad loadlib)
+target_link_libraries (extractor loadlib)
