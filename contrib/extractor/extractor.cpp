@@ -1285,6 +1285,19 @@ void ExtractDBCFiles()
     for(ArchiveSet::const_iterator i = archives.first; i != archives.second;++i)
         AppendDBCFileListTo(*i, dbcfiles);
 
+    // extract Build info file
+    {
+        std::string mpq_name = std::string("component.wow-") + langs[locale] + ".txt";
+        std::set<std::string> component = getFileNamesWithContains(mpq_name);
+        for (std::set<std::string>::iterator iter = component.begin(); iter != component.end(); ++iter)
+        {
+            std::string filename = szWorkDirDBC;
+            filename.append("/");
+            filename.append(GetPlainName(iter->c_str()));
+
+            ExtractFile(iter->c_str(), filename);
+        }
+    }
     // extract DBCs
     int count = 0;
     for (std::set<std::string>::iterator iter = dbcfiles.begin(); iter != dbcfiles.end(); ++iter)
