@@ -202,11 +202,11 @@ namespace VMAP
 
     bool TileAssembler::readMapSpawns()
     {
-        std::string fname = iSrcDir + "/dir_bin";
+        std::string fname = iSrcDir + "/" + szWorkFileWmoAndM2;
         FILE* dirf = fopen(fname.c_str(), "rb");
         if (!dirf)
         {
-            printf("Could not read dir_bin file!\n");
+            printf("Could not read %s file!\n", szWorkFileWmoAndM2);
             return false;
         }
         printf("Read coordinate mapping...\n");
