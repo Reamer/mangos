@@ -1371,6 +1371,8 @@ struct MapEntry
 
     bool IsTransport() const
     {
+        if (IsContinent())
+            return false;
         return map_type == MAP_COMMON && mapFlags == MAP_FLAG_INSTANCEABLE;
     }
 };
