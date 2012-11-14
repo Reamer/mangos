@@ -1,47 +1,7 @@
 #define _CRT_SECURE_NO_DEPRECATE
 
-#include <stdio.h>
-#include <deque>
-#include <map>
-#include <set>
-#include <cstdlib>
-#include <string>
-
-#ifdef WIN32
-#include "direct.h"
-#include <windows.h>
-#else
-#include <dirent.h>
-#include <sys/stat.h>
-#endif
-
-#include "dbcfile.h"
-
-#include "loadlib/adt.h"
-#include "loadlib/wdt.h"
-#include <fcntl.h>
-
-#if defined( __GNUC__ )
-    #define _open   open
-    #define _close close
-    #ifndef O_BINARY
-        #define O_BINARY 0
-    #endif
-#else
-    #include <io.h>
-#endif
-
-#ifdef O_LARGEFILE
-    #define OPEN_FLAGS  (O_RDONLY | O_BINARY | O_LARGEFILE)
-#else
-    #define OPEN_FLAGS (O_RDONLY | O_BINARY)
-#endif
-
-typedef struct
-{
-    char name[64];
-    uint32 id;
-} map_id;
+#include "extractor.h"
+#include "util.h"
 
 map_id *map_ids;
 uint16 *areas;
@@ -59,7 +19,7 @@ enum Extract
 {
     EXTRACT_MAP = 0x1,
     EXTRACT_DBC = 0x2,
-    EXTRACT_BUILDINGS = 0x4,
+    EXTRACT_BUILDING = 0x4,
 };
 
 // Select data for extract
@@ -68,8 +28,7 @@ int   CONF_extract = EXTRACT_MAP | EXTRACT_DBC;
 // see contrib/mmap/src/Tilebuilder.h, INVALID_MAP_LIQ_HEIGHT
 bool  CONF_allow_height_limit = true;
 float CONF_use_minHeight = -500.0f;
-const char* szWorkDirWmo = "./Buildings";
-const char* szRawVMAPMagic = "VMAP004";
+
 
 // This option allow use float to int conversion
 bool  CONF_allow_float_to_int   = true;
@@ -92,27 +51,6 @@ const char *CONF_mpq_list[]={
 };
 
 static const char* const langs[] = {"enGB", "enUS", "deDE", "esES", "frFR", "koKR", "zhCN", "zhTW", "enCN", "enTW", "esMX", "ruRU" };
-
-void CreateDir( const std::string& Path )
-{
-    #ifdef WIN32
-    _mkdir( Path.c_str());
-    #else
-    mkdir( Path.c_str(), 0777 );
-    #endif
-}
-
-bool FileExists( const char* FileName )
-{
-    int fp = _open(FileName, OPEN_FLAGS);
-    if(fp != -1)
-    {
-        _close(fp);
-        return true;
-    }
-
-    return false;
-}
 
 void Usage(char* prg)
 {
@@ -168,6 +106,8 @@ void HandleArgs(int argc, char * arg[])
                 }
                 else
                     Usage(arg[0]);
+                break;
+            default:
                 break;
         }
     }
@@ -319,93 +259,20 @@ void ReadLiquidTypeTableDBC()
     printf("Done! (%zu LiqTypes loaded)\n", LiqType_count);
 }
 
-//
-// Adt file convertor function and data
-//
-
-// Map file format data
-static char const* MAP_MAGIC         = "MAPS";
-static char const* MAP_VERSION_MAGIC = "v1.2";
-static char const* MAP_AREA_MAGIC    = "AREA";
-static char const* MAP_HEIGHT_MAGIC  = "MHGT";
-static char const* MAP_LIQUID_MAGIC  = "MLIQ";
-
-struct GridMapFileHeader
+bool ParseBuildings(ADT_file* adt, char* mpq_filename, char* output_filename, map_id mapid , int cell_y, int cell_x)
 {
-    uint32 mapMagic;
-    uint32 versionMagic;
-    uint32 buildMagic;
-    uint32 areaMapOffset;
-    uint32 areaMapSize;
-    uint32 heightMapOffset;
-    uint32 heightMapSize;
-    uint32 liquidMapOffset;
-    uint32 liquidMapSize;
-    uint32 holesOffset;
-    uint32 holesSize;
-};
+    std::string dirname = std::string(szWorkDirWmo) + "/" + std::string(szWorkFileWmoAndM2);
+    FILE *dirfile;
+    dirfile = fopen(dirname.c_str(), "ab");
+    if(!dirfile)
+    {
+        printf("Can't open dirfile!'%s'\n", dirname.c_str());
+        return false;
+    }
 
-#define MAP_AREA_NO_AREA      0x0001
-
-struct GridMapAreaHeader
-{
-    uint32 fourcc;
-    uint16 flags;
-    uint16 gridArea;
-};
-
-#define MAP_HEIGHT_NO_HEIGHT  0x0001
-#define MAP_HEIGHT_AS_INT16   0x0002
-#define MAP_HEIGHT_AS_INT8    0x0004
-
-struct GridMapHeightHeader
-{
-    uint32 fourcc;
-    uint32 flags;
-    float  gridHeight;
-    float  gridMaxHeight;
-};
-
-#define MAP_LIQUID_TYPE_NO_WATER    0x00
-#define MAP_LIQUID_TYPE_WATER       0x01
-#define MAP_LIQUID_TYPE_OCEAN       0x02
-#define MAP_LIQUID_TYPE_MAGMA       0x04
-#define MAP_LIQUID_TYPE_SLIME       0x08
-#define MAP_LIQUID_TYPE_DARK_WATER  0x10
-#define MAP_LIQUID_TYPE_WMO_WATER   0x20
-
-
-#define MAP_LIQUID_NO_TYPE    0x0001
-#define MAP_LIQUID_NO_HEIGHT  0x0002
-
-struct GridMapLiquidHeader
-{
-    uint32 fourcc;
-    uint16 flags;
-    uint16 liquidType;
-    uint8  offsetX;
-    uint8  offsetY;
-    uint8  width;
-    uint8  height;
-    float  liquidLevel;
-};
-
-float selectUInt8StepStore(float maxDiff)
-{
-    return 255 / maxDiff;
-}
-
-float selectUInt16StepStore(float maxDiff)
-{
-    return 65535 / maxDiff;
-}
-
-
-bool ParseBuildings(ADT_file* adt, char* mpq_filename, char* output_filename, int cell_y, int cell_x)
-{
-    adt_MODF* modf = adt->a_grid->getMODF();
-    adt_MWMO* mwmo = adt->a_grid->getMWMO();
-    adt_MWID* mwid = adt->a_grid->getMWID();
+    adt_MODF* modf = adt->getMHDR()->getMODF();
+    adt_MWMO* mwmo = adt->getMHDR()->getMWMO();
+    adt_MWID* mwid = adt->getMHDR()->getMWID();
     if (modf && mwmo && mwid)
     {
         for (uint32 i = 0; i < modf->getMaxEntries(); ++i)
@@ -413,17 +280,346 @@ bool ParseBuildings(ADT_file* adt, char* mpq_filename, char* output_filename, in
             MODF_Entry entry = modf->getMODF_Entry(i);
             FilenameInfo info = mwid->getMWMOInfo(&entry);
             mwmo->getWMOFilename(&info);
-            printf("Filename: %s\n", info.filename.c_str());
-            //ExtractSingleWmo(info->filename);
+            //changeWhitespaceToUnderscore(info.filename);
+            transformToPath(info.filename);
+            //printf("Filename: %s\n", info.filename.c_str());
+            ExtractSingleWmo(info.filename);
+            writeWMOInstance(entry, GetPlainName(info.filename.c_str()), mapid.id, cell_x, cell_y, dirfile);
         }
     }
+
+    adt_MMDX* mmdx = adt->getMHDR()->getMMDX();
+    adt_MDDF* mddf = adt->getMHDR()->getMDDF();
+    adt_MMID* mmid = adt->getMHDR()->getMMID();
+    if (mmdx && mddf && mmid)
+    {
+        for (uint32 i = 0; i < mddf->getMaxEntries(); ++i)
+        {
+            MDDF_Entry entry = mddf->getMDDF_Entry(i);
+            FilenameInfo info = mmid->getMMDXInfo(&entry);
+            mmdx->getM2Model(&info);
+            //changeWhitespaceToUnderscore(info.filename);
+            transformToPath(info.filename);
+            changeMDXtoM2(info.filename);
+            ExtractSingleModel(info.filename);
+            writeModelInstance(entry, GetPlainName(info.filename.c_str()), mapid.id, cell_x, cell_y, dirfile);
+
+        }
+    }
+    fclose(dirfile);
+    return true;
+}
+
+bool writeModelInstance(MDDF_Entry mddf ,const char* ModelInstName, uint32 mapID, uint32 tileX, uint32 tileY, FILE *pDirfile)
+{
+    Vec3D pos = fixCoords(Vec3D(mddf.position[0],mddf.position[1],mddf.position[2]));
+    Vec3D rot = Vec3D(mddf.rotation[0],mddf.rotation[1],mddf.rotation[2]);
+    // scale factor - divide by 1024. blizzard devs must be on crack, why not just use a float?
+    float sc = mddf.scale / 1024.0f;
+
+    char tempname[512];
+    sprintf(tempname, "%s/%s", szWorkDirWmo, ModelInstName);
+    FILE *input;
+    input = fopen(tempname, "r+b");
+
+    if(!input)
+    {
+        //printf("writeModelInstance couldn't open %s\n", tempname);
+        return false;
+    }
+
+    fseek(input, 8, SEEK_SET); // get the correct no of vertices
+    int nVertices;
+    fread(&nVertices, sizeof (int), 1, input);
+    fclose(input);
+
+    if(nVertices == 0)
+    {
+        //printf("ERROR: no Vertices\n");
+        return false;
+    }
+
+    uint16 adtId = 0;// not used for models
+    uint32 flags = MOD_M2;
+    if(tileX == 65 && tileY == 65) flags |= MOD_WORLDSPAWN;
+    //write mapID, tileX, tileY, Flags, ID, Pos, Rot, Scale, name
+    fwrite(&mapID, sizeof(uint32), 1, pDirfile);
+    fwrite(&tileX, sizeof(uint32), 1, pDirfile);
+    fwrite(&tileY, sizeof(uint32), 1, pDirfile);
+    fwrite(&flags, sizeof(uint32), 1, pDirfile);
+    fwrite(&adtId, sizeof(uint16), 1, pDirfile);
+    fwrite(&mddf.uniqueId, sizeof(uint32), 1, pDirfile);
+    fwrite(&pos, sizeof(float), 3, pDirfile);
+    fwrite(&rot, sizeof(float), 3, pDirfile);
+    fwrite(&sc, sizeof(float), 1, pDirfile);
+    uint32 nlen=strlen(ModelInstName);
+    fwrite(&nlen, sizeof(uint32), 1, pDirfile);
+    fwrite(ModelInstName, sizeof(char), nlen, pDirfile);
+
+    /* int realx1 = (int) ((float) pos.x / 533.333333f);
+    int realy1 = (int) ((float) pos.z / 533.333333f);
+    int realx2 = (int) ((float) pos.x / 533.333333f);
+    int realy2 = (int) ((float) pos.z / 533.333333f);
+
+    fprintf(pDirfile,"%s/%s %f,%f,%f_%f,%f,%f %f %d %d %d,%d %d\n",
+        MapName,
+        ModelInstName,
+        (float) pos.x, (float) pos.y, (float) pos.z,
+        (float) rot.x, (float) rot.y, (float) rot.z,
+        sc,
+        nVertices,
+        realx1, realy1,
+        realx2, realy2
+        ); */
 
     return true;
 }
 
+bool writeWMOInstance(MODF_Entry modf,const char* WmoInstName, uint32 mapID, uint32 tileX, uint32 tileY, FILE *pDirfile)
+{
+    Vec3D pos = Vec3D(modf.position[0],modf.position[1],modf.position[2]);
+    Vec3D rot = Vec3D(modf.rotation[0],modf.rotation[1],modf.rotation[2]);
+    Vec3D pos2 = Vec3D(modf.upperExtents[0],modf.upperExtents[1],modf.upperExtents[2]);
+    Vec3D pos3 = Vec3D(modf.lowerExtents[0],modf.lowerExtents[1],modf.lowerExtents[2]);
+
+    uint16 adtId = modf.nameSet;
+
+    //-----------add_in _dir_file----------------
+
+    char tempname[512];
+    sprintf(tempname, "%s/%s", szWorkDirWmo, WmoInstName);
+    FILE *input;
+    input = fopen(tempname, "r+b");
+
+    if(!input)
+    {
+        printf("writeWMOInstance: couldn't open %s\n", tempname);
+        return false;
+    }
+
+    fseek(input, 8, SEEK_SET); // get the correct no of vertices
+    int nVertices;
+    fread(&nVertices, sizeof (int), 1, input);
+    fclose(input);
+
+    if(nVertices == 0)
+        return false;
+
+    float x,z;
+    x = pos.x;
+    z = pos.z;
+    if(x==0 && z == 0)
+    {
+        pos.x = 533.33333f*32;
+        pos.z = 533.33333f*32;
+    }
+    pos = fixCoords(pos);
+    pos2 = fixCoords(pos2);
+    pos3 = fixCoords(pos3);
+
+    float scale = 1.0f;
+    uint32 flags = MOD_HAS_BOUND;
+    if(tileX == 65 && tileY == 65) flags |= MOD_WORLDSPAWN;
+    //write mapID, tileX, tileY, Flags, ID, Pos, Rot, Scale, Bound_lo, Bound_hi, name
+    fwrite(&mapID, sizeof(uint32), 1, pDirfile);
+    fwrite(&tileX, sizeof(uint32), 1, pDirfile);
+    fwrite(&tileY, sizeof(uint32), 1, pDirfile);
+    fwrite(&flags, sizeof(uint32), 1, pDirfile);
+    fwrite(&adtId, sizeof(uint16), 1, pDirfile);
+    fwrite(&modf.uniqueId, sizeof(uint32), 1, pDirfile);
+    fwrite(&pos, sizeof(float), 3, pDirfile);
+    fwrite(&rot, sizeof(float), 3, pDirfile);
+    fwrite(&scale, sizeof(float), 1, pDirfile);
+    fwrite(&pos2, sizeof(float), 3, pDirfile);
+    fwrite(&pos3, sizeof(float), 3, pDirfile);
+    uint32 nlen=strlen(WmoInstName);
+    fwrite(&nlen, sizeof(uint32), 1, pDirfile);
+    fwrite(WmoInstName, sizeof(char), nlen, pDirfile);
+
+    /* fprintf(pDirfile,"%s/%s %f,%f,%f_%f,%f,%f 1.0 %d %d %d,%d %d\n",
+        MapName,
+        WmoInstName,
+        (float) x, (float) pos.y, (float) z,
+        (float) rot.x, (float) rot.y, (float) rot.z,
+        nVertices,
+        realx1, realy1,
+        realx2, realy2
+        ); */
+
+    // fclose(dirfile);
+    return true;
+}
+
+bool ExtractSingleModel(std::string fname)
+{
+    changeMDXtoM2(fname);
+
+    std::string output(szWorkDirWmo);
+    output += "/";
+    output += GetPlainName(fname.c_str());
+
+    if (FileExists(output.c_str()))
+        return true;
+
+    MDX_M2_file model;
+    if (!model.loadFile(fname.c_str()))
+    {
+        printf("ERROR: Load MDX_M2_File failed: %s\n", fname.c_str());
+        return false;
+    }
+
+    return model.ConvertToVMAPModel(output.c_str());
+}
+
+void ExtractGameobjectModels()
+{
+    printf("Extracting GameObject models...\n");
+    DBCFile dbc("DBFilesClient\\GameObjectDisplayInfo.dbc");
+    if(!dbc.open())
+    {
+        printf("Fatal error: Invalid GameObjectDisplayInfo.dbc file format!\n");
+        exit(1);
+    }
+
+    std::string basepath = szWorkDirWmo;
+    basepath += "/";
+    std::string path;
+
+    FILE * model_list = fopen((basepath + "temp_gameobject_models").c_str(), "wb");
+
+    for (DBCFile::Iterator it = dbc.begin(); it != dbc.end(); ++it)
+    {
+        path = it->getString(1);
+
+        if (path.length() < 4)
+            continue;
+
+        transformToPath(path);
+        //changeWhitespaceToUnderscore(path);
+
+        char const* name = GetPlainName(path.c_str());
+
+        char const* ch_ext = GetExtension(name);
+        if (!ch_ext)
+            continue;
+
+        bool result = false;
+        if (!strcmp(ch_ext, ".wmo"))
+        {
+            result = ExtractSingleWmo(path);
+        }
+        else if (!strcmp(ch_ext, ".mdl"))
+        {
+            // TODO: extract .mdl files, if needed
+            continue;
+        }
+        else //if (!strcmp(ch_ext, ".mdx") || !strcmp(ch_ext, ".m2"))
+        {
+            transformToPath(path);
+            changeMDXtoM2(path);
+            result = ExtractSingleModel(path);
+        }
+
+        if (result)
+        {
+            uint32 displayId = it->getUInt(0);
+            uint32 path_length = strlen(name);
+            fwrite(&displayId, sizeof(uint32), 1, model_list);
+            fwrite(&path_length, sizeof(uint32), 1, model_list);
+            fwrite(name, sizeof(char), path_length, model_list);
+        }
+    }
+
+    fclose(model_list);
+
+    printf("Done!\n");
+}
+
+
+bool ExtractSingleWmo(std::string fname)
+{
+    // Copy files from archive
+    char szLocalFile[1024];
+    const char * plain_name = GetPlainName(fname.c_str());
+    sprintf(szLocalFile, "%s/%s", szWorkDirWmo, plain_name);
+    transformToPath(szLocalFile,strlen(szLocalFile));
+
+    if (FileExists(szLocalFile))
+        return true;
+
+    int p = 0;
+    //Select root wmo files
+    const char * rchr = strrchr(plain_name, '_');
+    if(rchr != NULL)
+    {
+        char cpy[4];
+        strncpy(cpy,rchr,4);
+        for (int i=0;i < 4; ++i)
+        {
+            int m = cpy[i];
+            if(isdigit(m))
+                p++;
+        }
+    }
+
+    if (p == 3)
+        return true;
+
+    bool file_ok = true;
+//    printf("Extracting %s\n", fname.c_str());
+    WMORoot froot;
+    if(!froot.loadFile(fname.c_str()))
+    {
+        printf("ExtractSingleWmo: Couldn't open RootWmo!!!\n");
+        return true;
+    }
+    FILE *output = fopen(szLocalFile,"wb");
+    if(!output)
+    {
+        printf("ExtractSingleWmo: couldn't open %s for writing!\n", szLocalFile);
+        return false;
+    }
+    froot.ConvertToVMAPRootWmo(output);
+    int Wmo_nVertices = 0;
+    //printf("root has %d groups\n", froot->nGroups);
+    if (froot.getMOHD()->nGroups !=0)
+    {
+        for (uint32 i = 0; i < froot.getMOHD()->nGroups; ++i)
+        {
+            char temp[1024];
+            strcpy(temp, fname.c_str());
+            temp[fname.length()-4] = 0;
+            char groupFileName[1024];
+            sprintf(groupFileName,"%s_%03d.wmo",temp, i);
+            //printf("Trying to open groupfile %s\n",groupFileName);
+
+            std::string s = groupFileName;
+            WMOGroup fgroup;
+            if(!fgroup.loadFile(s.c_str()))
+            {
+                printf("Could not open all Group file for: %s\n", plain_name);
+                file_ok = false;
+                break;
+            }
+            bool preciseVectorData =  false;
+            Wmo_nVertices += fgroup.ConvertToVMAPGroupWmo(output, &froot, preciseVectorData);
+        }
+    }
+
+    fseek(output, 8, SEEK_SET); // store the correct no of vertices
+    fwrite(&Wmo_nVertices,sizeof(int),1,output);
+    fclose(output);
+
+    // Delete the extracted file in the case of an error
+    if (!file_ok)
+        remove(szLocalFile);
+    return true;
+}
+
+
 bool ParseMap(ADT_file* adt, char* mpq_filename, char* output_filename, int cell_y, int cell_x)
 {
-    adt_MCIN *cells = adt->a_grid->getMCIN();
+    adt_MCIN *cells = adt->getMHDR()->getMCIN();
     if (!cells)
     {
         printf("Can't find cells in '%s'\n", mpq_filename);
@@ -745,7 +941,7 @@ bool ParseMap(ADT_file* adt, char* mpq_filename, char* output_filename, int cell
     }
 
     // Get liquid map for grid (in WOTLK used MH2O chunk)
-    adt_MH2O * h2o = adt->a_grid->getMH2O();
+    adt_MH2O * h2o = adt->getMHDR()->getMH2O();
     if (h2o)
     {
         for (int i = 0; i < ADT_CELLS_PER_GRID; i++)
@@ -920,7 +1116,7 @@ bool ParseMap(ADT_file* adt, char* mpq_filename, char* output_filename, int cell
     FILE* output=fopen(output_filename, "wb");
     if(!output)
     {
-        printf("Can't create the output file '%s'\n", output_filename);
+        printf("ParseMap: Can't create the output file '%s'\n", output_filename);
         return false;
     }
     fwrite(&map, sizeof(map), 1, output);
@@ -974,15 +1170,18 @@ bool ParseMap(ADT_file* adt, char* mpq_filename, char* output_filename, int cell
     return true;
 }
 
-bool ConvertADT(char* mpq_filename, char* output_filename, int cell_y, int cell_x)
+bool ConvertADT(char* mpq_filename, char* output_filename, map_id mapid, int cell_y, int cell_x)
 {
     ADT_file adt;
 
      if (!adt.loadFile(mpq_filename))
+     {
+         printf("Error loading %s map adt data\n", mapid.name);
          return false;
+     }
 
      bool result1 = ParseMap(&adt, mpq_filename, output_filename, cell_y, cell_x);
-     bool result2 = ParseBuildings(&adt, mpq_filename, output_filename, cell_y, cell_x);
+     bool result2 = ParseBuildings(&adt, mpq_filename, output_filename, mapid, cell_y, cell_x);
      return result1;
 }
 
@@ -991,13 +1190,16 @@ bool ExtractWmo()
     bool success = true;
 
     std::set<std::string> result = getFileNamesWithContains("*.wmo");
-    for (std::set<std::string>::const_iterator itr = result.begin(); itr != result.end(); ++itr)
+    printf("Begin Extract all WMOs\n");
+    for (std::set<std::string>::const_iterator itr = result.begin(); itr != result.end() && success; ++itr)
     {
-        //printf("%s\n", (*itr).c_str());
+        success = ExtractSingleWmo(*itr);
     }
 
     if (success)
-        printf("\nExtract wmo complete (No (fatal) errors)\n");
+        printf("\nExtract all WMOs complete (No (fatal) errors)\n");
+    else
+        printf("\nExtract all WMOs complete WITH ERRORS\n");
 
     return success;
 }
@@ -1016,32 +1218,53 @@ void ExtractMapsFromMpq()
     ReadAreaTableDBC();
     ReadLiquidTypeTableDBC();
 
-    std::string path = output_path;
-    path += "/maps/";
-    CreateDir(path);
-
     printf("Convert map files\n");
     for(uint32 z = 0; z < map_count; ++z)
     {
-        printf("Extract %s (%d/%d)                  \n", map_ids[z].name, z+1, map_count);
+        printf("Extract %s - MapId: %d (%d/%d)                  \n", map_ids[z].name,map_ids[z].id, z+1, map_count);
         // Loadup map grid data
         sprintf(mpq_map_name, "World\\Maps\\%s\\%s.wdt", map_ids[z].name, map_ids[z].name);
         WDT_file wdt;
-        if (!wdt.loadFile(mpq_map_name, false))
+        if (!wdt.loadFile(mpq_map_name))
         {
             printf("Error loading %s map wdt data\n", map_ids[z].name);
             continue;
         }
 
+        // Check for Instance WMO
+        if (wdt.hasMODF())
+        {
+            if (wdt_MODF* wdt_modf = wdt.getMODF())
+            {
+                std::string dirname = std::string(szWorkDirWmo) + "/" + std::string(szWorkFileWmoAndM2);
+                FILE *dirfile;
+                dirfile = fopen(dirname.c_str(), "ab");
+                if(!dirfile)
+                {
+                    printf("ExtractMapsFromMpq: FATAL-ERROR: Can't open dirfile!'%s'\n", dirname.c_str());
+                    exit(0);
+                }
+                printf("Write WMO Instance map: %u\n", map_ids[z].id);
+                char* filename;
+                wdt.getMWMO()->fillFileName(filename);
+                printf("filename %s\n", filename);
+                transformToPath(filename, strlen(filename));
+                ExtractSingleWmo(std::string(filename));
+                writeWMOInstance(wdt_modf->modf, GetPlainName(filename),map_ids[z].id, 65, 65, dirfile);
+                fclose(dirfile);
+
+            }
+        }
         for(uint32 y = 0; y < WDT_MAP_SIZE; ++y)
         {
             for(uint32 x = 0; x < WDT_MAP_SIZE; ++x)
             {
-                if (!wdt.getMAIN()->adt_list[y][x].exist)
-                    continue;
-                sprintf(mpq_filename, "World\\Maps\\%s\\%s_%u_%u.adt", map_ids[z].name, map_ids[z].name, x, y);
-                sprintf(output_filename, "%s/maps/%03u%02u%02u.map", output_path, map_ids[z].id, y, x);
-                ConvertADT(mpq_filename, output_filename, y, x);
+                if (wdt.getMAIN()->adt_list[y][x].exist)
+                {
+                    sprintf(mpq_filename, "World\\Maps\\%s\\%s_%u_%u.adt", map_ids[z].name, map_ids[z].name, x, y);
+                    sprintf(output_filename, "%s/maps/%03u%02u%02u.map", output_path, map_ids[z].id, y, x);
+                    ConvertADT(mpq_filename, output_filename, map_ids[z], y, x);
+                }
             }
             // draw progress bar
             printf("Processing........................%d%%\r", (100 * (y+1)) / WDT_MAP_SIZE);
@@ -1062,16 +1285,13 @@ void ExtractDBCFiles()
     for(ArchiveSet::const_iterator i = archives.first; i != archives.second;++i)
         AppendDBCFileListTo(*i, dbcfiles);
 
-    std::string path = output_path;
-    path += "/dbc/";
-    CreateDir(path);
-
     // extract DBCs
     int count = 0;
     for (std::set<std::string>::iterator iter = dbcfiles.begin(); iter != dbcfiles.end(); ++iter)
     {
-        std::string filename = path;
-        filename += (iter->c_str() + strlen("DBFilesClient\\"));
+        std::string filename = szWorkDirDBC;
+        filename.append("/");
+        filename.append(GetPlainName(iter->c_str()));
 
         if (ExtractFile(iter->c_str(), filename))
             ++count;
@@ -1150,20 +1370,20 @@ int main(int argc, char * arg[])
 
     if(CONF_extract & EXTRACT_DBC)
     {
+        CreateDir(szWorkDirDBC);
         ExtractDBCFiles();
     }
 
     if (CONF_extract & EXTRACT_MAP)
     {
+        CreateDir(szWorkDirWmo);
         ExtractWmo();
         // Extract maps
+        CreateDir(szWorkDirMap);
         ExtractMapsFromMpq();
     }
 
-    if (CONF_extract & EXTRACT_BUILDINGS)
-    {
-
-    }
+    ExtractGameobjectModels();
     //Close MPQs
     CloseArchives();
 

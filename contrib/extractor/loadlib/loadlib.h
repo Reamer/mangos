@@ -47,37 +47,51 @@ void CloseArchives();
 std::set<std::string> getFileNamesWithContains(std::string contains);
 
 #define FILE_FORMAT_VERSION    18
+#define FILE_FORMAT_VERSION_WMO 17
 
 
-struct chunkHeader
+struct ChunkHeader
 {
     union{
         uint32 fcc;
         char   fcc_txt[4];
     };
     uint32 size;
+    ChunkHeader() : fcc(0), size(0) {}
 };
 //
 // File version chunk
 //
 struct file_MVER
 {
-    chunkHeader header;
+    ChunkHeader header;
     uint32 ver;
+    file_MVER() : ver(0), header() {}
 };
 
 class FileLoader{
     uint8  *data;
     uint32  data_size;
+    bool eof;
+    uint64 pointer;
+    bool version17;
+    std::string filename;
 public:
     virtual bool prepareLoadedData();
-    uint8* GetData()     {return data;}
-    uint32 GetDataSize() {return data_size;}
+    uint8* getData()     {return data;}
+    uint32 getDataSize() {return data_size;}
+    std::string getFilename() { return filename;}
+    size_t read(void* dest, size_t bytes);
+    size_t getPos() { return pointer; }
+    uint8* getPointer() { return data + pointer; }
+    bool isEof() { return eof; }
+    void seek(int offset);
+    void seekRelative(int offset);
 
     file_MVER *version;
     FileLoader();
     virtual ~FileLoader();
-    bool loadFile(char *filename, bool log = true);
+    bool loadFile(char const*filename, bool log = true);
     virtual void free();
 };
 #endif

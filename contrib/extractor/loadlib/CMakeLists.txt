@@ -10,6 +10,6 @@
 
 include_directories (${CMAKE_SOURCE_DIR}/../../dep/StormLib/src)
 
-add_library (loadlib loadlib.cpp  adt.cpp  wdt.cpp)
+add_library (loadlib loadlib.cpp  adt.cpp  wdt.cpp wmo.cpp mdx_m2.cpp)
 # link loadlib with zlib
 target_link_libraries (loadlib z)

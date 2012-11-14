@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include "adt.h"
+#include "../util.h"
 
 //**************************************************************************************
 // WDT file class and structures
@@ -13,7 +14,7 @@
 class wdt_MODF
 {
     public:
-        chunkHeader wdtMODFHeader;
+        ChunkHeader header;
         MODF_Entry modf;
 
         bool prepareLoadedData();
@@ -22,25 +23,22 @@ class wdt_MODF
 class wdt_MWMO{
 
     public:
-        chunkHeader wdtMWMOHeader;
+        ChunkHeader header;
         bool prepareLoadedData();
-        std::vector<char*> getFileNames()
+        void fillFileName(char* &filename)
         {
-            std::vector<char*> result;
-            result.clear();
-            if (wdtMWMOHeader.size)
+            if (header.size)
             {
-                char allFilenames[wdtMWMOHeader.size];
-                memcpy(allFilenames, ((uint8*)this + sizeof(chunkHeader)), wdtMWMOHeader.size);
-                result = splitFileNamesAtDelim(allFilenames, wdtMWMOHeader.size, '\0');
+                filename = new char[header.size];
+                memcpy(filename, ((uint8*)this + sizeof(ChunkHeader)), header.size);
             }
-            return result;
         }
+
 };
 
 class wdt_MPHD{
     public:
-        chunkHeader wdtMPHDHeader;
+        ChunkHeader header;
 
         uint32 data1;
         uint32 data2;
@@ -55,7 +53,7 @@ class wdt_MPHD{
 
 class wdt_MAIN{
     public:
-        chunkHeader wdtMainHeader;
+        ChunkHeader header;
 
         struct adtData{
             uint32 exist;
@@ -73,10 +71,10 @@ class WDT_file : public FileLoader{
         virtual ~WDT_file();
         void free();
 
-        wdt_MPHD* getMPHD() {return (wdt_MPHD*)(GetData() + sizeof(file_MVER)); };
-        wdt_MAIN* getMAIN() {return (wdt_MAIN*)((uint8*)getMPHD() + sizeof(chunkHeader) + getMPHD()->wdtMPHDHeader.size); };
-        wdt_MWMO* getMWMO() {return (wdt_MWMO*)((uint8*)getMAIN() + sizeof(chunkHeader) + getMAIN()->wdtMainHeader.size); };
-        wdt_MODF* getMODF() {return (wdt_MODF*)(hasMODF() ? (uint8*)getMWMO() + sizeof(chunkHeader) + getMWMO()->wdtMWMOHeader.size : NULL); };
+        wdt_MPHD* getMPHD() {return (wdt_MPHD*)(getData() + sizeof(file_MVER)); };
+        wdt_MAIN* getMAIN() {return (wdt_MAIN*)((uint8*)getMPHD() + sizeof(ChunkHeader) + getMPHD()->header.size); };
+        wdt_MWMO* getMWMO() {return (wdt_MWMO*)((uint8*)getMAIN() + sizeof(ChunkHeader) + getMAIN()->header.size); };
+        wdt_MODF* getMODF() {return (wdt_MODF*)(hasMODF() ? (uint8*)getMWMO() + sizeof(ChunkHeader) + getMWMO()->header.size : NULL); };
         bool hasMODF();
 };
 

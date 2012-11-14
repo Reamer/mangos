@@ -4,34 +4,29 @@
 
 bool wdt_MWMO::prepareLoadedData()
 {
-    if (wdtMWMOHeader.fcc != 'MWMO')
+    if (!compareHeaderName(header, "MWMO"))
         return false;
 
-    if (getFileNames().size() > 1)
-    {
-        printf("ERROR: MWMO-Check failed. More then one file in WDT");
-        return false;
-    }
     return true;
 }
 
 bool wdt_MPHD::prepareLoadedData()
 {
-    if (wdtMPHDHeader.fcc != 'MPHD')
+    if (!compareHeaderName(header, "MPHD"))
         return false;
     return true;
 }
 
 bool wdt_MAIN::prepareLoadedData()
 {
-    if (wdtMainHeader.fcc != 'MAIN')
+    if (!compareHeaderName(header, "MAIN"))
         return false;
     return true;
 }
 
 bool wdt_MODF::prepareLoadedData()
 {
-    if (wdtMODFHeader.fcc != 'MODF')
+    if (!compareHeaderName(header, "MODF"))
         return false;
     return true;
 }
@@ -82,9 +77,9 @@ bool WDT_file::prepareLoadedData()
 bool WDT_file::hasMODF()
 {
     // maybe we have a flag
-    uint32 possibleSize = sizeof(file_MVER) + sizeof(chunkHeader) * 3 +
-            getMPHD()->wdtMPHDHeader.size +
-            getMAIN()->wdtMainHeader.size +
-            getMWMO()->wdtMWMOHeader.size;
-    return possibleSize < GetDataSize();
+    uint32 possibleSize = sizeof(file_MVER) + sizeof(ChunkHeader) * 3 +
+            getMPHD()->header.size +
+            getMAIN()->header.size +
+            getMWMO()->header.size;
+    return possibleSize < getDataSize();
 }

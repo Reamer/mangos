@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include "loadlib.h"
+#include "../util.h"
 
 #define TILESIZE (533.33333f)
 #define CHUNKSIZE ((TILESIZE) / 16.0f)
@@ -26,12 +27,6 @@ enum LiquidType
 
 
 bool isHole(int holes, int i, int j);
-// ignore '\0', hard splitting (in use for split after each '\0'
-std::vector<char*> splitFileNamesAtDelim(char* filenames, uint32 size, char delim);
-void changeWhitespaceToUnderscore(char* name, size_t len);
-void changeWhitespaceToUnderscore(std::string name);
-void transformToPath(char* name, size_t len);
-void transformToPath(std::string name);
 
 struct MODF_Entry
 {
@@ -99,7 +94,7 @@ struct MDDF_Entry
 class adt_MCVT
 {
     private:
-        chunkHeader header;
+        ChunkHeader header;
     public:
         float height_map[(ADT_CELL_SIZE+1)*(ADT_CELL_SIZE+1)+ADT_CELL_SIZE*ADT_CELL_SIZE];
 
@@ -112,7 +107,7 @@ class adt_MCVT
 class adt_MCLQ
 {
     private:
-        chunkHeader header;
+        ChunkHeader header;
     public:
         float height1;
         float height2;
@@ -138,7 +133,7 @@ class adt_MCLQ
 class adt_MCNK
 {
     private:
-        chunkHeader header;
+        ChunkHeader header;
     public:
         uint32 flags;
         uint32 ix;
@@ -195,7 +190,7 @@ class adt_MCNK
 class adt_MCIN
 {
     private:
-        chunkHeader header;
+        ChunkHeader header;
     public:
         struct adt_CELLS{
             uint32 offsMCNK;
@@ -245,7 +240,7 @@ struct adt_liquid_header{
 class adt_MH2O
 {
     public:
-        chunkHeader header;
+        ChunkHeader header;
 
         struct adt_LIQUID{
             uint32 offsInformation;
@@ -323,7 +318,7 @@ struct FilenameInfo
 class adt_MMDX
 {
     private:
-        chunkHeader header;
+        ChunkHeader header;
     public:
         bool prepareLoadedData();
         std::vector<char*> getFileNames();
@@ -333,10 +328,11 @@ class adt_MMDX
 class adt_MMID
 {
     private:
-        chunkHeader header;
+        ChunkHeader header;
     public:
         bool prepareLoadedData();
         std::vector<uint32> getOffsetList();
+        FilenameInfo getMMDXInfo(MDDF_Entry* entry) { return getMMDXInfo(entry->mmidEntry); }
         FilenameInfo getMMDXInfo(uint32 value);
         inline uint32 getMaxM2Models() { return header.size/sizeof(uint32);}
 };
@@ -344,7 +340,7 @@ class adt_MMID
 class adt_MWMO
 {
     private:
-        chunkHeader header;
+        ChunkHeader header;
     public:
         bool prepareLoadedData();
         std::vector<char*> getFileNames();
@@ -354,18 +350,18 @@ class adt_MWMO
 class adt_MWID
 {
     private:
-        chunkHeader header;
+        ChunkHeader header;
     public:
         bool prepareLoadedData();
         std::vector<uint32> getOffsetList();
-        FilenameInfo getMWMOInfo(MODF_Entry* entry) { return getMWMOInfo(entry->uniqueId);};
+        FilenameInfo getMWMOInfo(MODF_Entry* entry) { return getMWMOInfo(entry->mwidEntry);};
         FilenameInfo getMWMOInfo(uint32 value);
         inline uint32 getMaxWMO() { return header.size/sizeof(uint32); }
 };
 
 class adt_MDDF
 {
-        chunkHeader header;
+        ChunkHeader header;
     public:
         bool prepareLoadedData();
         inline uint32 getMaxEntries() { return header.size/sizeof(MDDF_Entry);}
@@ -375,7 +371,7 @@ class adt_MDDF
 class adt_MODF
 {
     private:
-        chunkHeader header;
+        ChunkHeader header;
     public:
         bool prepareLoadedData();
         inline uint32 getMaxEntries() { return header.size/sizeof(MODF_Entry);}
@@ -387,7 +383,7 @@ class adt_MODF
 //
 class adt_MHDR
 {
-    chunkHeader header;
+    ChunkHeader header;
 
     uint32 pad;
     uint32 offsMCIN;           // MCIN
@@ -430,7 +426,7 @@ class ADT_file : public FileLoader{
         ~ADT_file();
         void free();
 
-        adt_MHDR* a_grid;
+        adt_MHDR* getMHDR() {return (adt_MHDR *)(getData()+sizeof(file_MVER));}
 };
 
 #endif

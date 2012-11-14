@@ -2,8 +2,9 @@
 #define MDX_M2_H
 
 #include "loadlib.h"
+#include "../vec3d.h"
 
-struct ModelHeaderWoTLK
+struct ModelHeader
 {
     union{
         uint32 fcc;
@@ -80,8 +81,22 @@ class MDX_M2_file : public FileLoader
         MDX_M2_file();
         ~MDX_M2_file();
         void free();
+        void _unload()
+        {
+            delete[] vertices;
+            delete[] indices;
+            vertices = NULL;
+            indices = NULL;
+        }
 
-        ModelHeaderWoTLK* model;
+        bool ConvertToVMAPModel(const char * outfilename);
+
+        ModelHeader header;
+        uint32 offsBB_vertices, offsBB_indices;
+        Vec3D *vertices;
+        uint16 *indices;
+        size_t nIndices;
+
 };
 
 #endif
