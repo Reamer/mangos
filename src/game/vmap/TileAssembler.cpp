@@ -106,7 +106,7 @@ namespace VMAP
             // ===> possibly move this code to StaticMapTree class
             std::map<uint32, uint32> modelNodeIdx;
             for (uint32 i = 0; i < mapSpawns.size(); ++i)
-                modelNodeIdx.insert(pair<uint32, uint32>(mapSpawns[i]->ID, i));
+                modelNodeIdx.insert(pair<uint32, uint32>(mapSpawns[i]->uniqueID, i));
 
             // write map tree file
             std::stringstream mapfilename;
@@ -168,7 +168,7 @@ namespace VMAP
                     const ModelSpawn& spawn2 = map_iter->second->UniqueEntries[tile->second];
                     success = success && ModelSpawn::writeToFile(tilefile, spawn2);
                     // MapTree nodes to update when loading tile:
-                    std::map<uint32, uint32>::iterator nIdx = modelNodeIdx.find(spawn2.ID);
+                    std::map<uint32, uint32>::iterator nIdx = modelNodeIdx.find(spawn2.uniqueID);
                     if (success && fwrite(&nIdx->second, sizeof(uint32), 1, tilefile) != 1) success = false;
                 }
                 fclose(tilefile);
@@ -233,8 +233,8 @@ namespace VMAP
                 mapData[mapID] = current = new MapSpawns();
             }
             else current = (*map_iter).second;
-            current->UniqueEntries.insert(pair<uint32, ModelSpawn>(spawn.ID, spawn));
-            current->TileEntries.insert(pair<uint32, uint32>(StaticMapTree::packTileID(tileX, tileY), spawn.ID));
+            current->UniqueEntries.insert(pair<uint32, ModelSpawn>(spawn.uniqueID, spawn));
+            current->TileEntries.insert(pair<uint32, uint32>(StaticMapTree::packTileID(tileX, tileY), spawn.uniqueID));
         }
         bool success = (ferror(dirf) == 0);
         fclose(dirf);

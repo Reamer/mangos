@@ -162,7 +162,7 @@ namespace VMAP
             return false;
         }
         check += fread(&spawn.adtId, sizeof(uint16), 1, rf);
-        check += fread(&spawn.ID, sizeof(uint32), 1, rf);
+        check += fread(&spawn.uniqueID, sizeof(uint32), 1, rf);
         check += fread(&spawn.iPos, sizeof(float), 3, rf);
         check += fread(&spawn.iRot, sizeof(float), 3, rf);
         check += fread(&spawn.iScale, sizeof(float), 1, rf);
@@ -201,7 +201,7 @@ namespace VMAP
         uint32 check = 0;
         check += fwrite(&spawn.flags, sizeof(uint32), 1, wf);
         check += fwrite(&spawn.adtId, sizeof(uint16), 1, wf);
-        check += fwrite(&spawn.ID, sizeof(uint32), 1, wf);
+        check += fwrite(&spawn.uniqueID, sizeof(uint32), 1, wf);
         check += fwrite(&spawn.iPos, sizeof(float), 3, wf);
         check += fwrite(&spawn.iRot, sizeof(float), 3, wf);
         check += fwrite(&spawn.iScale, sizeof(float), 1, wf);

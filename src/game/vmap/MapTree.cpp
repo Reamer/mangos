@@ -395,10 +395,10 @@ namespace VMAP
                     {
                         ++iLoadedSpawns[referencedVal];
 #ifdef VMAP_DEBUG
-                        if (iTreeValues[referencedVal].ID != spawn.ID)
+                        if (iTreeValues[referencedVal].uniqueID != spawn.uniqueID)
                             DEBUG_LOG("Error: trying to load wrong spawn in node!");
                         else if (iTreeValues[referencedVal].name != spawn.name)
-                            DEBUG_LOG("Error: name mismatch on GUID=%u", spawn.ID);
+                            DEBUG_LOG("Error: name mismatch on GUID=%u", spawn.uniqueID);
 #endif
                     }
                 }
@@ -451,7 +451,7 @@ namespace VMAP
                         fread(&referencedNode, sizeof(uint32), 1, tf);
                         if (!iLoadedSpawns.count(referencedNode))
                         {
-                            ERROR_LOG("Trying to unload non-referenced model '%s' (ID:%u)", spawn.name.c_str(), spawn.ID);
+                            ERROR_LOG("Trying to unload non-referenced model '%s' (ID:%u)", spawn.name.c_str(), spawn.uniqueID);
                         }
                         else if (--iLoadedSpawns[referencedNode] == 0)
                         {
