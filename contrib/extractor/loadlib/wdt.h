@@ -61,6 +61,7 @@ class wdt_MAIN{
         } adt_list[64][64];
 
         bool   prepareLoadedData();
+        void printExitsArray();
 };
 
 class WDT_file : public FileLoader{

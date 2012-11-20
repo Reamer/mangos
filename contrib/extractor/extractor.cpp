@@ -1255,12 +1255,14 @@ void ExtractMapsFromMpq()
 
             }
         }
+        // wdt.getMAIN()->printExitsArray();
         for(uint32 y = 0; y < WDT_MAP_SIZE; ++y)
         {
             for(uint32 x = 0; x < WDT_MAP_SIZE; ++x)
             {
                 if (wdt.getMAIN()->adt_list[y][x].exist)
                 {
+                    //printf("Map: %s_%u_%u.adt\n", map_ids[z].name, x, y);
                     sprintf(mpq_filename, "World\\Maps\\%s\\%s_%u_%u.adt", map_ids[z].name, map_ids[z].name, x, y);
                     sprintf(output_filename, "%s/maps/%03u%02u%02u.map", output_path, map_ids[z].id, y, x);
                     ConvertADT(mpq_filename, output_filename, map_ids[z], y, x);

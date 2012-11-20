@@ -24,6 +24,25 @@ bool wdt_MAIN::prepareLoadedData()
     return true;
 }
 
+void wdt_MAIN::printExitsArray()
+{
+    for (uint32 x = 0; x < 64; ++x)
+    {
+        for (uint32 y = 0; y < 64; ++y)
+        {
+            if (adt_list[x][y].exist)
+            {
+                printf("|%02u-%02u|", x, y);
+            }
+            else
+            {
+                printf("|         |");
+            }
+        }
+        printf("\n");
+    }
+}
+
 bool wdt_MODF::prepareLoadedData()
 {
     if (!compareHeaderName(header, "MODF"))
