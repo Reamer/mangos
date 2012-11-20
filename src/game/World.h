@@ -89,11 +89,14 @@ enum WorldTimers
 /// Configuration elements
 enum eConfigUInt32Values
 {
-    CONFIG_UINT32_COMPRESSION = 0,
+    CONFIG_UINT32_REALMID = 0,
+    CONFIG_UINT32_COMPRESSION,
     CONFIG_UINT32_INTERVAL_SAVE,
     CONFIG_UINT32_INTERVAL_GRIDCLEAN,
     CONFIG_UINT32_INTERVAL_MAPUPDATE,
     CONFIG_UINT32_INTERVAL_CHANGEWEATHER,
+    CONFIG_UINT32_MAPUPDATE_MAXVISITORS,
+    CONFIG_UINT32_MAPUPDATE_MAXVISITS,
     CONFIG_UINT32_PORT_WORLD,
     CONFIG_UINT32_GAME_TYPE,
     CONFIG_UINT32_REALM_ZONE,
@@ -775,13 +778,11 @@ class World
         mutable ObjectLockType   i_lock[MAP_LOCK_TYPE_MAX];
 
         // reset duel system
-        std::set<uint32> areaEnabledIds; //set of areaIds where is enabled the Duel reset system
+        UNORDERED_SET<uint32> areaEnabledIds; //set of areaIds where is enabled the Duel reset system
         // Disable dungeons for LFG system
-        std::set<uint32> disabledMapIdForDungeonFinder; // set of MapIds which are disabled for DungeonFinder
+        UNORDERED_SET<uint32> disabledMapIdForDungeonFinder; // set of MapIds which are disabled for DungeonFinder
 
 };
-
-extern uint32 realmID;
 
 #define sWorld MaNGOS::Singleton<World>::Instance()
 #endif

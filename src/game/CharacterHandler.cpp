@@ -481,7 +481,7 @@ void WorldSession::HandleCharCreateOpcode(WorldPacket& recv_data)
     // Player created, save it now
     pNewChar.SaveToDB();
 
-    sAccountMgr.UpdateCharactersCount(GetAccountId(), realmID);
+    sAccountMgr.UpdateCharactersCount(GetAccountId(), sWorld.getConfig(CONFIG_UINT32_REALMID));
 
     data << (uint8)CHAR_CREATE_SUCCESS;
     SendPacket(&data);
@@ -771,7 +771,7 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
         static SqlStatementID updAccount;
 
         stmt = LoginDatabase.CreateStatement(updAccount, "UPDATE account SET active_realm_id = ? WHERE id = ?");
-        stmt.PExecute(realmID, GetAccountId());
+        stmt.PExecute(sWorld.getConfig(CONFIG_UINT32_REALMID), GetAccountId());
     }
 
     pCurrChar->SetInGameTime(WorldTimer::getMSTime());
@@ -1454,7 +1454,7 @@ void WorldSession::HandleCharFactionOrRaceChangeOpcode(WorldPacket& recv_data)
                 Field *fields2 = result2->Fetch();
                 uint32 reputation_alliance = fields2[0].GetUInt32();
                 uint32 reputation_horde = fields2[1].GetUInt32();
-                CharacterDatabase.PExecute("DELETE FROM character_reputation WHERE faction = '%u' AND guid = '%u'",team == TEAM_INDEX_ALLIANCE ? reputation_horde : reputation_alliance, guid.GetCounter());
+                CharacterDatabase.PExecute("DELETE FROM character_reputation WHERE faction = '%u' AND guid = '%u'", team == TEAM_INDEX_ALLIANCE ? reputation_alliance : reputation_horde, guid.GetCounter());
                 CharacterDatabase.PExecute("UPDATE IGNORE `character_reputation` set faction = '%u' where faction = '%u' AND guid = '%u'",
                     team == TEAM_INDEX_ALLIANCE ? reputation_alliance : reputation_horde, team == TEAM_INDEX_ALLIANCE ? reputation_horde : reputation_alliance, guid.GetCounter());
             }

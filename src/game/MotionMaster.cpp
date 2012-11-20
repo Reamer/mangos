@@ -276,12 +276,6 @@ bool MotionMaster::GetDestination(float &x, float &y, float &z)
     return true;
 }
 
-void MotionMaster::UpdateFinalDistanceToTarget(float fDistance)
-{
-    if (CurrentMovementGenerator()->GetMovementGeneratorType() == FOLLOW_MOTION_TYPE)
-        CurrentMovementGenerator()->UpdateFinalDistance(fDistance);
-}
-
 MotionMaster::MotionMaster(Unit *unit) : m_owner(unit)
 {
 }
@@ -364,6 +358,19 @@ void MotionMaster::MoveSkyDiving(float x, float y, float z, float o, float horiz
     Mutate(new EjectMovementGenerator(0), UNIT_ACTION_EFFECT);
 }
 
+void MotionMaster::MoveBoardVehicle(float x, float y, float z, float o, float horizontalSpeed, float max_height)
+{
+    Movement::MoveSplineInit init(*m_owner);
+    init.MoveTo(x,y,z,false, true);
+    init.SetParabolic(max_height, 0);
+    init.SetVelocity(horizontalSpeed);
+    init.SetFacing(o);
+    init.SetBoardVehicle();
+    init.Launch();
+    // Currently no real unit action in this method, only visual effect
+    //Mutate(new EffectMovementGenerator(0), UNIT_ACTION_EFFECT);
+}
+
 void MotionMaster::MoveWithSpeed(float x, float y, float z, float speed, bool generatePath, bool forceDestination)
 {
     Movement::MoveSplineInit init(*m_owner);
@@ -376,7 +383,7 @@ void MotionMaster::MoveWithSpeed(float x, float y, float z, float speed, bool ge
 void MotionMaster::MoveFall()
 {
     // use larger distance for vmap height search than in most other cases
-    float tz = m_owner->GetMap()->GetHeight(m_owner->GetPhaseMask(), m_owner->GetPositionX(), m_owner->GetPositionY(), m_owner->GetPositionZ(), true, MAX_FALL_DISTANCE);
+    float tz = m_owner->GetMap()->GetHeight(m_owner->GetPhaseMask(), m_owner->GetPositionX(), m_owner->GetPositionY(), m_owner->GetPositionZ());
     if (tz <= INVALID_HEIGHT)
     {
         sLog.outError("MotionMaster::MoveFall: unable retrive a proper height at map %u (x: %f, y: %f, z: %f).",

@@ -471,7 +471,7 @@ class MANGOS_DLL_SPEC Creature : public Unit
         virtual ~Creature();
 
         void AddToWorld();
-        void RemoveFromWorld();
+        virtual void RemoveFromWorld(bool remove) override;
 
         bool Create(uint32 guidlow, CreatureCreatePos& cPos, CreatureInfo const* cinfo, Team team = TEAM_NONE, const CreatureData* data = NULL, GameEventCreatureData const* eventData = NULL);
         bool LoadCreatureAddon(bool reload = false);
@@ -542,8 +542,8 @@ class MANGOS_DLL_SPEC Creature : public Unit
 
         CreatureAI* AI() { return i_AI; }
 
-        void SetWalk(bool enable);
-        void SetLevitate(bool enable);
+        void SetWalk(bool enable, bool asDefault = true);
+        void SetLevitate(bool enable, float altitude = 1.0f);
         void SetRoot(bool enable) override;
         void SetWaterWalk(bool enable) override;
 

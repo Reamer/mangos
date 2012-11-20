@@ -150,7 +150,7 @@ m_creatureInfo(NULL)
     m_CreatureSpellCooldowns.clear();
     m_CreatureCategoryCooldowns.clear();
 
-    SetWalk(true);
+    SetWalk(true, true);
 }
 
 Creature::~Creature()
@@ -165,41 +165,16 @@ Creature::~Creature()
 
 void Creature::AddToWorld()
 {
-    ///- Register the creature for guid lookup
-    if (!IsInWorld() && GetObjectGuid().IsCreatureOrVehicle())
-    {
-        MAPLOCK_WRITE(this, MAP_LOCK_TYPE_DEFAULT);
-        GetMap()->GetObjectsStore().insert<Creature>(GetObjectGuid(), (Creature*)this);
-    }
+    Unit::AddToWorld();
 
-    if (IsInWorld() && GetObjectGuid().IsPet())
-    {
-        DEBUG_LOG("Creature::AddToWorld called, but creature (guid %u) is pet! Crush possible later.", GetObjectGuid().GetCounter());
-        ((Pet*)this)->AddToWorld();
-    }
-    else
-        Unit::AddToWorld();
-
+    // Not one time call this "added to world" creatures, spawned with negative spawn time (BG events mostly)
     if (GetVehicleKit())
         GetVehicleKit()->Reset();
 }
 
-void Creature::RemoveFromWorld()
+void Creature::RemoveFromWorld(bool remove)
 {
-    ///- Remove the creature from the accessor
-    if (IsInWorld() && GetObjectGuid().IsCreatureOrVehicle())
-    {
-        MAPLOCK_WRITE(this, MAP_LOCK_TYPE_DEFAULT);
-        GetMap()->GetObjectsStore().erase<Creature>(GetObjectGuid(), (Creature*)NULL);
-    }
-
-    if (IsInWorld() && GetObjectGuid().IsPet())
-    {
-        DEBUG_LOG("Creature::RemoveFromWorld called, but creature (guid %u) is pet! Crush possible later.", GetObjectGuid().GetCounter());
-        ((Pet*)this)->RemoveFromWorld();
-    }
-    else
-        Unit::RemoveFromWorld();
+    Unit::RemoveFromWorld(remove);
 }
 
 void Creature::RemoveCorpse()
@@ -228,6 +203,13 @@ void Creature::RemoveCorpse()
     GetRespawnCoord(x, y, z, &o);
     GetMap()->CreatureRelocation(this, x, y, z, o);
     DisableSpline();
+
+    // forced recreate creature object at clients
+    UnitVisibility currentVis = GetVisibility();
+    SetVisibility(VISIBILITY_REMOVE_CORPSE);
+    UpdateObjectVisibility();
+    SetVisibility(currentVis);                              // restore visibility state
+    UpdateObjectVisibility();
 }
 
 /**
@@ -322,7 +304,7 @@ bool Creature::InitEntry(uint32 Entry, CreatureData const* data /*=NULL*/, GameE
     UpdateSpeed(MOVE_WALK, false);
     UpdateSpeed(MOVE_RUN,  false);
 
-    SetLevitate(cinfo->InhabitType & INHABIT_AIR);
+    SetLevitate(cinfo->InhabitType & INHABIT_AIR, GetObjectGuid().IsPet() ? 2.0f : 4.0f);
 
     // checked at loading
     m_defaultMovementType = MovementGeneratorType(cinfo->MovementType);
@@ -657,28 +639,26 @@ void Creature::Regenerate(Powers power)
             break;
         }
         case POWER_ENERGY:
+        {
             if (IsVehicle())
             {
-                if (VehicleEntry const* vehicleInfo = sVehicleStore.LookupEntry(GetCreatureInfo()->vehicleId))
+                switch (GetVehicleInfo()->m_powerType)
                 {
-
-                    switch (vehicleInfo->m_powerType)
-                    {
-                        case ENERGY_TYPE_PYRITE:
-                        case ENERGY_TYPE_BLOOD:
-                        case ENERGY_TYPE_OOZE:
+                    case ENERGY_TYPE_PYRITE:
+                    case ENERGY_TYPE_BLOOD:
+                    case ENERGY_TYPE_OOZE:
                         break;
 
-                        case ENERGY_TYPE_STEAM:
-                        default:
-                            addvalue = 10 * sWorld.getConfig(CONFIG_FLOAT_RATE_POWER_ENERGY);
+                    case ENERGY_TYPE_STEAM:
+                    default:
+                        addvalue = 10 * sWorld.getConfig(CONFIG_FLOAT_RATE_POWER_ENERGY);
                         break;
-                    }
                 }
             }
             else
                 addvalue = 20 * sWorld.getConfig(CONFIG_FLOAT_RATE_POWER_ENERGY);
             break;
+        }
         case POWER_FOCUS:
             addvalue = 24 * sWorld.getConfig(CONFIG_FLOAT_RATE_POWER_FOCUS);
             break;
@@ -706,13 +686,12 @@ void Creature::RegenerateHealth()
     if (!IsRegeneratingHealth())
         return;
 
-    uint32 curValue = GetHealth();
-    uint32 maxValue = GetMaxHealth();
+    uint32 maxvalue = GetMaxHealth();
 
-    if (curValue >= maxValue)
+    if (GetHealth() >= maxvalue)
         return;
 
-    uint32 addvalue = 0;
+    float addvalue = 0.0f;
 
     // Not only pet, but any controlled creature
     if (GetCharmerOrOwnerGuid())
@@ -721,12 +700,12 @@ void Creature::RegenerateHealth()
         float Spirit = GetStat(STAT_SPIRIT);
 
         if (GetPower(POWER_MANA) > 0)
-            addvalue = uint32(Spirit * 0.25 * HealthIncreaseRate);
+            addvalue = Spirit * 0.25 * HealthIncreaseRate;
         else
-            addvalue = uint32(Spirit * 0.80 * HealthIncreaseRate);
+            addvalue = Spirit * 0.80 * HealthIncreaseRate;
     }
     else
-        addvalue = maxValue / 3;
+        addvalue = maxvalue / 3.0f;
 
     ModifyHealth(addvalue);
 }
@@ -1323,7 +1302,7 @@ bool Creature::LoadFromDB(uint32 guidlow, Map* map)
         m_deathState = DEAD;
         if (CanFly())
         {
-            float tz = GetMap()->GetHeight(GetPhaseMask(), data->posX, data->posY, data->posZ, false);
+            float tz = GetMap()->GetHeight(GetPhaseMask(), data->posX, data->posY, data->posZ);
             if (data->posZ - tz > 0.1)
                 Relocate(data->posX, data->posY, tz);
         }
@@ -1353,7 +1332,7 @@ bool Creature::LoadFromDB(uint32 guidlow, Map* map)
             // Just set to dead, so need to relocate like above
             if (CanFly())
             {
-                float tz = GetMap()->GetHeight(data->phaseMask, data->posX, data->posY, data->posZ, false);
+                float tz = GetMap()->GetHeight(data->phaseMask, data->posX, data->posY, data->posZ);
                 if (data->posZ - tz > 0.1)
                     Relocate(data->posX, data->posY, tz);
             }
@@ -1555,7 +1534,7 @@ void Creature::SetDeathState(DeathState s)
 
         SetHealth(GetMaxHealth());
         SetLootRecipient(NULL);
-        SetWalk(true);
+        SetWalk(true, true);
 
         if (GetTemporaryFactionFlags() & TEMPFACTION_RESTORE_RESPAWN)
             ClearTemporaryFaction();
@@ -1583,13 +1562,6 @@ void Creature::Respawn()
 {
     RemoveCorpse();
 
-    // forced recreate creature object at clients
-    UnitVisibility currentVis = GetVisibility();
-    SetVisibility(VISIBILITY_RESPAWN);
-    UpdateObjectVisibility();
-    SetVisibility(currentVis);                              // restore visibility state
-    UpdateObjectVisibility();
-
     if (IsDespawned())
     {
         if (HasStaticDBSpawnData())
@@ -1612,12 +1584,14 @@ void Creature::ForcedDespawn(uint32 timeMSToDespawn)
     if (IsInWorld() && isAlive())
         SetDeathState(JUST_DIED);
 
-    RemoveCorpse();
+    m_corpseDecayTimer = 1;                                 // Properly remove corpse on next tick (also pool system requires Creature::Update call with CORPSE state
+
     if (IsInWorld())
         SetHealth(0);                                           // just for nice GM-mode view
 
     if (IsTemporarySummon())
          ((TemporarySummon*)this)->UnSummon();
+
 }
 
 bool Creature::IsImmuneToSpell(SpellEntry const* spellInfo, bool isFriendly) const
@@ -1999,7 +1973,7 @@ bool Creature::LoadCreatureAddon(bool reload)
         SetUInt32Value(UNIT_NPC_EMOTESTATE, cainfo->emote);
 
     if (cainfo->splineFlags & SPLINEFLAG_FLYING)
-        SetLevitate(true);
+        SetLevitate(true, GetObjectGuid().IsPet() ? 2.0f : 4.0f);
 
     if (cainfo->auras)
     {
@@ -2217,7 +2191,8 @@ bool Creature::HasSpellCooldown(uint32 spell_id) const
 
 uint8 Creature::getRace() const
 {
-    return GetCreatureModelRace(GetNativeDisplayId());
+    uint8 race = Unit::getRace();
+    return race ? race : GetCreatureModelRace(GetNativeDisplayId());
 }
 
 bool Creature::IsInEvadeMode() const
@@ -2602,23 +2577,42 @@ uint8 Creature::GetSpellMaxIndex(uint8 activeState)
     return (spellList ? spellList->rbegin()->first : 0);
 }
 
-void Creature::SetWalk(bool enable)
+void Creature::SetWalk(bool enable, bool asDefault)
 {
+    if (asDefault)
+    {
+        if (enable)
+            clearUnitState(UNIT_STAT_RUNNING);
+        else
+            addUnitState(UNIT_STAT_RUNNING);
+    }
+
+    // Nothing changed?
+    if (enable == m_movementInfo.HasMovementFlag(MOVEFLAG_WALK_MODE))
+        return;
+
     if (enable)
         m_movementInfo.AddMovementFlag(MOVEFLAG_WALK_MODE);
     else
         m_movementInfo.RemoveMovementFlag(MOVEFLAG_WALK_MODE);
+
     WorldPacket data(enable ? SMSG_SPLINE_MOVE_SET_WALK_MODE : SMSG_SPLINE_MOVE_SET_RUN_MODE, 9);
     data << GetPackGUID();
     SendMessageToSet(&data, true);
 }
 
-void Creature::SetLevitate(bool enable)
+void Creature::SetLevitate(bool enable, float altitude)
 {
     if (enable)
+    {
         m_movementInfo.AddMovementFlag(MOVEFLAG_LEVITATING);
+        SetFloatValue(UNIT_FIELD_HOVERHEIGHT, altitude);            // Used for storing altitude of levitated creature
+    }
     else
+    {
         m_movementInfo.RemoveMovementFlag(MOVEFLAG_LEVITATING);
+        SetFloatValue(UNIT_FIELD_HOVERHEIGHT, 0.0f);
+    }
 
     WorldPacket data(enable ? SMSG_SPLINE_MOVE_GRAVITY_DISABLE : SMSG_SPLINE_MOVE_GRAVITY_ENABLE, 9);
     data << GetPackGUID();

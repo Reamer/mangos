@@ -381,7 +381,7 @@ void TradeData::SetAccepted(bool state, bool crosssend /*= false*/)
 
 //== Player ====================================================
 
-Player::Player (WorldSession *session): Unit(), m_mover(this), m_camera(this), m_achievementMgr(this), m_reputationMgr(this)
+Player::Player (WorldSession *session): Unit(), m_mover(this), m_camera(NULL), m_achievementMgr(this), m_reputationMgr(this)
 {
     m_speakTime = 0;
     m_speakCount = 0;
@@ -440,6 +440,7 @@ Player::Player (WorldSession *session): Unit(), m_mover(this), m_camera(this), m
 
     mSemaphoreTeleport_Near = false;
     mSemaphoreTeleport_Far = false;
+    mSemaphoreTeleport_DelayEvent = false;
 
     m_DelayedOperations = 0;
     m_bCanDelayTeleport = false;
@@ -578,6 +579,8 @@ Player::Player (WorldSession *session): Unit(), m_mover(this), m_camera(this), m
     SetPendingBind(NULL, 0);
     m_LFGState = new LFGPlayerState(this);
 
+    m_camera = new Camera(*this);
+
     m_cachedGS = 0;
 }
 
@@ -596,7 +599,10 @@ Player::~Player ()
     for (int i = 0; i < PLAYER_SLOTS_COUNT; ++i)
     {
         if (m_items[i])
+        {
+            m_items[i]->RemoveFromWorld(true);
             delete m_items[i];
+        }
     }
     CleanupChannels();
 
@@ -605,7 +611,13 @@ Player::~Player ()
         delete *itr;
 
     for (ItemMap::const_iterator iter = mMitems.begin(); iter != mMitems.end(); ++iter)
+    {
+        if (!iter->second)
+            continue;
+
+        iter->second->RemoveFromWorld(true);
         delete iter->second;                                //if item is duplicated... then server may crash ... but that item should be deallocated
+    }
 
     delete PlayerTalkClass;
 
@@ -625,6 +637,7 @@ Player::~Player ()
     delete m_runes;
     delete m_anticheat;
     delete m_LFGState;
+    delete m_camera;
 
     // Playerbot mod
     if (m_playerbotAI)
@@ -647,10 +660,10 @@ void Player::CleanupsBeforeDelete()
     {
         TradeCancel(false);
         DuelComplete(DUEL_INTERRUPTED);
-    }
 
-    // notify zone scripts for player logout
-    sOutdoorPvPMgr.HandlePlayerLeaveZone(this, m_zoneUpdateId);
+        // notify zone scripts for player logout
+        sOutdoorPvPMgr.HandlePlayerLeaveZone(this, m_zoneUpdateId);
+    }
 
     Unit::CleanupsBeforeDelete();
 }
@@ -1721,31 +1734,31 @@ bool Player::TeleportTo(WorldLocation const& loc, uint32 options)
 {
     if (!MapManager::IsValidMapCoord(loc))
     {
-        sLog.outError("TeleportTo: invalid map %d or absent instance template.", loc.mapid);
+        sLog.outError("TeleportTo: invalid map %d or absent instance template.", loc.GetMapId());
         return false;
     }
 
-    if (GetMapId() != loc.mapid)
+    if (GetMapId() != loc.GetMapId())
     {
         if (!(options & TELE_TO_CHECKED))
         {
-            if (!CheckTransferPossibility(loc.mapid))
+            if (!CheckTransferPossibility(loc.GetMapId()))
             {
                 if (GetTransport())
                     TeleportToHomebind();
 
-                DEBUG_LOG("Player::TeleportTo %s is NOT teleported to map %u (requirements check failed)", GetName(), loc.mapid);
+                DEBUG_LOG("Player::TeleportTo %s is NOT teleported to map %u (requirements check failed)", GetName(), loc.GetMapId());
 
                 return false;                                       // normal client can't teleport to this map...
             }
             else
                 options |= TELE_TO_CHECKED;
         }
-        DEBUG_LOG("Player::TeleportTo %s is being far teleported to map %u %s", GetName(), loc.mapid, IsBeingTeleportedFar() ? "(stage 2)" : "");
+        DEBUG_LOG("Player::TeleportTo %s is being far teleported to map %u %s", GetName(), loc.GetMapId(), IsBeingTeleportedFar() ? "(stage 2)" : "");
     }
     else
     {
-        DEBUG_LOG("Player::TeleportTo %s is being near teleported to map %u", GetName(), loc.mapid, IsBeingTeleportedNear() ? "(stage 2)" : "");
+        DEBUG_LOG("Player::TeleportTo %s is being near teleported to map %u", GetName(), loc.GetMapId(), IsBeingTeleportedNear() ? "(stage 2)" : "");
     }
 
     // preparing unsummon pet if lost (we must get pet before teleportation or will not find it later)
@@ -1756,11 +1769,11 @@ bool Player::TeleportTo(WorldLocation const& loc, uint32 options)
     if (GetPlayerbotMgr())
         GetPlayerbotMgr()->Stay();
 
-    MapEntry const* mEntry = sMapStore.LookupEntry(loc.mapid);
+    MapEntry const* mEntry = sMapStore.LookupEntry(loc.GetMapId());
 
     if (!mEntry)
     {
-        sLog.outError("TeleportTo: invalid map entry (id %d). possible disk or memory error.", loc.mapid);
+        sLog.outError("TeleportTo: invalid map entry (id %d). possible disk or memory error.", loc.GetMapId());
         return false;
     }
 
@@ -1769,10 +1782,11 @@ bool Player::TeleportTo(WorldLocation const& loc, uint32 options)
     if (!InBattleGround() && mEntry->IsBattleGroundOrArena())
         return false;
 
-    // client without expansion support
+    if (!GetMap())
+        options |= TELE_TO_NODELAY;
 
     if (Group* grp = GetGroup())
-        grp->SetPlayerMap(GetObjectGuid(), loc.mapid);
+        grp->SetPlayerMap(GetObjectGuid(), loc.GetMapId());
 
     // if we were on a transport, leave
     if (!(options & TELE_TO_NOT_LEAVE_TRANSPORT) && m_transport)
@@ -1785,12 +1799,12 @@ bool Player::TeleportTo(WorldLocation const& loc, uint32 options)
     if (GetVehicleKit())
         GetVehicleKit()->RemoveAllPassengers();
 
-    ExitVehicle();
+    ExitVehicle(true);
 
     // The player was ported to another map and looses the duel immediately.
     // We have to perform this check before the teleport, otherwise the
     // ObjectAccessor won't find the flag.
-    if (duel && GetMapId() != loc.mapid)
+    if (duel && GetMapId() != loc.GetMapId())
         if (GetMap()->GetGameObject(GetGuidValue(PLAYER_DUEL_ARBITER)))
             DuelComplete(DUEL_FLED);
 
@@ -1798,18 +1812,20 @@ bool Player::TeleportTo(WorldLocation const& loc, uint32 options)
     m_movementInfo.SetMovementFlags(MOVEFLAG_NONE);
     DisableSpline();
 
-    if (GetMapId() == loc.mapid && !m_transport)
+    if (GetMapId() == loc.GetMapId() && !m_transport)
     {
         //lets reset far teleport flag if it wasn't reset during chained teleports
         SetSemaphoreTeleportFar(false);
 
         // try preload grid, targeted for teleport
-        if (!GetMap()->PreloadGrid(loc.coord_x, loc.coord_y))
+        if (!(options & TELE_TO_NODELAY) && !GetMap()->PreloadGrid(loc.coord_x, loc.coord_y))
         {
             // If loading grid not finished, delay teleport on one update tick
             AddEvent(new TeleportDelayEvent(*this, loc, options),
                 sWorld.getConfig(CONFIG_UINT32_INTERVAL_MAPUPDATE));
-            DEBUG_LOG("Player::TeleportTo grid (map %u, instance %u, X%f Y%f) not fully loaded, near teleport %s delayed.", loc.mapid, GetInstanceId(), loc.coord_x, loc.coord_y, GetName());
+            DEBUG_LOG("Player::TeleportTo grid (map %u, instance %u, X%f Y%f) not fully loaded, near teleport %s delayed.", loc.GetMapId(), GetInstanceId(), loc.coord_x, loc.coord_y, GetName());
+            SetSemaphoreTeleportDelayEvent(true);
+            m_teleport_dest = loc;
             return true;
         }
 
@@ -1835,6 +1851,11 @@ bool Player::TeleportTo(WorldLocation const& loc, uint32 options)
         if (!(options & TELE_TO_NOT_LEAVE_COMBAT))
             CombatStop();
 
+        InterruptSpell(CURRENT_CHANNELED_SPELL);
+
+        if (!IsWithinDist3d(loc.x, loc.y, loc.z, GetMap()->GetVisibilityDistance()))
+            RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_TELEPORTED);
+
         // this will be used instead of the current location in SaveToDB
         m_teleport_dest = loc;
         SetFallInformation(0, loc.coord_z);
@@ -1858,13 +1879,13 @@ bool Player::TeleportTo(WorldLocation const& loc, uint32 options)
 
         // Check enter rights before map getting to avoid creating instance copy for player
         // this check not dependent from map instance copy and same for all instance copies of selected map
-        if (!sMapMgr.CanPlayerEnter(loc.mapid, this))
+        if (!sMapMgr.CanPlayerEnter(loc.GetMapId(), this))
             return false;
 
         // If the map is not created, assume it is possible to enter it.
         // It will be created in the WorldPortAck.
-        DungeonPersistentState* state = GetBoundInstanceSaveForSelfOrGroup(loc.mapid);
-        Map* map = sMapMgr.FindMap(loc.mapid, state ? state->GetInstanceId() : loc.instance);
+        DungeonPersistentState* state = GetBoundInstanceSaveForSelfOrGroup(loc.GetMapId());
+        Map* map = sMapMgr.FindMap(loc.GetMapId(), state ? state->GetInstanceId() : loc.GetInstanceId());
         if (!map ||  map->CanEnter(this))
         {
             //lets reset near teleport flag if it wasn't reset during chained teleports
@@ -1873,22 +1894,28 @@ bool Player::TeleportTo(WorldLocation const& loc, uint32 options)
             // try create map before trying teleport on this map
             if (!map)
             {
-                if (mEntry->Instanceable() && loc.instance)
-                    map = sMapMgr.FindMap(loc.mapid, loc.instance);
+                if (mEntry->Instanceable() && loc.GetInstanceId())
+                    map = sMapMgr.FindMap(loc.GetMapId(), loc.GetInstanceId());
                 else
-                    map = sMapMgr.CreateMap(loc.mapid, this);
+                    map = sMapMgr.CreateMap(loc.GetMapId(), this);
 
-                MANGOS_ASSERT(map);
+                if (!map)
+                {
+                    sLog.outError("Player::TeleportTo player %s cannot find or load map %u instance %u!", GetName(), loc.GetMapId(), loc.GetInstanceId());
+                    return false;
+                }
             }
 
             // try preload grid, targeted for teleport
-            if (!map->PreloadGrid(loc.coord_x, loc.coord_y))
+            if (!(options & TELE_TO_NODELAY) && !map->PreloadGrid(loc.coord_x, loc.coord_y))
             {
                 // If loading grid not finished, delay teleport 5 map update ticks
-                AddEvent(new TeleportDelayEvent(*this, WorldLocation(loc.coord_x, loc.coord_y, loc.coord_z, loc.orientation, loc.mapid, map->GetInstanceId(), realmID), options),
+                AddEvent(new TeleportDelayEvent(*this, WorldLocation(loc.coord_x, loc.coord_y, loc.coord_z, loc.orientation, loc.GetMapId(), map->GetInstanceId(), sWorld.getConfig(CONFIG_UINT32_REALMID)), options),
                     5 * sWorld.getConfig(CONFIG_UINT32_INTERVAL_MAPUPDATE));
 
-                DEBUG_LOG("Player::TeleportTo grid (map %u, instance %u, X%f Y%f) not fully loaded, far teleport %s delayed.", loc.mapid, map->GetInstanceId(), loc.coord_x, loc.coord_y, GetName());
+                DEBUG_LOG("Player::TeleportTo grid (map %u, instance %u, X%f Y%f) not fully loaded, far teleport %s delayed.", loc.GetMapId(), map->GetInstanceId(), loc.coord_x, loc.coord_y, GetName());
+                SetSemaphoreTeleportDelayEvent(true);
+                m_teleport_dest = loc;
                 return true;
             }
 
@@ -1908,6 +1935,10 @@ bool Player::TeleportTo(WorldLocation const& loc, uint32 options)
 
             CombatStop();
 
+            InterruptSpell(CURRENT_CHANNELED_SPELL);
+            RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_TELEPORTED);
+            UnsummonAllTotems();
+
             ResetContestedPvP();
 
             // remove player from battleground on far teleport (when changing maps)
@@ -1916,7 +1947,7 @@ bool Player::TeleportTo(WorldLocation const& loc, uint32 options)
                 // Note: at battleground join battleground id set before teleport
                 // and we already will found "current" battleground
                 // just need check that this is targeted map or leave
-                if (bg->GetMapId() != loc.mapid)
+                if (bg->GetMapId() != loc.GetMapId())
                     LeaveBattleground(false);                   // don't teleport to entry point
             }
 
@@ -1939,7 +1970,7 @@ bool Player::TeleportTo(WorldLocation const& loc, uint32 options)
             {
                 // send transfer packet to display load screen
                 WorldPacket data(SMSG_TRANSFER_PENDING, (4+4+4));
-                data << uint32(loc.mapid);
+                data << uint32(loc.GetMapId());
                 if (m_transport)
                 {
                     data << uint32(m_transport->GetEntry());
@@ -1966,7 +1997,7 @@ bool Player::TeleportTo(WorldLocation const& loc, uint32 options)
                 final_o += m_movementInfo.GetTransportPos()->o;
             }
 
-            m_teleport_dest = WorldLocation(loc.mapid, final_x, final_y, final_z, final_o);
+            m_teleport_dest = WorldLocation(loc.GetMapId(), final_x, final_y, final_z, final_o);
             SetFallInformation(0, final_z);
             // if the player is saved before worldport ack (at logout for example)
             // this will be used instead of the current location in SaveToDB
@@ -1979,7 +2010,7 @@ bool Player::TeleportTo(WorldLocation const& loc, uint32 options)
             {
                 // transfer finished, inform client to start load
                 WorldPacket data(SMSG_NEW_WORLD, (20));
-                data << uint32(loc.mapid);
+                data << uint32(loc.GetMapId());
                 if (m_transport)
                 {
                     data << float(m_movementInfo.GetTransportPos()->x);
@@ -2087,23 +2118,28 @@ void Player::AddToWorld()
         if (m_items[i])
             m_items[i]->AddToWorld();
     }
+    SetViewPoint(NULL);
 }
 
-void Player::RemoveFromWorld()
+void Player::RemoveFromWorld(bool remove)
 {
     for (int i = PLAYER_SLOT_START; i < PLAYER_SLOT_END; ++i)
     {
         if (m_items[i])
-            m_items[i]->RemoveFromWorld();
+        {
+            m_items[i]->RemoveFromWorld(true);
+            // possible need delete Item structure in this place? Need recheck
+            //delete m_items[i];
+        }
     }
 
     ///- Do not add/remove the player from the object storage
     ///- It will crash when updating the ObjectAccessor
     ///- The player should only be removed when logging out
-    if (IsInWorld())
-        GetCamera().ResetView();
+    if (IsInWorld() && GetCamera())
+        GetCamera()->ResetView();
 
-    Unit::RemoveFromWorld();
+    Unit::RemoveFromWorld(remove);
 }
 
 void Player::RewardRage(uint32 damage, uint32 weaponSpeedHitFactor, bool attacker)
@@ -2489,7 +2525,7 @@ void Player::SetGameMaster(bool on)
         getHostileRefManager().setOnlineOfflineState(true);
     }
 
-    m_camera.UpdateVisibilityForOwner();
+    GetCamera()->UpdateVisibilityForOwner();
     UpdateObjectVisibility();
     UpdateForQuestWorldObjects();
 }
@@ -4464,7 +4500,7 @@ void Player::DeleteFromDB(ObjectGuid playerguid, uint32 accountId, bool updateRe
     sAccountMgr.ClearPlayerDataCache(playerguid);
 
     if (updateRealmChars)
-        sAccountMgr.UpdateCharactersCount(accountId, realmID);
+        sAccountMgr.UpdateCharactersCount(accountId, sWorld.getConfig(CONFIG_UINT32_REALMID));
 }
 
 /**
@@ -4623,7 +4659,7 @@ void Player::ResurrectPlayer(float restore_percent, bool applySickness)
     UpdateZone(newzone,newarea);
 
     // update visibility of world around viewpoint
-    m_camera.UpdateVisibilityForOwner();
+    GetCamera()->UpdateVisibilityForOwner();
     // update visibility of player for nearby cameras
     UpdateObjectVisibility();
 
@@ -8775,12 +8811,13 @@ void Player::SendUpdateWorldState(uint32 Field, uint32 Value)
 
 void Player::_SendUpdateWorldState(uint32 Field, uint32 Value)
 {
-    WorldPacket data(SMSG_UPDATE_WORLD_STATE, 8);
-    data << Field;
-    data << Value;
+    if (!IsInWorld() || !GetSession())
+        return;
 
-    if (IsInWorld() && GetSession())
-        GetSession()->SendPacket(&data);
+    WorldPacket data(SMSG_UPDATE_WORLD_STATE, 8);
+    data << uint32(Field);
+    data << uint32(Value);
+    GetSession()->SendPacket(&data);
 }
 
 void Player::UpdateWorldState(uint32 state, uint32 value)
@@ -8798,15 +8835,15 @@ void Player::SendUpdatedWorldStates(bool force)
     if (IsBeingTeleported() || GetLastWorldStateUpdateTime() == time(NULL))
         return;
 
-    WorldStateSet wsSet = sWorldStateMgr.GetUpdatedWorldStatesFor(this, force ? 0 : GetLastWorldStateUpdateTime());
-
-    if (wsSet.empty())
-        return;
-
-    for (WorldStateSet::const_iterator itr = wsSet.begin(); itr != wsSet.end(); ++itr)
+    if (WorldStateSet* wsSet = sWorldStateMgr.GetUpdatedWorldStatesFor(this, force ? 0 : GetLastWorldStateUpdateTime()))
     {
-        //DEBUG_LOG("Player::SendUpdatedWorldStates send state %u instance %u value %u to %s",(*itr)->GetId(), (*itr)->GetInstance(),(*itr)->GetValue(),GetObjectGuid().GetString().c_str());
-        _SendUpdateWorldState((*itr)->GetId(), (*itr)->GetValue());
+        for (uint8 i = 0; i < wsSet->count(); ++i)
+        {
+            //DEBUG_LOG("Player::SendUpdatedWorldStates send state %u instance %u value %u to %s",(*itr)->GetId(), (*itr)->GetInstance(),(*itr)->GetValue(),GetObjectGuid().GetString().c_str());
+            WorldState* ws = (*wsSet)[i];
+            _SendUpdateWorldState(ws->GetId(), ws->GetValue());
+        }
+        delete wsSet;
     }
 
     SetLastWorldStateUpdateTime(time(NULL));
@@ -8816,29 +8853,30 @@ void Player::SendInitWorldStates(uint32 zoneid, uint32 areaid)
 {
     // data depends on zoneid/mapid...
     // Get worldstates (initial set)
-    WorldStateSet wsSet = sWorldStateMgr.GetInitWorldStates(GetMapId(),GetInstanceId(),zoneid,areaid);
-    uint16 count = wsSet.size();
-    if (count == 0)
+    WorldStateSet* wsSet = sWorldStateMgr.GetInitWorldStates(GetMapId(), GetInstanceId(), zoneid, areaid);
+    if (!wsSet)
     {
-        sLog.outError("Player::SendInitWorldStates initial states list for player %s are empty!",GetObjectGuid().GetString().c_str());
+        sLog.outError("Player::SendInitWorldStates initial states list for player %s are empty!", GetGuidStr().c_str());
         return;
     }
 
-    DEBUG_LOG("Player::SendInitWorldStates sending SMSG_INIT_WORLD_STATES to Map:%u (instance %u), zone: %u, area %u, WorldStates count %u", GetMapId(), GetInstanceId(), zoneid, areaid, count);
+    DEBUG_LOG("Player::SendInitWorldStates sending SMSG_INIT_WORLD_STATES to Map:%u (instance %u), zone: %u, area %u, WorldStates count %u", GetMapId(), GetInstanceId(), zoneid, areaid, wsSet->count());
 
-    WorldPacket data(SMSG_INIT_WORLD_STATES, (4+4+4+2+count*8));
+    WorldPacket data(SMSG_INIT_WORLD_STATES, (4+4+4+2+wsSet->count()*8));
 
     data << uint32(GetMapId());                             // mapid
     data << uint32(zoneid);                                 // zone id
     data << uint32(areaid);                                 // area id, new 2.1.0
 
-    data << uint16(count);
+    data << uint16(wsSet->count());
 
-    for (WorldStateSet::const_iterator itr = wsSet.begin(); itr != wsSet.end(); ++itr)
+    for (uint8 i = 0; i < wsSet->count(); ++i)
     {
-        data << (*itr)->GetId();
-        data << (*itr)->GetValue();
+        WorldState* ws = (*wsSet)[i];
+        data << uint32(ws->GetId());
+        data << uint32(ws->GetValue());
     }
+    delete wsSet;
 
     GetSession()->SendPacket(&data);
 }
@@ -9340,6 +9378,7 @@ Item* Player::GetItemByGuid(ObjectGuid guid) const
                     if (pItem->GetObjectGuid() == guid)
                         return pItem;
 
+
     return NULL;
 }
 
@@ -9357,7 +9396,7 @@ Item* Player::GetItemByPos(uint8 bag, uint8 slot) const
     else if ((bag >= INVENTORY_SLOT_BAG_START && bag < INVENTORY_SLOT_BAG_END)
         || (bag >= BANK_SLOT_BAG_START && bag < BANK_SLOT_BAG_END))
     {
-        Bag *pBag = (Bag*)GetItemByPos(INVENTORY_SLOT_BAG_0, bag);
+        Bag* pBag = (Bag*)GetItemByPos(INVENTORY_SLOT_BAG_0, bag);
         if (pBag)
             return pBag->GetItemByPos(slot);
     }
@@ -11336,7 +11375,7 @@ Item* Player::_StoreItem(uint16 pos, Item* pItem, uint32 count, bool clone, bool
             // delete item (it not in any slot currently)
             if (IsInWorld() && update)
             {
-                pItem->RemoveFromWorld();
+                pItem->RemoveFromWorld(false);
                 pItem->DestroyForPlayer(this);
             }
 
@@ -11452,7 +11491,7 @@ Item* Player::EquipItem(uint16 pos, Item* pItem, bool update)
         //pItem->DeleteFromDB();
         if (IsInWorld() && update)
         {
-            pItem->RemoveFromWorld();
+            pItem->RemoveFromWorld(false);
             pItem->DestroyForPlayer(this);
         }
 
@@ -11552,7 +11591,7 @@ void Player::RemoveItem(uint8 bag, uint8 slot, bool update)
     // note2: if removeitem is to be used for delinking
     // the item must be removed from the player's updatequeue
 
-    if (Item *pItem = GetItemByPos(bag, slot))
+    if (Item* pItem = GetItemByPos(bag, slot))
     {
         DEBUG_LOG("STORAGE: RemoveItem bag = %u, slot = %u, item = %u", bag, slot, pItem->GetEntry());
 
@@ -11617,9 +11656,12 @@ void Player::RemoveItem(uint8 bag, uint8 slot, bool update)
         }
         else
         {
-            Bag *pBag = (Bag*)GetItemByPos(INVENTORY_SLOT_BAG_0, bag);
+            Bag* pBag = (Bag*)GetItemByPos(INVENTORY_SLOT_BAG_0, bag);
             if (pBag)
+            {
                 pBag->RemoveItem(slot, update);
+                pBag->SetState(ITEM_CHANGED, this);
+            }
         }
         pItem->SetGuidValue(ITEM_FIELD_CONTAINED, ObjectGuid());
         // pItem->SetGuidValue(ITEM_FIELD_OWNER, ObjectGuid()); not clear owner at remove (it will be set at store). This used in mail and auction code
@@ -11649,7 +11691,7 @@ void Player::MoveItemFromInventory(uint8 bag, uint8 slot, bool update)
         it->RemoveFromUpdateQueueOf(this);
         if (it->IsInWorld())
         {
-            it->RemoveFromWorld();
+            it->RemoveFromWorld(false);
             it->DestroyForPlayer(this);
         }
     }
@@ -11761,7 +11803,7 @@ void Player::DestroyItem(uint8 bag, uint8 slot, bool update)
 
         if (IsInWorld() && update)
         {
-            pItem->RemoveFromWorld();
+            pItem->RemoveFromWorld(false);
             pItem->DestroyForPlayer(this);
         }
 
@@ -12512,10 +12554,10 @@ void Player::RemoveItemFromBuyBackSlot(uint32 slot, bool del)
     DEBUG_LOG("STORAGE: RemoveItemFromBuyBackSlot slot = %u", slot);
     if (slot >= BUYBACK_SLOT_START && slot < BUYBACK_SLOT_END)
     {
-        Item *pItem = m_items[slot];
+        Item* pItem = m_items[slot];
         if (pItem)
         {
-            pItem->RemoveFromWorld();
+            pItem->RemoveFromWorld(false);
             if (del)
                 pItem->SetState(ITEM_REMOVED, this);
         }
@@ -15824,7 +15866,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder)
 
     _LoadBoundInstances(holder->GetResult(PLAYER_LOGIN_QUERY_LOADBOUNDINSTANCES));
 
-    MapEntry const* mapEntry = sMapStore.LookupEntry(savedLocation.mapid);
+    MapEntry const* mapEntry = sMapStore.LookupEntry(savedLocation.GetMapId());
 
     if (!mapEntry || !MapManager::IsValidMapCoord(savedLocation) ||
         // client without expansion support
@@ -15832,14 +15874,14 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder)
     {
         sLog.outError("Player::LoadFromDB player %s have invalid coordinates (map: %u X: %f Y: %f Z: %f O: %f). Teleport to default race/class locations.",
             guid.GetString().c_str(),
-            savedLocation.mapid,
+            savedLocation.GetMapId(),
             savedLocation.coord_x,
             savedLocation.coord_y,
             savedLocation.coord_z,
             savedLocation.orientation);
         RelocateToHomebind();
 
-        GetPosition(savedLocation);                          // reset saved position to homebind
+        savedLocation = GetPosition();                          // reset saved position to homebind
 
         transGUID = 0;
         m_movementInfo.ClearTransportData();
@@ -15850,7 +15892,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder)
     bool player_at_bg = false;
 
     // player bounded instance saves loaded in _LoadBoundInstances, group versions at group loading
-    DungeonPersistentState* state = GetBoundInstanceSaveForSelfOrGroup(savedLocation.mapid);
+    DungeonPersistentState* state = GetBoundInstanceSaveForSelfOrGroup(savedLocation.GetMapId());
 //    Map* targetMap = sMapMgr.FindMap(savedLocation.mapid, state ? state->GetInstanceId() : 0);
 
     if (m_bgData.bgInstanceID)                              //saved in BattleGround
@@ -15872,8 +15914,8 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder)
 
             SetInviteForBattleGroundQueueType(bgQueueTypeId,currentBg->GetInstanceID());
 
-            SetLocationMapId(savedLocation.mapid);
-            Relocate(savedLocation.coord_x, savedLocation.coord_y, savedLocation.coord_z, savedLocation.orientation);
+            SetLocationMapId(savedLocation.GetMapId());
+            Relocate(savedLocation);
         }
         else
         {
@@ -15885,8 +15927,8 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder)
 
             // move to bg enter point
             const WorldLocation& _loc = GetBattleGroundEntryPoint();
-            SetLocationMapId(_loc.mapid);
-            Relocate(_loc.coord_x, _loc.coord_y, _loc.coord_z, _loc.orientation);
+            SetLocationMapId(_loc.GetMapId());
+            Relocate(_loc);
 
             // We are not in BG anymore
             SetBattleGroundId(0, BATTLEGROUND_TYPE_NONE);
@@ -15896,7 +15938,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder)
     }
     else
     {
-        mapEntry = sMapStore.LookupEntry(savedLocation.mapid);
+        mapEntry = sMapStore.LookupEntry(savedLocation.GetMapId());
         // if server restart after player save in BG or area
         // player can have current coordinates in to BG/Arena map, fix this
         if (mapEntry->IsBattleGroundOrArena())
@@ -15910,8 +15952,8 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder)
             }
             else
             {
-                SetLocationMapId(_loc.mapid);
-                Relocate(_loc.coord_x, _loc.coord_y, _loc.coord_z, _loc.orientation);
+                SetLocationMapId(_loc.GetMapId());
+                Relocate(_loc);
             }
 
             // We are not in BG anymore
@@ -15924,45 +15966,29 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder)
         {
             _SaveBGData(true);
             // Saved location checked before
-            SetLocationMapId(savedLocation.mapid);
-            Relocate(savedLocation.coord_x, savedLocation.coord_y, savedLocation.coord_z, savedLocation.orientation);
+            SetLocationMapId(savedLocation.GetMapId());
+            Relocate(savedLocation);
         }
         else if (mapEntry->IsDungeon())
         {
-            AreaTrigger const* gt = sObjectMgr.GetGoBackTrigger(savedLocation.mapid);
+            AreaTrigger const* at = sObjectMgr.GetMapEntranceTrigger(savedLocation.GetMapId());
 
-            if (gt)
+            if (at)
             {
-                // always put player at goback trigger before porting to instance
-
-                SetLocationMapId(gt->target_mapId);
-                Relocate(gt->target_X, gt->target_Y, gt->target_Z, gt->target_Orientation);
-
-                AreaTrigger const* at = sObjectMgr.GetMapEntranceTrigger(savedLocation.mapid);
-
-                if (at)
+                if (state && time(NULL) - time_t(fields[22].GetUInt64()) < 30)
                 {
-                    if (CheckTransferPossibility(at))
-                    {
-                        if (!state)
-                        {
-                            SetLocationMapId(at->target_mapId);
-                            Relocate(at->target_X, at->target_Y, at->target_Z, at->target_Orientation);
-                        }
-                        else
-                        {
-                            SetLocationMapId(savedLocation.mapid);
-                            Relocate(savedLocation.coord_x, savedLocation.coord_y, savedLocation.coord_z, savedLocation.orientation);
-                        }
-                    }
-                    else
-                        sLog.outError("Player::LoadFromDB %s try logged to instance (map: %u, difficulty %u), but transfer to map impossible. This _might_ be an exploit attempt.", GetObjectGuid().GetString().c_str(), savedLocation.mapid, GetDifficulty());
+                    SetLocationMapId(savedLocation.GetMapId());
+                    Relocate(savedLocation);
                 }
                 else
-                    sLog.outError("Player::LoadFromDB %s logged in to a reset instance (map: %u, difficulty %u) and there is no area-trigger leading to this map. Thus he can't be ported back to the entrance. This _might_ be an exploit attempt.", GetObjectGuid().GetString().c_str(), savedLocation.mapid, GetDifficulty());
+                {
+                    SetLocationMapId(at->target_mapId);
+                    Relocate(at->target_X, at->target_Y, at->target_Z, at->target_Orientation);
+                }
             }
             else
             {
+                sLog.outError("Player::LoadFromDB %s logged in to a reset instance (map: %u, difficulty %u) and there is no area-trigger leading to this map. Thus he can't be ported back to the entrance. This _might_ be an exploit attempt.", GetObjectGuid().GetString().c_str(), savedLocation.GetMapId(), GetDifficulty());
                 transGUID = 0;
                 m_movementInfo.ClearTransportData();
                 RelocateToHomebind();
@@ -16508,8 +16534,8 @@ void Player::_LoadAuras(QueryResult *result, uint32 timediff)
             if (!holder->IsEmptyHolder())
             {
                 // reset stolen single target auras
-                if (caster_guid != GetObjectGuid() && holder->IsSingleTarget())
-                    holder->SetIsSingleTarget(false);
+                if (caster_guid != GetObjectGuid() && holder->GetTrackedAuraType() == TRACK_AURA_TYPE_SINGLE_TARGET)
+                    holder->SetTrackedAuraType(TRACK_AURA_TYPE_NOT_TRACKED);
 
                 AddSpellAuraHolder(holder);
                 DETAIL_LOG("Added auras from spellid %u", spellproto->Id);
@@ -17645,17 +17671,14 @@ bool Player::_LoadHomeBind(QueryResult *result)
     if (result)
     {
         Field* fields = result->Fetch();
-        m_homebindMapId = fields[0].GetUInt32();
-        m_homebindAreaId = fields[1].GetUInt16();
-        m_homebindX = fields[2].GetFloat();
-        m_homebindY = fields[3].GetFloat();
-        m_homebindZ = fields[4].GetFloat();
+        m_homebind  = WorldLocation(fields[0].GetUInt32(), fields[2].GetFloat(), fields[3].GetFloat(), fields[4].GetFloat());
+        // m_homebindAreaId = fields[1].GetUInt16();
         delete result;
 
-        MapEntry const* bindMapEntry = sMapStore.LookupEntry(m_homebindMapId);
+        MapEntry const* bindMapEntry = sMapStore.LookupEntry(m_homebind.GetMapId());
 
         // accept saved data only for valid position (and non instanceable), and accessable
-        if (MapManager::IsValidMapCoord(m_homebindMapId,m_homebindX,m_homebindY,m_homebindZ) &&
+        if (MapManager::IsValidMapCoord(m_homebind) &&
             !bindMapEntry->Instanceable() && GetSession()->Expansion() >= bindMapEntry->Expansion())
         {
             ok = true;
@@ -17665,18 +17688,10 @@ bool Player::_LoadHomeBind(QueryResult *result)
     }
 
     if (!ok)
-    {
-        m_homebindMapId = info->mapId;
-        m_homebindAreaId = info->areaId;
-        m_homebindX = info->positionX;
-        m_homebindY = info->positionY;
-        m_homebindZ = info->positionZ;
-
-        CharacterDatabase.PExecute("INSERT INTO character_homebind (guid,map,zone,position_x,position_y,position_z) VALUES ('%u', '%u', '%u', '%f', '%f', '%f')", GetGUIDLow(), m_homebindMapId, (uint32)m_homebindAreaId, m_homebindX, m_homebindY, m_homebindZ);
-    }
+        SetHomebindToLocation(WorldLocation(info->mapId, info->positionX, info->positionY, info->positionZ));
 
     DEBUG_LOG("Setting player home position: mapid is: %u, zoneid is %u, X is %f, Y is %f, Z is %f",
-        m_homebindMapId, m_homebindAreaId, m_homebindX, m_homebindY, m_homebindZ);
+        m_homebind.GetMapId(), m_homebind.GetAreaId(), m_homebind.x, m_homebind.y, m_homebind.z);
 
     return true;
 }
@@ -17742,7 +17757,7 @@ void Player::SaveToDB()
     uberInsert.addUInt32(GetUInt32Value(PLAYER_BYTES_2));
     uberInsert.addUInt32(GetUInt32Value(PLAYER_FLAGS));
 
-    if (!IsBeingTeleported())
+    if (!IsBeingTeleported() && !IsBeingTeleportedDelayEvent())
     {
         uberInsert.addUInt32(GetMapId());
         uberInsert.addUInt32(GetDifficulty());
@@ -17753,7 +17768,7 @@ void Player::SaveToDB()
     }
     else
     {
-        uberInsert.addUInt32(GetTeleportDest().mapid);
+        uberInsert.addUInt32(GetTeleportDest().GetMapId());
         uberInsert.addUInt32(GetDifficulty());
         uberInsert.addFloat(finiteAlways(GetTeleportDest().coord_x));
         uberInsert.addFloat(finiteAlways(GetTeleportDest().coord_y));
@@ -17984,9 +17999,12 @@ void Player::_SaveAuras()
 
     for (SpellAuraHolderMap::const_iterator itr = auraHolders.begin(); itr != auraHolders.end(); ++itr)
     {
-        //skip all holders from spells that are passive or channeled
-        //do not save single target holders (unless they were cast by the player)
-        if (itr->second && !itr->second->IsDeleted() && !itr->second->IsPassive() && !IsChanneledSpell(itr->second->GetSpellProto()) && (itr->second->GetCasterGuid() == GetObjectGuid() || !itr->second->IsSingleTarget()) && !IsChanneledSpell(itr->second->GetSpellProto()))
+        // skip all holders from spells that are passive or channeled
+        // save singleTarget auras if self cast.
+        bool selfCastHolder = itr->second->GetCasterGuid() == GetObjectGuid();
+        TrackedAuraType trackedType = itr->second->GetTrackedAuraType();
+        if (!itr->second->IsPassive() && !IsChanneledSpell(itr->second->GetSpellProto()) &&
+               (trackedType == TRACK_AURA_TYPE_NOT_TRACKED || (trackedType == TRACK_AURA_TYPE_SINGLE_TARGET && selfCastHolder)))
         {
             int32  damage[MAX_EFFECT_INDEX];
             uint32 periodicTime[MAX_EFFECT_INDEX];
@@ -19386,7 +19404,7 @@ void Player::HandleStealthedUnitsDetection()
     MaNGOS::UnitListSearcher<MaNGOS::AnyStealthedCheck > searcher(stealthedUnits, u_check);
     Cell::VisitAllObjects(this, searcher, MAX_PLAYER_STEALTH_DETECT_RANGE);
 
-    WorldObject const* viewPoint = GetCamera().GetBody();
+    WorldObject const* viewPoint = GetCamera()->GetBody();
 
     for (std::list<Unit*>::const_iterator i = stealthedUnits.begin(); i != stealthedUnits.end(); ++i)
     {
@@ -20444,7 +20462,7 @@ void Player::SetBattleGroundEntryPoint(bool forLFG)
     }
 
     // In error cases use homebind position
-    m_bgData.joinPos = WorldLocation(m_homebindMapId, m_homebindX, m_homebindY, m_homebindZ, 0.0f);
+    m_bgData.joinPos = m_homebind;
     m_bgData.m_needSave = true;
 }
 
@@ -20641,7 +20659,7 @@ inline void UpdateVisibilityOf_helper(GuidSet& s64, GameObject* target)
 }
 
 template<class T>
-void Player::UpdateVisibilityOf(WorldObject const* viewPoint, T* target, UpdateData& data, std::set<WorldObject*>& visibleNow)
+void Player::UpdateVisibilityOf(WorldObject const* viewPoint, T* target, UpdateData& data, WorldObjectSet& visibleNow)
 {
     if (HaveAtClient(target))
     {
@@ -20670,11 +20688,11 @@ void Player::UpdateVisibilityOf(WorldObject const* viewPoint, T* target, UpdateD
     }
 }
 
-template void Player::UpdateVisibilityOf(WorldObject const* viewPoint, Player*        target, UpdateData& data, std::set<WorldObject*>& visibleNow);
-template void Player::UpdateVisibilityOf(WorldObject const* viewPoint, Creature*      target, UpdateData& data, std::set<WorldObject*>& visibleNow);
-template void Player::UpdateVisibilityOf(WorldObject const* viewPoint, Corpse*        target, UpdateData& data, std::set<WorldObject*>& visibleNow);
-template void Player::UpdateVisibilityOf(WorldObject const* viewPoint, GameObject*    target, UpdateData& data, std::set<WorldObject*>& visibleNow);
-template void Player::UpdateVisibilityOf(WorldObject const* viewPoint, DynamicObject* target, UpdateData& data, std::set<WorldObject*>& visibleNow);
+template void Player::UpdateVisibilityOf(WorldObject const* viewPoint, Player*        target, UpdateData& data, WorldObjectSet& visibleNow);
+template void Player::UpdateVisibilityOf(WorldObject const* viewPoint, Creature*      target, UpdateData& data, WorldObjectSet& visibleNow);
+template void Player::UpdateVisibilityOf(WorldObject const* viewPoint, Corpse*        target, UpdateData& data, WorldObjectSet& visibleNow);
+template void Player::UpdateVisibilityOf(WorldObject const* viewPoint, GameObject*    target, UpdateData& data, WorldObjectSet& visibleNow);
+template void Player::UpdateVisibilityOf(WorldObject const* viewPoint, DynamicObject* target, UpdateData& data, WorldObjectSet& visibleNow);
 
 void Player::SetPhaseMask(uint32 newPhaseMask, bool update)
 {
@@ -20748,9 +20766,9 @@ void Player::SendInitialPacketsBeforeAddToMap()
 
     // Homebind
     WorldPacket data(SMSG_BINDPOINTUPDATE, 5*4);
-    data << m_homebindX << m_homebindY << m_homebindZ;
-    data << (uint32) m_homebindMapId;
-    data << (uint32) m_homebindAreaId;
+    data << m_homebind.x << m_homebind.y << m_homebind.z;
+    data << (uint32)m_homebind.GetMapId();
+    data << (uint32)m_homebind.GetAreaId();
     GetSession()->SendPacket(&data);
 
     // SMSG_SET_PROFICIENCY
@@ -21068,12 +21086,10 @@ void Player::SendAurasForTarget(Unit *target)
     data << target->GetPackGUID();
 
     Unit::VisibleAuraMap const& visibleAuras = target->GetVisibleAuras();
-    for (Unit::VisibleAuraMap::const_iterator itr = visibleAuras.begin(); itr != visibleAuras.end(); ++itr)
+    for (size_t i = 0; i < MAX_AURAS && i < visibleAuras.size() ; ++i)
     {
-        if (!itr->second)
-            continue;
-
-        itr->second->BuildUpdatePacket(data);
+        if (visibleAuras[i])
+            visibleAuras[i]->BuildUpdatePacket(data);
     }
 
     GetSession()->SendPacket(&data);
@@ -23429,7 +23445,7 @@ void Player::_SaveBGData(bool forceClean)
         stmt.addFloat(m_bgData.joinPos.coord_y);
         stmt.addFloat(m_bgData.joinPos.coord_z);
         stmt.addFloat(m_bgData.joinPos.orientation);
-        stmt.addUInt32(m_bgData.joinPos.mapid);
+        stmt.addUInt32(m_bgData.joinPos.GetMapId());
         stmt.addUInt32(m_bgData.taxiPath[0]);
         stmt.addUInt32(m_bgData.taxiPath[1]);
         stmt.addUInt32(m_bgData.mountSpell);
@@ -23750,17 +23766,13 @@ bool Player::IsImmuneToSpellEffect(SpellEntry const* spellInfo, SpellEffectIndex
     return Unit::IsImmuneToSpellEffect(spellInfo, index);
 }
 
-void Player::SetHomebindToLocation(WorldLocation const& loc, uint32 area_id)
+void Player::SetHomebindToLocation(WorldLocation const& loc)
 {
-    m_homebindMapId = loc.mapid;
-    m_homebindAreaId = area_id;
-    m_homebindX = loc.coord_x;
-    m_homebindY = loc.coord_y;
-    m_homebindZ = loc.coord_z;
+    m_homebind = loc;
 
     // update sql homebind
     CharacterDatabase.PExecute("UPDATE character_homebind SET map = '%u', zone = '%u', position_x = '%f', position_y = '%f', position_z = '%f' WHERE guid = '%u'",
-        m_homebindMapId, m_homebindAreaId, m_homebindX, m_homebindY, m_homebindZ, GetGUIDLow());
+        m_homebind.GetMapId(), m_homebind.GetAreaId(), m_homebind.x, m_homebind.y, m_homebind.z, GetGUIDLow());
 }
 
 Object* Player::GetObjectByTypeMask(ObjectGuid guid, TypeMask typemask)
@@ -24361,6 +24373,50 @@ bool Player::CheckTransferPossibility(AreaTrigger const*& at, bool b_onlyMainReq
     return false;
 };
 
+bool Player::NeedGoingToHomebind()
+{
+    MapEntry const* mapEntry = sMapStore.LookupEntry(GetMapId());
+
+    if (!mapEntry)
+    {
+        sLog.outError("Player::NeedGoingToHomebind %s are in (map: %u) and there is no MapEntry to this map.", GetObjectGuid().GetString().c_str(), GetMapId());
+        return true;
+    }
+
+    Map* map = GetMap();
+
+    if (!map)
+    {
+        sLog.outError("Player::NeedGoingToHomebind %s are in (map: %u) and there is no Map to this player.", GetObjectGuid().GetString().c_str(), GetMapId());
+        return true;
+    }
+
+    if (isGameMaster())
+        return false;
+
+    if (GetSession()->Expansion() < mapEntry->Expansion())
+        return true;
+
+    if (map->IsDungeon())
+    {
+        // Dead player going to Graveyard in other case
+        if (!isAlive())
+            return false;
+
+        if (((DungeonMap*)map)->GetPlayersCountExceptGMs() >= ((DungeonMap*)map)->GetMaxPlayers())
+            return true;
+
+        InstancePlayerBind* pBind = GetBoundInstance(GetMapId(), GetDifficulty(mapEntry->IsRaid()));
+        if (pBind && pBind->perm && pBind->state != map->GetPersistentState())
+            return true;
+
+        if ((mapEntry->IsRaid() && !sWorld.getConfig(CONFIG_BOOL_INSTANCE_IGNORE_RAID)) && (!GetGroup() || !GetGroup()->isRaidGroup()))
+            return true;
+    }
+
+    return false;
+}
+
 uint32 Player::GetEquipGearScore(bool withBags, bool withBank)
 {
     if (withBags && withBank && m_cachedGS > 0)
@@ -24709,6 +24765,29 @@ void Player::InterruptTaxiFlying()
         SaveRecallPosition();
 }
 
+Object* Player::GetDependentObject(ObjectGuid const& guid)
+{
+    // Currently only items dependent from player.
+    if (guid.IsEmpty() || !guid.IsItem())
+        return NULL;
+    return (Object*)GetItemByGuid(guid);
+}
+
+void Player::AddUpdateObject(ObjectGuid const& guid)
+{
+    i_objectsToClientUpdate.insert(guid);
+
+    // Not need add owner to update queue if owner already marked for update.
+    if (!IsMarkedForClientUpdate() && GetMap())
+        GetMap()->AddUpdateObject(GetObjectGuid());
+}
+
+void Player::RemoveUpdateObject(ObjectGuid const& guid)
+{
+    // possible required remove player from update queue also.
+    i_objectsToClientUpdate.erase(guid);
+}
+
 void Player::AddItemWithTimeCheck(uint32 lowGuid)
 {
     m_itemsWithTimeCheck.insert(lowGuid);
@@ -24909,4 +24988,26 @@ void Player::RefundItem(Item* item)
     SaveInventoryAndGoldToDB();
 
     CharacterDatabase.CommitTransaction();
+}
+
+void Player::SetViewPoint(WorldObject* target, bool immediate, bool update_far_sight_field)
+{
+    if (target && target->IsInWorld() && GetCamera())
+    {
+        if (immediate && (HasExternalViewPoint() && GetCamera()->GetBody() != target))
+        {
+            WorldPacket data(SMSG_CLEAR_FAR_SIGHT_IMMEDIATE, 0);
+            GetSession()->SendPacket(&data);
+        }
+        GetCamera()->SetView(target, update_far_sight_field);
+    }
+    else
+    {
+        if (immediate &&  HasExternalViewPoint())
+        {
+            WorldPacket data(SMSG_CLEAR_FAR_SIGHT_IMMEDIATE, 0);
+            GetSession()->SendPacket(&data);
+        }
+        GetCamera()->ResetView(update_far_sight_field);
+    }
 }

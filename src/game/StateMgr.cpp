@@ -127,9 +127,9 @@ public:
         //Clear unit movement flags
         target->m_movementInfo.RemoveMovementFlag(movementFlagsMask);
         target->m_movementInfo.AddMovementFlag(MOVEFLAG_ROOT);
-
         target->SendMeleeAttackStop(NULL);
         target->SetRoot(true);
+
     }
 
     void Finalize(Unit &u)

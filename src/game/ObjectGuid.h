@@ -211,7 +211,7 @@ class MANGOS_DLL_SPEC ObjectGuid
 };
 
 // Some Shared defines
-typedef std::set<ObjectGuid> GuidSet;
+typedef UNORDERED_SET<ObjectGuid> GuidSet;
 typedef std::list<ObjectGuid> GuidList;
 typedef std::vector<ObjectGuid> GuidVector;
 
