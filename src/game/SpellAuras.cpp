@@ -3377,6 +3377,26 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
 
                 return;
             }
+            case 64398:                                     // Summon Scrap Bot (Ulduar, Mimiron) - for Scrap Bots
+            case 64426:                                     // Summon Scrap Bot (Ulduar, Mimiron) - for Assault Bots
+            case 64621:                                     // Summon Fire Bot (Ulduar, Mimiron)
+            {
+                switch (GetId())
+                {
+                    case 64398:
+                        target->CastSpell(target, 63819, false);
+                        break;
+                    case 64426:
+                        target->CastSpell(target, 64427, false);
+                        break;
+                    case 64621:
+                        target->CastSpell(target, 64622, false);
+                        break;
+                    default:
+                        break;
+                }
+                return;
+            }
             case 68839:                                     // Corrupt Soul
             {
                 // Knockdown Stun

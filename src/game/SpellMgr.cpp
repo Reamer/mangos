@@ -2579,8 +2579,10 @@ uint32 SpellMgr::GetSpellMaxTargetsWithCustom(SpellEntry const* spellInfo, Unit 
                 case 63387:                                 // Rapid Burst
                 case 63545:                                 // Icicle Hodir(trigger spell from 62227)
                 case 63795:                                 // Psychosis (Ulduar, Yogg-Saron)
+                case 63820:                                 // Summon Scrap Bot Trigger (Ulduar, Mimiron) use for Scrap Bots, hits npc 33856 - Source Sniff
                 case 64218:                                 // Overcharge
                 case 64234:                                 // Gravity Bomb (h) (Ulduar, XT-002)
+                case 64425:                                 // Summon Scrap Bot Trigger (Ulduar, Mimiron) use for Assault Bots, hits npc 33856 - Source Sniff
                 case 64531:                                 // Rapid Burst (h)
                 case 65121:                                 // Searing Light (h)
                 case 65301:                                 // Psychosis (Ulduar, Yogg-Saron)
@@ -2647,6 +2649,7 @@ uint32 SpellMgr::GetSpellMaxTargetsWithCustom(SpellEntry const* spellInfo, Unit 
                 case 62477:                                 // Icicle (Hodir 25man)
                 case 63981:                                 // StoneGrip H
                 case 64598:                                 // Cosmic Smash (h) (Ulduar, Algalon)
+                case 64620:                                 // Summon Fire Bot Trigger (Ulduar, Mimiron) hits npc 33856 - Source Sniff
                 case 70814:                                 // Bone Slice (ICC, Lord Marrowgar, heroic)
                 case 71221:                                 // Gas spore (Mode 1) (ICC, Festergut)
                 case 72095:                                 // Frozen Orb (h) (Vault of Archavon, Toravon)

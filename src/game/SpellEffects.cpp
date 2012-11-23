@@ -3377,6 +3377,29 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                         m_caster->CastSpell(unitTarget, 62234, true);
                     return;
                 }
+                case 63820:                                 // Summon Scrap Bot Trigger (Ulduar - Mimiron) for Scrap Bots
+                case 64425:                                 // Summon Scrap Bot Trigger (Ulduar - Mimiron) for Assault Bots
+                case 64620:                                 // Summon Fire Bot Trigger  (Ulduar - Mimiron) for Fire Bots
+                {
+                    if (!unitTarget)
+                        return;
+
+                    switch (m_spellInfo->Id)
+                    {
+                        case 63820:
+                            unitTarget->CastSpell(unitTarget, 64398, false);
+                            break;
+                        case 64425:
+                            unitTarget->CastSpell(unitTarget, 64426, false);
+                            break;
+                        case 64620:
+                            unitTarget->CastSpell(unitTarget, 64621, false);
+                            break;
+                        default:
+                            break;
+                    }
+                    return;
+                }
                 case 63984:                                 // Hate to Zero (Ulduar - Yogg Saron), if the player teleport into the "brain"
                 {
                     if (!unitTarget)
