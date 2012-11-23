@@ -449,12 +449,12 @@ void VehicleKit::InstallAllAccessories(uint32 entry)
         InstallAccessory(*itr);
 }
 
-void VehicleKit::InstallAccessoryWithSpecificEntry(uint32 entry, uint32 accessoryEntry)
+void VehicleKit::InstallSpecificAccessory(uint32 entry, uint32 accessoryEntry /*= 0*/, int8 seatId /*= -1*/)
 {
     SQLMultiStorage::SQLMSIteratorBounds<VehicleAccessory> const& bounds = sVehicleAccessoryStorage.getBounds<VehicleAccessory>(entry);
     for (SQLMultiStorage::SQLMultiSIterator<VehicleAccessory> itr = bounds.first; itr != bounds.second; ++itr)
     {
-        if ((*itr)->passengerEntry == accessoryEntry)
+        if ((accessoryEntry && (*itr)->passengerEntry == accessoryEntry) || (seatId != -1 && (*itr)->seatId == seatId))
             InstallAccessory(*itr);
     }
 }
