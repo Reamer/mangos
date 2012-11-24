@@ -3460,6 +3460,25 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     m_caster->CastSpell(m_caster, spell_id, true);
                     return;
                 }
+                case 65346:                                 // Proximity Mine (Ulduar - Mimiron)
+                {
+                    if (!unitTarget)
+                        return;
+                    uint32 uiExplosionSpell = m_caster->GetMap()->IsRegularDifficulty() ? 66351 : 63009;
+                    m_caster->CastSpell(m_caster, uiExplosionSpell, false);
+                    if (m_caster->GetTypeId() == TYPEID_UNIT)
+                        ((Creature*)m_caster)->ForcedDespawn(4000);
+                    return;
+                }
+                case 65354:                                 // Clear Fires (Ulduar - Mimiron)
+                {
+                    if (!unitTarget)
+                        return;
+                    // with spell_script_target-table, should only hit npc 34121 and 34363 (fire trigger mobs)
+                    if (unitTarget->GetTypeId() == TYPEID_UNIT)
+                        ((Creature*)unitTarget)->ForcedDespawn(1000);
+                    return;
+                }
                 case 66218:                                 // Launch - set position
                 {
                     if (!unitTarget || unitTarget->GetTypeId() != TYPEID_UNIT)
@@ -10153,6 +10172,13 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     if (SpellAuraHolderPtr holder = unitTarget->GetSpellAuraHolder(64473))
                         if (holder->ModStackAmount(-1))
                             unitTarget->RemoveSpellAuraHolder(holder);
+                    break;
+                }
+                case 64623:                                 // Frost Bomb (Ulduar - Mimiron)
+                {
+                    if (!unitTarget)
+                        return;
+                    m_caster->CastSpell(unitTarget, 64627, true);
                     break;
                 }
                 case 65238:                                 // Shattered Illusion (Ulduar - Yogg Saron)
