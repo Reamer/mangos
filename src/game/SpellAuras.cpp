@@ -1986,13 +1986,21 @@ void Aura::TriggerSpell()
 //                    case 67546: break;
                     case 69012:                             // Explosive Barrage - Krick and Ick
                     {
-                        if (triggerTarget->GetTypeId() == TYPEID_UNIT)
+                        Unit* base = triggerTarget;
+                        // get base (Ick), if Krick cast spell
+                        if (triggerTarget->GetVehicle())
                         {
-                            if (Unit* pTarget = triggerTarget->SelectRandomUnfriendlyTarget(NULL, 50.0f))
+                            base = triggerTarget->GetVehicle()->GetBase();
+                        }
+                        ThreatList const& threatlist = base->getThreatManager().getThreatList();
+                        for (ThreatList::const_iterator itr = threatlist.begin(); itr != threatlist.end(); ++itr)
+                        {
+                            if (Unit* pTarget = triggerTarget->GetMap()->GetUnit((*itr)->getUnitGuid()))
                             {
                                 triggerTarget->CastSpell(pTarget, 69015, true);
                             }
                         }
+
                         return;
                     }
                     case 70017:                             // Gunship Cannon Fire
