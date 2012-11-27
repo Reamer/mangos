@@ -12711,10 +12711,10 @@ Unit* Unit::SelectRandomUnfriendlyTarget(Unit* except /*= NULL*/, float radius /
     if (except)
         targets.remove(except);
 
-    // remove not LoS targets and critter creatures
+    // remove not LoS targets
     for(std::list<Unit *>::iterator tIter = targets.begin(); tIter != targets.end();)
     {
-        if(!IsWithinLOSInMap(*tIter) || (*tIter)->GetCreatureType() == CREATURE_TYPE_CRITTER)
+        if(!IsWithinLOSInMap(*tIter))
         {
             std::list<Unit *>::iterator tIter2 = tIter;
             ++tIter;
