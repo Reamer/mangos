@@ -1988,7 +1988,7 @@ void Aura::TriggerSpell()
                     {
                         if (triggerTarget->GetTypeId() == TYPEID_UNIT)
                         {
-                            if (Unit* pTarget = ((Creature*)triggerTarget)->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0))
+                            if (Unit* pTarget = triggerTarget->SelectRandomUnfriendlyTarget(NULL, 50.0f))
                             {
                                 triggerTarget->CastSpell(pTarget, 69015, true);
                             }
