@@ -1403,9 +1403,9 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         uint32 GetOriginalFaction() const { return m_originalFaction; }
         void setFaction(uint32 faction) { if (!m_originalFaction) m_originalFaction = faction; SetUInt32Value(UNIT_FIELD_FACTIONTEMPLATE, faction ); }
         FactionTemplateEntry const* getFactionTemplateEntry() const;
-        bool IsHostileTo(Unit const* unit) const;
+        virtual bool IsHostileTo(Unit const* unit) const override;
         bool IsHostileToPlayers() const;
-        bool IsFriendlyTo(Unit const* unit) const;
+        virtual bool IsFriendlyTo(Unit const* unit) const override;
         bool IsNeutralToAll() const;
         bool IsContestedGuard() const
         {
@@ -1907,7 +1907,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         void DeleteThreatList();
         bool IsSecondChoiceTarget(Unit* pTarget, bool checkThreatArea) const;
         bool SelectHostileTarget(bool withEvade = true);
-        void TauntApply(Unit* pVictim);
+        bool TauntApply(Unit* pVictim, bool isSingleEffect = false);
         void TauntFadeOut(Unit *taunter);
         ThreatManager& getThreatManager() { return m_ThreatManager; }
         ThreatManager const& getThreatManager() const { return m_ThreatManager; }
@@ -2132,9 +2132,8 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         void ClearComboPoints();
 
         ///----------Pet responses methods-----------------
-        void SendPetCastFail(uint32 spellid, SpellCastResult msg);
-        void SendPetActionFeedback (uint8 msg);
-        void SendPetTalk (uint32 pettalk);
+        void SendPetActionFeedback(uint8 msg);
+        void SendPetTalk(uint32 pettalk);
         void SendPetAIReaction();
         ///----------End of Pet responses methods----------
         void DoPetAction(Player* owner, uint8 flag, uint32 spellid, ObjectGuid petGuid, ObjectGuid targetGuid);

@@ -251,9 +251,9 @@ Map::EnsureGridCreated(const GridPair &p)
 void
 Map::EnsureGridLoadedAtEnter(const Cell &cell, Player *player)
 {
-    NGridType *grid;
+    NGridType* grid;
 
-    if(EnsureGridLoaded(cell))
+    if (EnsureGridLoaded(cell))
     {
         grid = getNGrid(cell.GridX(), cell.GridY());
 
@@ -279,17 +279,17 @@ Map::EnsureGridLoadedAtEnter(const Cell &cell, Player *player)
 bool Map::EnsureGridLoaded(const Cell &cell)
 {
     EnsureGridCreated(GridPair(cell.GridX(), cell.GridY()));
-    NGridType *grid = getNGrid(cell.GridX(), cell.GridY());
+    NGridType* grid = getNGrid(cell.GridX(), cell.GridY());
 
     MANGOS_ASSERT(grid != NULL);
-    if( !isGridObjectDataLoaded(cell.GridX(), cell.GridY()) )
+    if (!IsGridObjectDataLoaded(grid))
     {
         //it's important to set it loaded before loading!
         //otherwise there is a possibility of infinity chain (grid loading will be called many times for the same grid)
         //possible scenario:
         //active object A(loaded with loader.LoadN call and added to the  map)
         //summons some active object B, while B added to map grid loading called again and so on..
-        setGridObjectDataLoaded(true,cell.GridX(), cell.GridY());
+        SetGridObjectDataLoaded(true, grid);
         ObjectGridLoader loader(*grid, this, cell);
         loader.LoadN();
 
@@ -300,6 +300,17 @@ bool Map::EnsureGridLoaded(const Cell &cell)
     }
 
     return false;
+}
+
+bool Map::IsGridObjectDataLoaded(NGridType const* grid) const 
+{
+    return grid ? grid->isGridObjectDataLoaded() : false;
+}
+
+void Map::SetGridObjectDataLoaded(bool pLoaded, NGridType* grid) 
+{
+    if (grid)
+        grid->setGridObjectDataLoaded(pLoaded);
 }
 
 void Map::LoadGrid(const Cell& cell, bool no_unload)
@@ -474,9 +485,10 @@ void Map::MessageDistBroadcast(WorldObject *obj, WorldPacket *msg, float dist)
     cell.Visit(p, message, *this, *obj, dist);
 }
 
-bool Map::loaded(const GridPair &p) const
+bool Map::loaded(GridPair const& p) const
 {
-    return ( getNGrid(p.x_coord, p.y_coord) && isGridObjectDataLoaded(p.x_coord, p.y_coord) );
+    NGridType* grid = getNGrid(p.x_coord, p.y_coord);
+    return grid ? IsGridObjectDataLoaded(grid) : false;
 }
 
 void Map::Update(const uint32 &t_diff)
@@ -801,7 +813,7 @@ void Map::CreatureRelocation(Creature *creature, float x, float y, float z, floa
 {
     MANGOS_ASSERT(CheckGridIntegrity(creature,false));
 
-    Cell old_cell = creature->GetCurrentCell();
+//    Cell old_cell = creature->GetCurrentCell();
     Cell new_cell(MaNGOS::ComputeCellPair(x, y));
 
     // do move or do move to respawn or remove creature if previous all fail
@@ -874,14 +886,16 @@ bool Map::CreatureRespawnRelocation(Creature *c)
 
 bool Map::UnloadGrid(const uint32 &x, const uint32 &y, bool pForce)
 {
-    NGridType *grid = getNGrid(x, y);
+    NGridType* grid = getNGrid(x, y);
     MANGOS_ASSERT( grid != NULL);
 
     {
-        if(!pForce && ActiveObjectsNearGrid(x, y) )
+        if (!pForce && ActiveObjectsNearGrid(x, y))
             return false;
 
         DEBUG_LOG("Unloading grid[%u,%u] for map %u", x,y, i_id);
+
+        SetGridObjectDataLoaded(false, grid);
         ObjectGridUnloader unloader(*grid);
 
         // Finish remove and delete all creatures with delayed remove before moving to respawn grids
@@ -2308,7 +2322,8 @@ void Map::ForcedUnload()
 
         if (player->IsBeingTeleportedFar())
         {
-            WorldLocation old_loc = player->GetPosition();
+            WorldLocation old_loc;
+            player->GetPosition(old_loc);
             if (!player->TeleportTo(old_loc, TELE_TO_NODELAY))
             {
                 DETAIL_LOG("Map::ForcedUnload: %s is in teleport state, cannot be ported to his previous place, teleporting him to his homebind place...",
