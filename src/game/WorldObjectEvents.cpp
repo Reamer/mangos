@@ -354,6 +354,7 @@ bool EvadeDelayEvent::Execute(uint64 /*e_time*/, uint32 /*p_time*/)
     if (m_owner.IsInEvadeMode())
         return true;
 
+    m_owner.MonsterSay("in EvadeDelayEvent", LANG_UNIVERSAL);
     if (m_owner.SelectHostileTarget(false))
         return true;
 
@@ -386,7 +387,7 @@ bool EvadeDelayEvent::Execute(uint64 /*e_time*/, uint32 /*p_time*/)
             Creature* c_owner = (Creature*)(&m_owner);
             if (!c_owner)
                 return true;
-
+            m_owner.MonsterSay("in EvadeDelayEvent", LANG_UNIVERSAL);
             if (m_owner.GetOwner() && m_owner.GetOwner()->GetTypeId() == TYPEID_UNIT && m_owner.GetOwner()->SelectHostileTarget(false))
                 return true;
 
