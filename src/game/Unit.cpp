@@ -10446,7 +10446,10 @@ bool Unit::TauntApply(Unit* taunter, bool isSingleEffect)
         SetInFront(taunter);
 
         if (((Creature*)this)->AI())
+        {
+            ((Creature*)this)->MonsterSay("Attack Start - TauntApply", LANG_UNIVERSAL);
             ((Creature*)this)->AI()->AttackStart(taunter);
+        }
     }
 
     if (isSingleEffect)
@@ -10492,7 +10495,10 @@ void Unit::TauntFadeOut(Unit *taunter)
         SetInFront(target);
 
         if (((Creature*)this)->AI())
+        {
+            ((Creature*)this)->MonsterSay("Attack Start - TauntFadeOut", LANG_UNIVERSAL);
             ((Creature*)this)->AI()->AttackStart(target);
+        }
     }
 }
 
@@ -10588,7 +10594,10 @@ bool Unit::SelectHostileTarget(bool withEvade)
             {
                 SetInFront(target);
                 if (oldTarget != target)
+                {
+                    ((Creature*)this)->MonsterSay("Attack Start - SelectHostileTarget", LANG_UNIVERSAL);
                     ((Creature*)this)->AI()->AttackStart(target);
+                }
             }
         }
         return true;
@@ -11756,7 +11765,10 @@ void Unit::DoPetAction( Player* owner, uint8 flag, uint32 spellid, ObjectGuid pe
                         else
                         {
                             if (((Creature*)this)->AI())
+                            {
+                                ((Creature*)this)->MonsterSay("Attack Start - DoPetAction", LANG_UNIVERSAL);
                                 ((Creature*)this)->AI()->AttackStart(TargetUnit);
+                            }
 
                             // 10% chance to play special pet attack talk, else growl
                             if(((Creature*)this)->IsPet() && ((Pet*)this)->getPetType() == SUMMON_PET && roll_chance_i(10))
@@ -11998,7 +12010,10 @@ void Unit::DoPetCastSpell(Player* owner, uint8 cast_count, SpellCastTargets* tar
                 GetMotionMaster()->Clear();
 
                 if (pet->AI() && unit_target->isAlive())
+                {
+                    pet->MonsterSay("Attack Start - TauntApply", LANG_UNIVERSAL);
                     pet->AI()->AttackStart(unit_target);
+                }
             }
         }
 

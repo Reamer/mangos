@@ -28,7 +28,10 @@ CreatureAI::~CreatureAI()
 void CreatureAI::AttackedBy(Unit* attacker)
 {
     if (!m_creature->getVictim())
+    {
+        m_creature->MonsterSay("Attack Start in AttackedBy", LANG_UNIVERSAL);
         AttackStart(attacker);
+    }
 }
 
 CanCastResult CreatureAI::CanCastSpell(Unit* pTarget, const SpellEntry* pSpell, bool isTriggered)
