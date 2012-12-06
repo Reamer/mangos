@@ -277,10 +277,7 @@ void MaNGOS::CallOfHelpCreatureInRangeDo::operator()(Creature* u)
         return;
 
     if (u->AI())
-    {
-        u->MonsterSay("attack start - CallOfHelpCreatureInRangeDo", LANG_UNIVERSAL);
         u->AI()->AttackStart(i_enemy);
-    }
 }
 
 bool MaNGOS::AnyAssistCreatureInRangeCheck::operator()(Creature* u)

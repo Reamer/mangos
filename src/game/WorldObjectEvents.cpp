@@ -286,10 +286,7 @@ bool AssistDelayEvent::Execute(uint64 /*e_time*/, uint32 /*p_time*/)
             {
                 assistant->SetNoCallAssistance(true);
                 if (assistant->AI())
-                {
-                    assistant->MonsterSay("Attack Start - AssistDelayEvent", LANG_UNIVERSAL);
                     assistant->AI()->AttackStart(victim);
-                }
             }
         }
     }
@@ -321,7 +318,6 @@ bool AttackResumeEvent::Execute(uint64 /*e_time*/, uint32 /*p_time*/)
             // Reset EventAI now unsafe, temp disabled (require correct writing EventAI scripts)
             //    if (CreatureEventAI* eventai = (CreatureEventAI*)ai)
             //        eventai->Reset();
-                ((Creature*)&m_owner)->MonsterSay("Attack Start - AttackResumeEvent", LANG_UNIVERSAL);
                 ai->AttackStart(victim);
             }
             break;
@@ -329,7 +325,6 @@ bool AttackResumeEvent::Execute(uint64 /*e_time*/, uint32 /*p_time*/)
         case HIGHGUID_PET:
         {
             m_owner.AttackStop(!b_force);
-            ((Creature*)&m_owner)->MonsterSay("Attack Start - AttackResumeEvent", LANG_UNIVERSAL);
            ((Pet*)&m_owner)->AI()->AttackStart(victim);
             break;
         }
@@ -354,7 +349,6 @@ bool EvadeDelayEvent::Execute(uint64 /*e_time*/, uint32 /*p_time*/)
     if (m_owner.IsInEvadeMode())
         return true;
 
-    m_owner.MonsterSay("in EvadeDelayEvent", LANG_UNIVERSAL);
     if (m_owner.SelectHostileTarget(false))
         return true;
 
@@ -387,7 +381,7 @@ bool EvadeDelayEvent::Execute(uint64 /*e_time*/, uint32 /*p_time*/)
             Creature* c_owner = (Creature*)(&m_owner);
             if (!c_owner)
                 return true;
-            m_owner.MonsterSay("in EvadeDelayEvent", LANG_UNIVERSAL);
+
             if (m_owner.GetOwner() && m_owner.GetOwner()->GetTypeId() == TYPEID_UNIT && m_owner.GetOwner()->SelectHostileTarget(false))
                 return true;
 
