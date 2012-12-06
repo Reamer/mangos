@@ -10594,10 +10594,7 @@ bool Unit::SelectHostileTarget(bool withEvade)
             {
                 SetInFront(target);
                 if (oldTarget != target)
-                {
-                    ((Creature*)this)->MonsterSay("Attack Start - SelectHostileTarget", LANG_UNIVERSAL);
                     ((Creature*)this)->AI()->AttackStart(target);
-                }
             }
         }
         return true;
