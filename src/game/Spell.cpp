@@ -3153,6 +3153,26 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
             }
             break;
         }
+        case TARGET_PAA_AROUND_TARGET_OR_SELF:
+        {
+            float middleX, middleY, middleZ = 0.0f;
+            //random Point around caster or aim
+            m_caster->GetPosition(middleX, middleY, middleZ);
+            if (m_targets.getUnitTarget())
+                m_targets.getUnitTarget()->GetPosition(middleX, middleY, middleZ);
+            float destX, destY, destZ = 0.0f;
+            m_caster->GetRandomPoint(middleX, middleY, middleZ, radius, destX, destY, destZ);
+            m_targets.setDestination(destX, destY, destZ);
+            // maybe for cmangos in mangosR2 not every spell needs a target, take a look into IsEffectRequiresTarget
+            /*if (targetUnitMap.empty())
+            {
+                if (m_targets.getUnitTarget())
+                    targetUnitMap.push_back(m_targets.getUnitTarget());
+                else
+                    targetUnitMap.push_back(m_caster);
+            }*/
+            break;
+        }
         default:
             //sLog.outError( "SPELL: Unknown implicit target (%u) for spell ID %u", targetMode, m_spellInfo->Id );
             break;

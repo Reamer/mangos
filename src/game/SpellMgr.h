@@ -383,6 +383,7 @@ inline bool IsEffectRequiresTarget(SpellEntry const* spellInfo, SpellEffectIndex
     switch(spellInfo->Effect[i])
     {
         case SPELL_EFFECT_NONE:
+        case SPELL_EFFECT_PERSISTENT_AREA_AURA:
             return false;
 
         // this - hack for current mangos operate state with spells    

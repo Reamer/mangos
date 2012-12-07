@@ -1331,7 +1331,7 @@ enum Targets
     TARGET_POINT_AT_SW                      = 85,                // from spell desc: "(SW)"
     TARGET_RANDOM_NEARBY_DEST               = 86,                // "Test Nearby Dest Random" - random around selected destination
     TARGET_SELF2                            = 87,
-    TARGET_88                               = 88,
+    TARGET_PAA_AROUND_TARGET_OR_SELF        = 88,                // only used for PAA (persistent area aura)
     TARGET_DIRECTLY_FORWARD                 = 89,
     TARGET_NONCOMBAT_PET                    = 90,
     TARGET_DEST_RADIUS                      = 91,
