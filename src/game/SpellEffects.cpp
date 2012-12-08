@@ -3766,6 +3766,21 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     m_caster->CastSpell(unitTarget, m_caster->CanReachWithMeleeAttack(unitTarget) ? 71623 : 72264, true);
                     return;
                 }
+                // CYBER CUSTOM STUFF BEGIN
+                case 80021:                                 // Cyber Level 80
+                {
+                    if (!unitTarget)
+                        return;
+
+                    if (unitTarget->GetTypeId() != TYPEID_PLAYER)
+                        return;
+
+                    ((Player*)unitTarget)->GiveLevel(80);
+                    ((Player*)unitTarget)->InitTalentForLevel();
+                    unitTarget->SetUInt32Value(PLAYER_XP, 0);
+                    break;
+                }
+                // CYBER CUSTOM STUFF END
                 default:
                     break;
             }
