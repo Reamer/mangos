@@ -10449,12 +10449,8 @@ bool Unit::TauntApply(Unit* taunter, bool isSingleEffect)
             ((Creature*)this)->AI()->AttackStart(taunter);
     }
 
-    // check for valid Victim
-    if (isSingleEffect && !getThreatManager().getCurrentVictim())
-        return false;
-
     if (isSingleEffect)
-        getThreatManager().addThreat(taunter,getThreatManager().getCurrentVictim()->getThreat());
+        getThreatManager().addThreat(taunter,getThreatManager().getCurrentVictim() ? getThreatManager().getCurrentVictim()->getThreat() : 1.0f);
     else
         getThreatManager().tauntApply(taunter);
 
