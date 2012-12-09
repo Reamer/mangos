@@ -2562,20 +2562,20 @@ uint32 SpellMgr::GetSpellMaxTargetsWithCustom(SpellEntry const* spellInfo, Unit 
                 case 55479:                                 // Forced Obedience (Naxxramas, Razovius)
                 case 56140:                                 // Summon Power Spark (Eye of Eternity, Malygos)
                 case 59870:                                 // Glare of the Tribunal (h) (Halls of Stone)
-                case 62166:                                 // StoneGrip nh
                 case 62978:                                 // Summon Guardian (Ulduar - Yogg Saron)
-                case 63342:                                 // Focused Eyebeam Summon Trigger (Kologarn)
                 case 63713:                                 // Dominate Mind (Ulduar - Yogg Saron)
                 case 63830:                                 // Malady of the Mind (Ulduar - Yogg Saron)
                 case 64465:                                 // Shadow Beacon (Ulduar - Yogg Saron)
                 case 62016:                                 // Charge Orb (Ulduar, Thorim)
                 case 62042:                                 // Stormhammer (Ulduar, Thorim)
+                case 62166:                                 // StoneGrip nh
                 case 62301:                                 // Cosmic Smash (Ulduar, Algalon)
                 case 62374:                                 // Pursued (Ulduar, Flame Leviathan)
                 case 62400:                                 // Missile Barrage (Ulduar, Flame Leviathan)
                 case 62488:                                 // Activate Construct (Ulduar, Ignis)
                 case 63018:                                 // Searing Light
                 case 63024:                                 // Gravity Bomb (Ulduar, XT-002)
+                case 63342:                                 // Focused Eyebeam Summon Trigger (Ulduar, Kologarn)
                 case 63387:                                 // Rapid Burst
                 case 63545:                                 // Icicle Hodir(trigger spell from 62227)
                 case 63795:                                 // Psychosis (Ulduar, Yogg-Saron)
