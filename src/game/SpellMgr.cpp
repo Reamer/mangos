@@ -2620,6 +2620,7 @@ uint32 SpellMgr::GetSpellMaxTargetsWithCustom(SpellEntry const* spellInfo, Unit 
                 case 71837:                                 // Vampiric Bite
                 case 71861:                                 // Swarming Shadows
                 case 72091:                                 // Frozen Orb (Vault of Archavon, Toravon)
+                case 72254:                                 // Mark of the fallen Champion Search Spell
                 case 72378:                                 // Blood Nova (Saurfang)
                 case 73058:
                 case 72385:                                 // Boiling Blood

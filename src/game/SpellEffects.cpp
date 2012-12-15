@@ -3758,12 +3758,27 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     unitTarget->CastSpell(unitTarget, 72195, true);
                     break;
                 }
+                case 72254:                                 // Mark of the fallen Champion Search Spell
+                {
+                    if (!unitTarget)
+                        return;
+                    m_caster->CastSpell(unitTarget, 72293, true);
+                    return;
+                }
                 case 72261:                                 // Delirious Slash
                 {
                     if (!unitTarget)
                         return;
 
                     m_caster->CastSpell(unitTarget, m_caster->CanReachWithMeleeAttack(unitTarget) ? 71623 : 72264, true);
+                    return;
+                }
+                case 72379:                                 // Bloodnova
+                {
+                    if (!m_originalCaster || !unitTarget)
+                        return;
+
+                    m_originalCaster->CastSpell(unitTarget, 72380, true);
                     return;
                 }
                 // CYBER CUSTOM STUFF BEGIN
