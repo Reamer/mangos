@@ -3384,26 +3384,21 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     if (!unitTarget)
                         return;
 
+                    uint32 triggerSpell = 0;
                     switch (m_spellInfo->Id)
                     {
-                        case 63820:
-                            unitTarget->CastSpell(unitTarget, 64398, false);
-                            break;
-                        case 64425:
-                            unitTarget->CastSpell(unitTarget, 64426, false);
-                            break;
-                        case 64620:
-                            unitTarget->CastSpell(unitTarget, 64621, false);
-                            break;
-                        default:
-                            break;
+                        case 63820: triggerSpell = 64398; break;
+                        case 64425: triggerSpell = 64426; break;
+                        case 64620: triggerSpell = 64621; break;
                     }
+                    unitTarget->CastSpell(unitTarget, triggerSpell, false);
                     return;
                 }
-                case 63984:                                 // Hate to Zero (Ulduar - Yogg Saron), if the player teleport into the "brain"
+                case 63984:                                 // Hate to Zero (Ulduar - Yogg Saron)
                 {
                     if (!unitTarget)
                         return;
+
                     Unit* caster = GetCaster();
                     if (!caster)
                         return;
@@ -3755,7 +3750,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     m_caster->CastSpell(unitTarget, 71264, true);
                     return;
                 }
-                case 72202:                                 // Blade power
+                case 72202:                                 // Blood Link
                 {
                     if (!unitTarget)
                         return;
@@ -3771,6 +3766,21 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     m_caster->CastSpell(unitTarget, m_caster->CanReachWithMeleeAttack(unitTarget) ? 71623 : 72264, true);
                     return;
                 }
+                // CYBER CUSTOM STUFF BEGIN
+                case 80021:                                 // Cyber Level 80
+                {
+                    if (!unitTarget)
+                        return;
+
+                    if (unitTarget->GetTypeId() != TYPEID_PLAYER)
+                        return;
+
+                    ((Player*)unitTarget)->GiveLevel(80);
+                    ((Player*)unitTarget)->InitTalentForLevel();
+                    unitTarget->SetUInt32Value(PLAYER_XP, 0);
+                    break;
+                }
+                // CYBER CUSTOM STUFF END
                 default:
                     break;
             }
@@ -7536,27 +7546,11 @@ void Spell::EffectLearnPetSpell(SpellEffectIndex eff_idx)
 
 void Spell::EffectTaunt(SpellEffectIndex /*eff_idx*/)
 {
-    if (!unitTarget)
+    if (!unitTarget || unitTarget->GetTypeId() == TYPEID_PLAYER)
         return;
 
-    // this effect use before aura Taunt apply for prevent taunt already attacking target
-    // for spell as marked "non effective at already attacking target"
-    if (unitTarget->GetTypeId() != TYPEID_PLAYER)
-    {
-        if (unitTarget->getVictim()==m_caster)
-        {
-            SendCastResult(SPELL_FAILED_DONT_REPORT);
-            return;
-        }
-    }
-
-    // if target immune to taunt don't change threat
-    if (unitTarget->GetDiminishing(DIMINISHING_TAUNT) == DIMINISHING_LEVEL_IMMUNE)
-        return;
-
-    // Also use this effect to set the taunter's threat to the taunted creature's highest value
-    if (unitTarget->CanHaveThreatList() && unitTarget->getThreatManager().getCurrentVictim())
-        unitTarget->getThreatManager().addThreat(m_caster,unitTarget->getThreatManager().getCurrentVictim()->getThreat());
+    if (!unitTarget->TauntApply(m_caster, true))
+        SendCastResult(SPELL_FAILED_DONT_REPORT);
 }
 
 void Spell::EffectWeaponDmg(SpellEffectIndex eff_idx)
@@ -12760,6 +12754,7 @@ void Spell::EffectBind(SpellEffectIndex eff_idx)
 
     Player* player = (Player*)unitTarget;
 
+    uint32 area_id;
     WorldLocation loc;
     if (m_spellInfo->EffectImplicitTargetA[eff_idx] == TARGET_TABLE_X_Y_Z_COORDINATES ||
         m_spellInfo->EffectImplicitTargetB[eff_idx] == TARGET_TABLE_X_Y_Z_COORDINATES)
@@ -12771,30 +12766,34 @@ void Spell::EffectBind(SpellEffectIndex eff_idx)
             return;
         }
 
-        loc.SetMapId(st->target_mapId);
+        loc.mapid       = st->target_mapId;
         loc.coord_x     = st->target_X;
         loc.coord_y     = st->target_Y;
         loc.coord_z     = st->target_Z;
-        loc.SetOrientation(st->target_Orientation);
+        loc.orientation = st->target_Orientation;
+        area_id = sTerrainMgr.GetAreaId(loc.mapid, loc.coord_x, loc.coord_y, loc.coord_z);
     }
     else
-        loc = player->GetPosition();
+    {
+        player->GetPosition(loc);
+        area_id = player->GetAreaId();
+    }
 
-    player->SetHomebindToLocation(loc);
-    uint32 area_id = loc.GetAreaId();
+    player->SetHomebindToLocation(loc,area_id);
+
     // binding
     WorldPacket data( SMSG_BINDPOINTUPDATE, (4+4+4+4+4) );
     data << float(loc.coord_x);
     data << float(loc.coord_y);
     data << float(loc.coord_z);
-    data << uint32(loc.GetMapId());
+    data << uint32(loc.mapid);
     data << uint32(area_id);
     player->SendDirectMessage( &data );
 
     DEBUG_LOG("New Home Position X is %f", loc.coord_x);
     DEBUG_LOG("New Home Position Y is %f", loc.coord_y);
     DEBUG_LOG("New Home Position Z is %f", loc.coord_z);
-    DEBUG_LOG("New Home MapId is %u", loc.GetMapId());
+    DEBUG_LOG("New Home MapId is %u", loc.mapid);
     DEBUG_LOG("New Home AreaId is %u", area_id);
 
     // zone update

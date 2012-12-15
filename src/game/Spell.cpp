@@ -1179,7 +1179,7 @@ void Spell::DoAllEffectOnTarget(TargetInfo *target)
     }
 
     // Speed possible inherited from triggering spell
-    float speed_proto = GetBaseSpellSpeed();
+    // float speed_proto = GetBaseSpellSpeed();
 
     if (m_spellInfo->speed > M_NULL_F || GetDelayStart())
     {
@@ -1404,7 +1404,7 @@ void Spell::DoSpellHitOnUnit(Unit *unit, uint32 effectMask)
     Unit* realCaster = GetAffectiveCaster();
 
     // Speed possible inherited from triggering spell
-    float speed_proto = GetBaseSpellSpeed();
+    // float speed_proto = GetBaseSpellSpeed();
 
     // Recheck effect immune (only for delayed spells)
     if (m_spellInfo->speed > M_NULL_F)
@@ -2180,6 +2180,8 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                     case 38028:                                             // Watery Grave
                     case 40618:                                             // Insignificance
                     case 41376:                                             // Spite
+                    case 62166:                                             // Stone Grip nh
+                    case 63981:                                             // Stone Grip h
                         if (Unit* pVictim = m_caster->getVictim())
                             targetUnitMap.remove(pVictim);
                         break;
@@ -3153,6 +3155,26 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
             }
             break;
         }
+        case TARGET_PAA_AROUND_TARGET_OR_SELF:
+        {
+            float middleX, middleY, middleZ = 0.0f;
+            //random Point around caster or aim
+            m_caster->GetPosition(middleX, middleY, middleZ);
+            if (m_targets.getUnitTarget())
+                m_targets.getUnitTarget()->GetPosition(middleX, middleY, middleZ);
+            float destX, destY, destZ = 0.0f;
+            m_caster->GetRandomPoint(middleX, middleY, middleZ, radius, destX, destY, destZ);
+            m_targets.setDestination(destX, destY, destZ);
+            // maybe for cmangos in mangosR2 not every spell needs a target, take a look into IsEffectRequiresTarget
+            /*if (targetUnitMap.empty())
+            {
+                if (m_targets.getUnitTarget())
+                    targetUnitMap.push_back(m_targets.getUnitTarget());
+                else
+                    targetUnitMap.push_back(m_caster);
+            }*/
+            break;
+        }
         default:
             //sLog.outError( "SPELL: Unknown implicit target (%u) for spell ID %u", targetMode, m_spellInfo->Id );
             break;
@@ -3744,7 +3766,7 @@ void Spell::cast(bool skipCheck)
 
     InitializeDamageMultipliers();
 
-    Unit *procTarget = m_targets.getUnitTarget();
+    Unit* procTarget = m_targets.getUnitTarget();
     if (!procTarget)
         procTarget = m_caster;
 
@@ -4215,12 +4237,12 @@ void Spell::SendCastResult(SpellCastResult result)
     SendCastResult((Player*)m_caster, m_spellInfo, m_cast_count, result);
 }
 
-void Spell::SendCastResult(Player* caster, SpellEntry const* spellInfo, uint8 cast_count, SpellCastResult result)
+void Spell::SendCastResult(Player* caster, SpellEntry const* spellInfo, uint8 cast_count, SpellCastResult result, bool isPetCastResult /*=false*/)
 {
     if (result == SPELL_CAST_OK)
         return;
 
-    WorldPacket data(SMSG_CAST_FAILED, (4+1+1));
+    WorldPacket data(isPetCastResult ? SMSG_PET_CAST_FAILED : SMSG_CAST_FAILED, (4 + 1 + 2));
     data << uint8(cast_count);                              // single cast or multi 2.3 (0/1)
     data << uint32(spellInfo->Id);
     data << uint8(result);                                  // problem
@@ -5675,12 +5697,26 @@ SpellCastResult Spell::CheckCast(bool strict)
             return SPELL_FAILED_NOT_MOUNTED;
     }
 
-    // always (except passive spells) check items (focus object can be required for any type casts)
+    // always (except passive spells) check items
     if (!IsPassiveSpell(m_spellInfo))
     {
         SpellCastResult castResult = CheckItems();
         if (castResult != SPELL_CAST_OK)
             return castResult;
+    }
+
+    // check spell focus object
+    if (m_spellInfo->RequiresSpellFocus)
+    {
+        GameObject* ok = NULL;
+        MaNGOS::GameObjectFocusCheck go_check(m_caster, m_spellInfo->RequiresSpellFocus);
+        MaNGOS::GameObjectSearcher<MaNGOS::GameObjectFocusCheck> checker(ok, go_check);
+        Cell::VisitGridObjects(m_caster, checker, m_caster->GetMap()->GetVisibilityDistance());
+
+        if (!ok)
+            return SPELL_FAILED_REQUIRES_SPELL_FOCUS;
+
+        focusObject = ok;                                   // game object found in range
     }
 
     // Database based targets from spell_target_script
@@ -7344,20 +7380,6 @@ SpellCastResult Spell::CheckItems()
             return m_IsTriggeredSpell ? SPELL_FAILED_DONT_REPORT : SPELL_FAILED_EQUIPPED_ITEM_CLASS;
     }
 
-    // check spell focus object
-    if (m_spellInfo->RequiresSpellFocus)
-    {
-        GameObject* ok = NULL;
-        MaNGOS::GameObjectFocusCheck go_check(m_caster,m_spellInfo->RequiresSpellFocus);
-        MaNGOS::GameObjectSearcher<MaNGOS::GameObjectFocusCheck> checker(ok, go_check);
-        Cell::VisitGridObjects(m_caster, checker, m_caster->GetMap()->GetVisibilityDistance());
-
-        if(!ok)
-            return SPELL_FAILED_REQUIRES_SPELL_FOCUS;
-
-        focusObject = ok;                                   // game object found in range
-    }
-
     // check reagents (ignore triggered spells with reagents processed by original spell) and special reagent ignore case.
     if (!IgnoreItemRequirements())
     {
@@ -7955,6 +7977,11 @@ bool Spell::CheckTarget(Unit* target, SpellEffectIndex eff )
     {
         case 37433:                                         // Spout (The Lurker Below), only players affected if its not in water
             if (target->GetTypeId() != TYPEID_PLAYER || target->IsInWater())
+                return false;
+            break;
+        case 68921:                                         // Soulstorm (FoS), only targets farer than 10 away
+        case 69049:                                         // Soulstorm            - = -
+            if (m_caster->IsWithinDist(target, 10.0f, false))
                 return false;
             break;
         default:
@@ -8811,18 +8838,6 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
             }
             break;
         }
-        case 68921: // Soulstorm (Forge of Souls - Bronjahm)
-        case 69049:
-        {
-            UnitList tmpUnitMap;
-            FillAreaTargets(tmpUnitMap, radius, PUSH_DEST_CENTER, SPELL_TARGETS_AOE_DAMAGE);
-            for (UnitList::const_iterator itr = tmpUnitMap.begin(); itr != tmpUnitMap.end(); ++itr)
-            {
-                if (*itr && !(*itr)->IsWithinDistInMap(m_caster, 10.0f))
-                    targetUnitMap.push_back(*itr);
-            }
-            break;
-        }
         case 66862: // Radiance (Trial of the Champion - Eadric the Pure)
         case 67681:
         {
@@ -8916,24 +8931,24 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
                     oozesMap.push_back((*iter));
             }
 
-            UnitList::iterator i;
+            UnitList::iterator itr;
 
             // 2 random targets
             if (!oozesMap.empty())
             {
-                i = oozesMap.begin();
-                std::advance(i, urand(0, oozesMap.size() - 1));
+                itr = oozesMap.begin();
+                std::advance(itr, urand(0, oozesMap.size() - 1));
 
                 // first Ooze Flood
-                targetUnitMap.push_back(*i);
-                oozesMap.remove(*i);
+                targetUnitMap.push_back(*itr);
+                oozesMap.remove(*itr);
 
                 // now find the second - closest one
                 if (!oozesMap.empty())
                 {
-                    oozesMap.sort(TargetDistanceOrderNear(*i));
-                    i = oozesMap.begin();
-                    targetUnitMap.push_back(*i);
+                    oozesMap.sort(TargetDistanceOrderNear(*itr));
+                    itr = oozesMap.begin();
+                    targetUnitMap.push_back(*itr);
                 }
 
                 return true;
@@ -9309,7 +9324,7 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
 
             break;
         }
-        case 72378: // Blood Nova (Saurfang)
+        /*case 72378: // Blood Nova (Saurfang)
         case 73058:
         {
             UnitList tempTargetUnitMap;
@@ -9348,7 +9363,7 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
 
             unMaxTargets = 1;
             break;
-        }
+        }*/
         case 71336:                                     // Pact of the Darkfallen
         {
             UnitList tempTargetUnitMap;

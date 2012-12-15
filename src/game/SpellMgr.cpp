@@ -2562,27 +2562,27 @@ uint32 SpellMgr::GetSpellMaxTargetsWithCustom(SpellEntry const* spellInfo, Unit 
                 case 55479:                                 // Forced Obedience (Naxxramas, Razovius)
                 case 56140:                                 // Summon Power Spark (Eye of Eternity, Malygos)
                 case 59870:                                 // Glare of the Tribunal (h) (Halls of Stone)
-                case 62166:                                 // StoneGrip nh
                 case 62978:                                 // Summon Guardian (Ulduar - Yogg Saron)
-                case 63342:                                 // Focused Eyebeam Summon Trigger (Kologarn)
                 case 63713:                                 // Dominate Mind (Ulduar - Yogg Saron)
                 case 63830:                                 // Malady of the Mind (Ulduar - Yogg Saron)
                 case 64465:                                 // Shadow Beacon (Ulduar - Yogg Saron)
                 case 62016:                                 // Charge Orb (Ulduar, Thorim)
                 case 62042:                                 // Stormhammer (Ulduar, Thorim)
+                case 62166:                                 // StoneGrip nh
                 case 62301:                                 // Cosmic Smash (Ulduar, Algalon)
                 case 62374:                                 // Pursued (Ulduar, Flame Leviathan)
                 case 62400:                                 // Missile Barrage (Ulduar, Flame Leviathan)
                 case 62488:                                 // Activate Construct (Ulduar, Ignis)
                 case 63018:                                 // Searing Light
                 case 63024:                                 // Gravity Bomb (Ulduar, XT-002)
+                case 63342:                                 // Focused Eyebeam Summon Trigger (Ulduar, Kologarn)
                 case 63387:                                 // Rapid Burst
                 case 63545:                                 // Icicle Hodir(trigger spell from 62227)
                 case 63795:                                 // Psychosis (Ulduar, Yogg-Saron)
-                case 63820:                                 // Summon Scrap Bot Trigger (Ulduar, Mimiron) use for Scrap Bots, hits npc 33856 - Source Sniff
+                case 63820:                                 // Summon Scrap Bot Trigger (Ulduar, Mimiron) use for Scrap Bots, hits npc 33856
                 case 64218:                                 // Overcharge
                 case 64234:                                 // Gravity Bomb (h) (Ulduar, XT-002)
-                case 64425:                                 // Summon Scrap Bot Trigger (Ulduar, Mimiron) use for Assault Bots, hits npc 33856 - Source Sniff
+                case 64425:                                 // Summon Scrap Bot Trigger (Ulduar, Mimiron) use for Assault Bots, hits npc 33856
                 case 64531:                                 // Rapid Burst (h)
                 case 64562:                                 // Summon Flames Spread Trigger (Ulduar, Mimiron)
                 case 64623:                                 // Frost Bomb (Ulduar, Mimiron)
@@ -2620,6 +2620,12 @@ uint32 SpellMgr::GetSpellMaxTargetsWithCustom(SpellEntry const* spellInfo, Unit 
                 case 71837:                                 // Vampiric Bite
                 case 71861:                                 // Swarming Shadows
                 case 72091:                                 // Frozen Orb (Vault of Archavon, Toravon)
+                case 72378:                                 // Blood Nova (Saurfang)
+                case 73058:
+                case 72385:                                 // Boiling Blood
+                case 72441:
+                case 72442:
+                case 72443:
                 case 73022:                                 // Mutated Infection (Mode 2)
                 case 73023:                                 // Mutated Infection (Mode 3)
                     unMaxTargets = 1;
@@ -2651,7 +2657,7 @@ uint32 SpellMgr::GetSpellMaxTargetsWithCustom(SpellEntry const* spellInfo, Unit 
                 case 62477:                                 // Icicle (Hodir 25man)
                 case 63981:                                 // StoneGrip H
                 case 64598:                                 // Cosmic Smash (h) (Ulduar, Algalon)
-                case 64620:                                 // Summon Fire Bot Trigger (Ulduar, Mimiron) hits npc 33856 - Source Sniff
+                case 64620:                                 // Summon Fire Bot Trigger (Ulduar, Mimiron) hits npc 33856
                 case 70814:                                 // Bone Slice (ICC, Lord Marrowgar, heroic)
                 case 71221:                                 // Gas spore (Mode 1) (ICC, Festergut)
                 case 72095:                                 // Frozen Orb (h) (Vault of Archavon, Toravon)
