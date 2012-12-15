@@ -2619,6 +2619,12 @@ uint32 SpellMgr::GetSpellMaxTargetsWithCustom(SpellEntry const* spellInfo, Unit 
                 case 71837:                                 // Vampiric Bite
                 case 71861:                                 // Swarming Shadows
                 case 72091:                                 // Frozen Orb (Vault of Archavon, Toravon)
+                case 72378:                                 // Blood Nova (Saurfang)
+                case 73058:
+                case 72385:                                 // Boiling Blood
+                case 72441:
+                case 72442:
+                case 72443:
                 case 73022:                                 // Mutated Infection (Mode 2)
                 case 73023:                                 // Mutated Infection (Mode 3)
                     unMaxTargets = 1;

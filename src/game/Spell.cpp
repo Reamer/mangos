@@ -9324,7 +9324,7 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
 
             break;
         }
-        case 72378: // Blood Nova (Saurfang)
+        /*case 72378: // Blood Nova (Saurfang)
         case 73058:
         {
             UnitList tempTargetUnitMap;
@@ -9363,7 +9363,7 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
 
             unMaxTargets = 1;
             break;
-        }
+        }*/
         case 71336:                                     // Pact of the Darkfallen
         {
             UnitList tempTargetUnitMap;

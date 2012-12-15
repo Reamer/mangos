@@ -3763,13 +3763,13 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(Unit *pVictim, DamageIn
                     trigger_spell_id = 72195;
                     break;
                 }
-                case 72408:                                 // Rune of Blood (Saurfang)
-                {
+                //case 72408:                                 // Rune of Blood (Saurfang)
+                //{
                     // Proc on targets with dummy aura (debuff cast by Saurfang)
-                    if (pVictim && !pVictim->HasAura(72410))
-                        return SPELL_AURA_PROC_FAILED;
-                    break;
-                }
+                   // if (pVictim && !pVictim->HasAura(72410))
+                   //     return SPELL_AURA_PROC_FAILED;
+                 //   break;
+                //}
             }
             break;
         case SPELLFAMILY_MAGE:

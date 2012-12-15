@@ -3750,7 +3750,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     m_caster->CastSpell(unitTarget, 71264, true);
                     return;
                 }
-                case 72202:                                 // Blade power
+                case 72202:                                 // Blood Link
                 {
                     if (!unitTarget)
                         return;
