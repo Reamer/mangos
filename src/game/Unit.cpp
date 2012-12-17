@@ -3561,7 +3561,7 @@ SpellMissInfo Unit::SpellResistResult(Unit* pVictim, SpellEntry const* spell)
     if (!spell ||  !IsBinaryResistedSpell(spell))
         return SPELL_MISS_NONE;
 
-    if (spell->SchoolMask & SPELL_SCHOOL_MASK_SPELL == 0)
+    if (spell->SchoolMask & SPELL_SCHOOL_MASK_NORMAL)
         return SPELL_MISS_NONE;
 
     // Can`t resist on dead target
