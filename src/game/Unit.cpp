@@ -3561,9 +3561,6 @@ SpellMissInfo Unit::SpellResistResult(Unit* pVictim, SpellEntry const* spell)
     if (!spell ||  !IsBinaryResistedSpell(spell))
         return SPELL_MISS_NONE;
 
-    if (spell->SchoolMask & SPELL_SCHOOL_MASK_NORMAL)
-        return SPELL_MISS_NONE;
-
     // Can`t resist on dead target
     if (!pVictim->isAlive())
         return SPELL_MISS_NONE;
@@ -3573,7 +3570,7 @@ SpellMissInfo Unit::SpellResistResult(Unit* pVictim, SpellEntry const* spell)
         return SPELL_MISS_NONE;
 
     // Spell this type can't be resisted
-    if ((spell->SchoolMask & SPELL_SCHOOL_MASK_NORMAL) && spell->HasAttribute(SPELL_ATTR_EX3_CANT_MISS))
+    if ((spell->SchoolMask & SPELL_SCHOOL_MASK_NORMAL) || spell->HasAttribute(SPELL_ATTR_EX3_CANT_MISS))
         return SPELL_MISS_NONE;
 
     // Impossible resist friendly spells
