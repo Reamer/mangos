@@ -10450,7 +10450,8 @@ bool Unit::TauntApply(Unit* taunter, bool isSingleEffect)
     }
 
     if (isSingleEffect)
-        getThreatManager().addThreat(taunter,getThreatManager().getCurrentVictim() ? getThreatManager().getCurrentVictim()->getThreat() : 1.0f);
+        getThreatManager().addThreat(taunter, getThreatManager().getCurrentVictim() ? 
+                                              getThreatManager().getCurrentVictim()->getThreat() : 1.0f);
     else
         getThreatManager().tauntApply(taunter);
 
