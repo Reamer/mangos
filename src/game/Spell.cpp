@@ -9272,7 +9272,7 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
             FillAreaTargets(targetUnitMap, radius, PUSH_SELF_CENTER, SPELL_TARGETS_AOE_DAMAGE);
             targetUnitMap.remove(m_caster);
         }
-        case 72905: // Frostbolt Volley (Lady Deathwhisper)
+        /*case 72905: // Frostbolt Volley (Lady Deathwhisper)
         case 72906:
         case 72907:
         case 72908:
@@ -9288,7 +9288,7 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
             }
 
             break;
-        }
+        }*/
         /*case 72378: // Blood Nova (Saurfang)
         case 73058:
         {
