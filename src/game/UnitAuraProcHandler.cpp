@@ -2606,6 +2606,9 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, DamageInfo* damageI
                             basepoints[0] = int32(damage / GetSpellAuraMaxTicks(triggered_spell_id));
                             if (pVictim->HasAura(53569, EFFECT_INDEX_0))
                                 basepoints[0] = basepoints[0] >> 1;
+                            // If Pala has T9 4 boni then double heal
+                            if (pVictim->HasAura(67191))
+                                basepoints[0] = basepoints[0] << 1;
                         }
                         else
                             return SPELL_AURA_PROC_FAILED;
