@@ -640,7 +640,7 @@ void Aura::Update(uint32 diff)
             PeriodicTick();
         }
     }
-    else
+    /*else
     {
         if (m_periodicTimer <= 0)
         {
@@ -649,7 +649,7 @@ void Aura::Update(uint32 diff)
         }
         else
             m_periodicTimer -= diff;
-    }
+    }*/
 }
 
 void Aura::AreaAuraUpdate(uint32 diff)
