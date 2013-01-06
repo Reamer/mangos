@@ -10579,8 +10579,9 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                 }
                 case 69795:                                 // Ooze Flood Trigger (Rotface)
                 {
+                    uint32 randSpells[] = {69782, 69796, 69798, 69801};
                     // unclear: different versions of spell in the rest of effects basepoints
-                    m_caster->CastSpell(m_caster, m_spellInfo->CalculateSimpleValue(eff_idx), true);
+                    m_caster->CastSpell(m_caster, randSpells[urand(0, countof(randSpells)-1)], true);
                     return;
                 }
                 case 70079:                                 // Ooze Flood Periodic Trigger Cancel (Rotface)

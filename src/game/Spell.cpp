@@ -8882,44 +8882,43 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
             break;
         }*/
         case 69782: // Ooze Flood (Rotface)
+        case 69796:
+        case 69798:
+        case 69801:
         {
+            float middleX = 4445.870f;
+            float middleY = 3137.310f;
+            float middleZ = 366.390f;
             UnitList tempTargetUnitMap;
-            UnitList oozesMap;
 
             targetUnitMap.clear();
             FillAreaTargets(tempTargetUnitMap, radius, PUSH_SELF_CENTER, SPELL_TARGETS_ALL);
             // stalkers in valves
             for (UnitList::const_iterator iter = tempTargetUnitMap.begin(); iter != tempTargetUnitMap.end(); ++iter)
             {
+                Unit* pTarget = *iter;
                 // Puddle Stalker
-                if ((*iter)->GetEntry() == 37013 && (*iter)->GetPositionZ() < m_caster->GetPositionZ() + 3.0f)
-                    oozesMap.push_back((*iter));
-            }
-
-            UnitList::iterator itr;
-
-            // 2 random targets
-            if (!oozesMap.empty())
-            {
-                itr = oozesMap.begin();
-                std::advance(itr, urand(0, oozesMap.size() - 1));
-
-                // first Ooze Flood
-                targetUnitMap.push_back(*itr);
-                oozesMap.remove(*itr);
-
-                // now find the second - closest one
-                if (!oozesMap.empty())
+                if (pTarget->GetEntry() == 37013 && pTarget->GetPositionZ() > middleZ)
                 {
-                    oozesMap.sort(TargetDistanceOrderNear(*itr));
-                    itr = oozesMap.begin();
-                    targetUnitMap.push_back(*itr);
+                    if (pTarget->GetPositionX() > middleX && pTarget->GetPositionY() > middleY && m_spellInfo->Id == 69782)
+                    {
+                        targetUnitMap.push_back(pTarget);
+                    }
+                    else if (pTarget->GetPositionX() < middleX && pTarget->GetPositionY() > middleY && m_spellInfo->Id == 69796)
+                    {
+                        targetUnitMap.push_back(pTarget);
+                    }
+                    else if (pTarget->GetPositionX() < middleX && pTarget->GetPositionY() < middleY && m_spellInfo->Id == 69798)
+                    {
+                        targetUnitMap.push_back(pTarget);
+                    }
+                    else if (pTarget->GetPositionX() > middleX && pTarget->GetPositionY() < middleY && m_spellInfo->Id == 69801)
+                    {
+                        targetUnitMap.push_back(pTarget);
+                    }
                 }
-
-                return true;
             }
-
-            return false;
+            return true;
         }
         case 69538: // Small Ooze Combine (Rotface)
         {
