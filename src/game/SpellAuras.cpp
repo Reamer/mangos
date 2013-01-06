@@ -2356,6 +2356,10 @@ void Aura::TriggerSpell()
                 return;
             }
             case 44883:                                     // Encapsulate
+            case 69783:                                     // Ooze Flood
+            case 69797:
+            case 69799:
+            case 69802:
             {
                 // Self cast spell, hence overwrite caster (only channeled spell where the triggered spell deals dmg to SELF)
                 triggerCaster = triggerTarget;
@@ -2377,6 +2381,7 @@ void Aura::TriggerSpell()
                 triggerTarget->CastCustomSpell(triggerTarget, trigger_spell_id, &mana, NULL, NULL, true, NULL, this);
                 return;
             }
+            case 69797:
             case 71340:                                     // Pact of the Darkfallen (Lana'thel)
             {
                 // growing damage, every tenth tick is 1k higher
