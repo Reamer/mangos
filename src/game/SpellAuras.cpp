@@ -2381,7 +2381,6 @@ void Aura::TriggerSpell()
                 triggerTarget->CastCustomSpell(triggerTarget, trigger_spell_id, &mana, NULL, NULL, true, NULL, this);
                 return;
             }
-            case 69797:
             case 71340:                                     // Pact of the Darkfallen (Lana'thel)
             {
                 // growing damage, every tenth tick is 1k higher
