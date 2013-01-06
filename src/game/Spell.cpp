@@ -2182,6 +2182,10 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                     case 41376:                                             // Spite
                     case 62166:                                             // Stone Grip nh
                     case 63981:                                             // Stone Grip h
+                    case 69674:                                             // Mutated Infection (ICC, Rotface)
+                    case 71224:                                             // Mutated Infection
+                    case 73022:                                             // Mutated Infection
+                    case 73023:                                             // Mutated Infection
                         if (Unit* pVictim = m_caster->getVictim())
                             targetUnitMap.remove(pVictim);
                         break;
@@ -8897,8 +8901,8 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
             for (UnitList::const_iterator iter = tempTargetUnitMap.begin(); iter != tempTargetUnitMap.end(); ++iter)
             {
                 Unit* pTarget = *iter;
-                // Puddle Stalker
-                if (pTarget->GetEntry() == 37013 && pTarget->GetPositionZ() > middleZ)
+                // only upper Puddle Stalker in Rotface Room
+                if (pTarget->GetEntry() == 37013 && pTarget->GetPositionZ() > middleZ && pTarget->GetPositionX() > 4357)
                 {
                     if (pTarget->GetPositionX() > middleX && pTarget->GetPositionY() > middleY && m_spellInfo->Id == 69782)
                     {
@@ -8969,23 +8973,6 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
             if (!targetUnitMap.empty())
                 targetUnitMap.resize(1);
 
-            break;
-        }
-        case 69674:                                 // Mutated Infection (Rotface)
-        case 71224:                                 // Mutated Infection (Rotface)
-        case 73023:                                 // Mutated Infection (heroic)
-        case 73022:                                 // Mutated Infection (heroic)
-        {
-            UnitList tempTargetUnitMap;
-            FillAreaTargets(tempTargetUnitMap, radius, PUSH_SELF_CENTER, SPELL_TARGETS_AOE_DAMAGE);
-            for (UnitList::const_iterator iter = tempTargetUnitMap.begin(); iter != tempTargetUnitMap.end(); ++iter)
-            {
-                if ((*iter)->GetTypeId() == TYPEID_PLAYER &&
-                    (*iter) != m_caster->getVictim())
-                    targetUnitMap.push_back(*iter);
-            }
-
-            unMaxTargets = 1;
             break;
         }
         case 69762: // Unchained Magic (Sindragosa)

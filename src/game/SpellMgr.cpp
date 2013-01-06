@@ -2614,11 +2614,13 @@ uint32 SpellMgr::GetSpellMaxTargetsWithCustom(SpellEntry const* spellInfo, Unit 
                 case 73144:
                 case 69140:                                 // Coldflame (ICC, Marrowgar)
                 case 69674:                                 // Mutated Infection (ICC, Rotface)
+                case 71224:                                 // Mutated Infection
+                case 73022:                                 // Mutated Infection
+                case 73023:                                 // Mutated Infection
                 case 70450:                                 // Blood Mirror
                 case 70837:                                 // Blood Mirror
                 case 70882:                                 // Slime Spray Summon Trigger (ICC, Rotface)
                 case 70920:                                 // Unbound Plague Search Effect (ICC, Putricide)
-                case 71224:                                 // Mutated Infection (Mode 1)
                 case 71445:                                 // Twilight Bloodbolt
                 case 71471:                                 // Twilight Bloodbolt
                 case 71837:                                 // Vampiric Bite
@@ -2631,8 +2633,6 @@ uint32 SpellMgr::GetSpellMaxTargetsWithCustom(SpellEntry const* spellInfo, Unit 
                 case 72441:
                 case 72442:
                 case 72443:
-                case 73022:                                 // Mutated Infection (Mode 2)
-                case 73023:                                 // Mutated Infection (Mode 3)
                     unMaxTargets = 1;
                     break;
                 case 28542:                                 // Life Drain
