@@ -10570,6 +10570,9 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     }
                 }
                 case 69782:                                 // Ooze Flood (Rotface)
+                case 69796:
+                case 69798:
+                case 69801:
                 {
                     // targets Puddle Stalker which casts slime AoE
                     if (unitTarget)
