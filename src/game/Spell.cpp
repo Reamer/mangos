@@ -472,6 +472,7 @@ Spell::Spell( Unit* caster, SpellEntry const *info, bool triggered, ObjectGuid o
     if (m_spellInfo->DmgClass == SPELL_DAMAGE_CLASS_MAGIC &&
         m_spellInfo->SchoolMask != SPELL_SCHOOL_MASK_NORMAL &&
         !m_spellInfo->HasAttribute(SPELL_ATTR_EX2_IGNORE_LOS) &&
+        !m_spellInfo->HasAttribute(SPELL_ATTR_EX_CANT_REFLECTED) &&
         !IsAreaOfEffectSpell(m_spellInfo))
     {
         for(int j = 0; j < MAX_EFFECT_INDEX; ++j)
