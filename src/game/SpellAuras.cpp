@@ -8547,7 +8547,7 @@ void Aura::PeriodicTick()
                 return;
 
             if (spellProto->Effect[GetEffIndex()] == SPELL_EFFECT_PERSISTENT_AREA_AURA &&
-                pCaster->SpellHitResult(target, spellProto, false) != SPELL_MISS_NONE)
+                pCaster->SpellHitResult(target, spellProto) != SPELL_MISS_NONE)
                 return;
 
             // Check for immune (not use charges)
@@ -8790,7 +8790,7 @@ void Aura::PeriodicTick()
                 return;
 
             if (spellProto->Effect[GetEffIndex()] == SPELL_EFFECT_PERSISTENT_AREA_AURA &&
-                pCaster->SpellHitResult(target, spellProto, false) != SPELL_MISS_NONE)
+                pCaster->SpellHitResult(target, spellProto) != SPELL_MISS_NONE)
                 return;
 
             // Check for immune
@@ -9016,7 +9016,7 @@ void Aura::PeriodicTick()
                 return;
 
             if (GetSpellProto()->Effect[GetEffIndex()] == SPELL_EFFECT_PERSISTENT_AREA_AURA &&
-                pCaster->SpellHitResult(target, spellProto, false) != SPELL_MISS_NONE)
+                pCaster->SpellHitResult(target, spellProto) != SPELL_MISS_NONE)
                 return;
 
             // Check for immune (not use charges)
