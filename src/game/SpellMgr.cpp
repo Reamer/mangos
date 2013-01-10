@@ -2790,6 +2790,10 @@ float SpellMgr::GetSpellRadiusWithCustom(SpellEntry const* spellInfo, Unit const
         {
             switch(spellInfo->Id)
             {
+                case 71160:                                 // Plague Stench
+                case 71161:
+                    radius = 30;
+                    break;
                 case 28404:                                 // HACK for Gluth
                     radius = 14;
                     break;
@@ -2821,6 +2825,10 @@ float SpellMgr::GetSpellRadiusWithCustom(SpellEntry const* spellInfo, Unit const
                 case 73143:                                 // Bone Spike Graveyard (during Bone Storm) (Icecrown Citadel, Lord Marrowgar encounter, 25N)
                 case 73144:                                 // Bone Spike Graveyard (during Bone Storm) (Icecrown Citadel, Lord Marrowgar encounter, 10H)
                 case 73145:                                 // Bone Spike Graveyard (during Bone Storm) (Icecrown Citadel, Lord Marrowgar encounter, 25H)
+                case 69195:                                 // Pungent Blight
+                case 71219:
+                case 73031:
+                case 73032:
                     radius = DEFAULT_VISIBILITY_INSTANCE;
                     break;
                 case 72350:                                 // Fury of Frostmourne
