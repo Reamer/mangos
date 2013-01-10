@@ -8891,57 +8891,6 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
             }
             return true;
         }
-        case 69538: // Small Ooze Combine (Rotface)
-        {
-            UnitList tempTargetUnitMap;
-            FillAreaTargets(tempTargetUnitMap, radius, PUSH_SELF_CENTER, SPELL_TARGETS_ALL);
-            for (UnitList::const_iterator iter = tempTargetUnitMap.begin(); iter != tempTargetUnitMap.end(); ++iter)
-            {
-                if ((*iter)->GetEntry() == 36897)
-                    targetUnitMap.push_back((*iter));
-            }
-
-            targetUnitMap.remove(m_caster);
-
-            if (!targetUnitMap.empty())
-                targetUnitMap.resize(1);
-
-            break;
-        }
-        case 69553: // Large Ooze Combine (Rotface)
-        {
-            UnitList tempTargetUnitMap;
-            FillAreaTargets(tempTargetUnitMap, radius, PUSH_SELF_CENTER, SPELL_TARGETS_ALL);
-            for (UnitList::const_iterator iter = tempTargetUnitMap.begin(); iter != tempTargetUnitMap.end(); ++iter)
-            {
-                if ((*iter)->GetEntry() == 36899)
-                    targetUnitMap.push_back((*iter));
-            }
-
-            targetUnitMap.remove(m_caster);
-
-            if (!targetUnitMap.empty())
-                targetUnitMap.resize(1);
-
-            break;
-        }
-        case 69610: // Large Ooze Buff Combine (Rotface)
-        {
-            UnitList tempTargetUnitMap;
-            FillAreaTargets(tempTargetUnitMap, radius, PUSH_SELF_CENTER, SPELL_TARGETS_ALL);
-            for (UnitList::const_iterator iter = tempTargetUnitMap.begin(); iter != tempTargetUnitMap.end(); ++iter)
-            {
-                if ((*iter)->GetEntry() == 36897)
-                    targetUnitMap.push_back((*iter));
-            }
-
-            targetUnitMap.remove(m_caster);
-
-            if (!targetUnitMap.empty())
-                targetUnitMap.resize(1);
-
-            break;
-        }
         case 69762: // Unchained Magic (Sindragosa)
         {
             unMaxTargets = 2;
