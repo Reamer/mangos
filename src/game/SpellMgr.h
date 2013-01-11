@@ -871,6 +871,7 @@ enum ProcFlagsEx
     PROC_EX_DISPEL              = 0x0400000,                // proc at remove aura by dispel
     PROC_EX_EXPIRE              = 0x0800000,                // proc at remove aura by expire
     PROC_EX_IGNORE_CC           = 0x1000000,                // proc result ignore possible CC limitations
+    PROC_EX_CAST_START          = 0x2000000,                // proc at cast start
 };
 
 struct SpellProcEventEntry
