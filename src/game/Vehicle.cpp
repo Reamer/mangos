@@ -169,6 +169,19 @@ void VehicleKit::CalculateSeatPositionOf(VehicleSeatEntry const* seatInfo, float
 
     x = y = z = o = 0.0f;
 
+    if (seatInfo->m_attachmentOffsetX != 0.0f ||
+        seatInfo->m_attachmentOffsetY != 0.0f ||
+        seatInfo->m_attachmentOffsetZ != 0.0f ||
+        seatInfo->m_passengerYaw != 0.0f)
+    {
+        sLog.outError("Vehicle with entry %u and name %s has OffsetX %f - OffsetY %f - OffsetZ %f - OffsetO %f",
+                GetBase()->GetEntry(),
+                GetBase()->GetName(),
+                seatInfo->m_attachmentOffsetX,
+                seatInfo->m_attachmentOffsetY,
+                seatInfo->m_attachmentOffsetZ,
+                seatInfo->m_passengerYaw);
+    }
 // FIXME - requires correct method for calculate seat offset
 /*
     x = seatInfo->m_attachmentOffsetX + m_dst_x;
