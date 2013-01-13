@@ -188,15 +188,6 @@ void WorldSession::SendTrainerList(ObjectGuid guid, const std::string& strTitle)
 
     uint32 count = 0;
 
-    /*
-     * CUSTOM CYBER START INSTANT 80 free trainer spells
-     */
-    if (_player->HasItemCount(36838,1,true))
-        fDiscountMod = 0.0f;
-    /*
-     * CUSTOM CYBER END INSTANT 80 free trainer spells
-     */
-
     if (cSpells)
     {
         for(TrainerSpellMap::const_iterator itr = cSpells->spellList.begin(); itr != cSpells->spellList.end(); ++itr)
@@ -210,6 +201,14 @@ void WorldSession::SendTrainerList(ObjectGuid guid, const std::string& strTitle)
             reqLevel = tSpell->isProvidedReqLevel ? tSpell->reqLevel : std::max(reqLevel, tSpell->reqLevel);
 
             TrainerSpellState state = _player->GetTrainerSpellState(tSpell, reqLevel);
+            /*
+             * CUSTOM CYBER START INSTANT 80 free trainer spells, but not fast flying and fly in nordend
+             */
+            if (_player->HasItemCount(36838,1,true) && tSpell->spell != 34093 && tSpell->spell != 54198)
+                fDiscountMod = 0.0f;
+            /*
+             * CUSTOM CYBER END INSTANT 80 free trainer spells
+             */
 
             SendTrainerSpellHelper(data, tSpell, state, fDiscountMod, can_learn_primary_prof, reqLevel);
 
@@ -230,6 +229,14 @@ void WorldSession::SendTrainerList(ObjectGuid guid, const std::string& strTitle)
             reqLevel = tSpell->isProvidedReqLevel ? tSpell->reqLevel : std::max(reqLevel, tSpell->reqLevel);
 
             TrainerSpellState state = _player->GetTrainerSpellState(tSpell, reqLevel);
+            /*
+             * CUSTOM CYBER START INSTANT 80 free trainer spells, but not fast flying and fly in nordend
+             */
+            if (_player->HasItemCount(36838,1,true) && tSpell->spell != 34093 && tSpell->spell != 54198)
+                fDiscountMod = 0.0f;
+            /*
+             * CUSTOM CYBER END INSTANT 80 free trainer spells
+             */
 
             SendTrainerSpellHelper(data, tSpell, state, fDiscountMod, can_learn_primary_prof, reqLevel);
 
@@ -295,9 +302,9 @@ void WorldSession::HandleTrainerBuySpellOpcode( WorldPacket & recv_data )
     // apply reputation discount
     float fDiscountMod = _player->GetReputationPriceDiscount(unit);
     /*
-     * CUSTOM CYBER END INSTANT 80 free trainer spells
+     * CUSTOM CYBER START INSTANT 80 free trainer spells, but not fast flying and fly in nordend
      */
-    if (_player->HasItemCount(36838,1,true))
+    if (_player->HasItemCount(36838,1,true) && trainer_spell->spell != 34093 && trainer_spell->spell != 54198)
         fDiscountMod = 0.0f;
     /*
      * CUSTOM CYBER END INSTANT 80 free trainer spells
