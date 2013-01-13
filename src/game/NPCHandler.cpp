@@ -204,7 +204,7 @@ void WorldSession::SendTrainerList(ObjectGuid guid, const std::string& strTitle)
             /*
              * CUSTOM CYBER START INSTANT 80 free trainer spells, but not fast flying and fly in nordend
              */
-            if (_player->HasItemCount(36838,1,true) && tSpell->spell != 34093 && tSpell->spell != 34091 && tSpell->spell != 54198 && tSpell->spell != 54197)
+            if (_player->HasItemCount(22619,1,true) && tSpell->spell != 34093 && tSpell->spell != 34091 && tSpell->spell != 54198 && tSpell->spell != 54197)
                 fDiscountMod = 0.0f;
             /*
              * CUSTOM CYBER END INSTANT 80 free trainer spells
@@ -232,7 +232,7 @@ void WorldSession::SendTrainerList(ObjectGuid guid, const std::string& strTitle)
             /*
              * CUSTOM CYBER START INSTANT 80 free trainer spells, but not fast flying and fly in nordend
              */
-            if (_player->HasItemCount(36838,1,true) && tSpell->spell != 34093 && tSpell->spell != 34091 && tSpell->spell != 54198 && tSpell->spell != 54197)
+            if (_player->HasItemCount(22619,1,true) && tSpell->spell != 34093 && tSpell->spell != 34091 && tSpell->spell != 54198 && tSpell->spell != 54197)
                 fDiscountMod = 0.0f;
             /*
              * CUSTOM CYBER END INSTANT 80 free trainer spells
@@ -304,7 +304,7 @@ void WorldSession::HandleTrainerBuySpellOpcode( WorldPacket & recv_data )
     /*
      * CUSTOM CYBER START INSTANT 80 free trainer spells, but not fast flying and fly in nordend
      */
-    if (_player->HasItemCount(36838,1,true) && trainer_spell->spell != 34093 && trainer_spell->spell != 34091 && trainer_spell->spell != 54198 && trainer_spell->spell != 54197)
+    if (_player->HasItemCount(22619,1,true) && trainer_spell->spell != 34093 && trainer_spell->spell != 34091 && trainer_spell->spell != 54198 && trainer_spell->spell != 54197)
         fDiscountMod = 0.0f;
     /*
      * CUSTOM CYBER END INSTANT 80 free trainer spells
