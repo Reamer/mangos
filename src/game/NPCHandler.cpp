@@ -188,6 +188,15 @@ void WorldSession::SendTrainerList(ObjectGuid guid, const std::string& strTitle)
 
     uint32 count = 0;
 
+    /*
+     * CUSTOM CYBER START INSTANT 80 free trainer spells
+     */
+    if (_player->HasItemCount(36838,1,true))
+        fDiscountMod = 0.0f;
+    /*
+     * CUSTOM CYBER END INSTANT 80 free trainer spells
+     */
+
     if (cSpells)
     {
         for(TrainerSpellMap::const_iterator itr = cSpells->spellList.begin(); itr != cSpells->spellList.end(); ++itr)
@@ -284,7 +293,16 @@ void WorldSession::HandleTrainerBuySpellOpcode( WorldPacket & recv_data )
         return;
 
     // apply reputation discount
-    uint32 nSpellCost = uint32(floor(trainer_spell->spellCost * _player->GetReputationPriceDiscount(unit)));
+    float fDiscountMod = _player->GetReputationPriceDiscount(unit);
+    /*
+     * CUSTOM CYBER END INSTANT 80 free trainer spells
+     */
+    if (_player->HasItemCount(36838,1,true))
+        fDiscountMod = 0.0f;
+    /*
+     * CUSTOM CYBER END INSTANT 80 free trainer spells
+     */
+    uint32 nSpellCost = uint32(floor(trainer_spell->spellCost * fDiscountMod));
 
     // check money requirement
     if(_player->GetMoney() < nSpellCost )
