@@ -3766,6 +3766,14 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(Unit *pVictim, DamageIn
                     trigger_spell_id = 72195;
                     break;
                 }
+                case 72256:
+                {
+                    if (SpellEntry const* trigEntry = GetSpellEntryByDifficulty(trigger_spell_id, GetMap()->GetDifficulty(), GetMap()->IsRaid()))
+                    {
+                        basepoints[EFFECT_INDEX_0] = trigEntry->CalculateSimpleValue(EFFECT_INDEX_0) + damage;
+                    }
+                    break;
+                }
                 //case 72408:                                 // Rune of Blood (Saurfang)
                 //{
                     // Proc on targets with dummy aura (debuff cast by Saurfang)
