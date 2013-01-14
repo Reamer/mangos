@@ -3766,12 +3766,13 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(Unit *pVictim, DamageIn
                     trigger_spell_id = 72195;
                     break;
                 }
-                case 72256:
+                case 72256:                                 // Mark of the Fallen Champion
                 {
-                    sLog.outError("damage: %u",damage);
-                    if (SpellEntry const* trigEntry = GetSpellEntryByDifficulty(trigger_spell_id, GetMap()->GetDifficulty(), GetMap()->IsRaid()))
+                    if (SpellEntry const* triggerSpell = sSpellStore.LookupEntry(trigger_spell_id))
                     {
-                        basepoints[EFFECT_INDEX_0] = trigEntry->CalculateSimpleValue(EFFECT_INDEX_0) + damage;
+                        if (SpellEntry const* difftrigEntry =  GetSpellEntryByDifficulty(triggerSpell->SpellDifficultyId, GetMap()->GetDifficulty(), GetMap()->IsRaid()))
+                            triggerSpell = difftrigEntry;
+                        basepoints[EFFECT_INDEX_0] = triggerSpell->CalculateSimpleValue(EFFECT_INDEX_0) + damage;
                     }
                     break;
                 }
