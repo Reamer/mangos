@@ -7996,6 +7996,8 @@ void Spell::EffectInterruptCast(SpellEffectIndex eff_idx)
             {
                 case 55098:                                 // Transformation (Moorabi - Gundrak)
                 case 62661:                                 // Searing Flames (General Vezax - Ulduar)
+                case 68982:                                 // Phantom Blast (devourer of souls - The Forge of Souls)
+                case 70322:
                     interruptible = true;
                     break;
                 default:
