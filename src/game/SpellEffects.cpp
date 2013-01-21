@@ -2181,7 +2181,14 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                 }
                 case 44997:                                 // Converting Sentry
                 {
-                    //Converted Sentry Credit
+                    if (!unitTarget || unitTarget->GetTypeId() != TYPEID_UNIT)
+                        return;
+
+                    Creature* creatureTarget = (Creature*)unitTarget;
+
+                    creatureTarget->ForcedDespawn(500);
+
+                    // Converted Sentry Credit
                     m_caster->CastSpell(m_caster, 45009, true);
                     return;
                 }
@@ -5028,6 +5035,8 @@ void Spell::EffectTriggerMissileSpell(SpellEffectIndex effect_idx)
         float x,y,z;
         m_targets.getDestination(x, y, z);
 
+        Unit* target = unitTarget ? unitTarget : m_caster;
+
         MaNGOS::NormalizeMapCoord(x);
         MaNGOS::NormalizeMapCoord(y);
         m_caster->UpdateAllowedPositionZ(x,y,z);
@@ -5039,7 +5048,7 @@ void Spell::EffectTriggerMissileSpell(SpellEffectIndex effect_idx)
             triggered_spell_id,
             x,y,z);
 
-        m_caster->CastSpell(x, y, z, spellInfo, true, m_CastItem, NULL, m_originalCasterGUID, m_spellInfo);
+        target->CastSpell(x, y, z, spellInfo, true, m_CastItem, NULL, m_originalCasterGUID, m_spellInfo);
     }
     else
     {
@@ -5852,7 +5861,7 @@ void Spell::EffectCreateItem2(SpellEffectIndex eff_idx)
         }
 
         // create some random items
-        player->AutoStoreLoot(m_spellInfo->Id, LootTemplates_Spell);
+        player->AutoStoreLoot(NULL, m_spellInfo->Id, LootTemplates_Spell);
     }
 }
 
@@ -5863,7 +5872,7 @@ void Spell::EffectCreateRandomItem(SpellEffectIndex /*eff_idx*/)
     Player* player = (Player*)m_caster;
 
     // create some random items
-    player->AutoStoreLoot(m_spellInfo->Id, LootTemplates_Spell);
+    player->AutoStoreLoot(NULL, m_spellInfo->Id, LootTemplates_Spell);
 }
 
 void Spell::EffectPersistentAA(SpellEffectIndex eff_idx)
@@ -6542,16 +6551,15 @@ void Spell::EffectSummonPossessed(SpellEffectIndex eff_idx)
             m_caster->CastSpell(spawnCreature, 530, true);
 
         DEBUG_LOG("New possessed creature (%s) summoned. Owner is %s ", spawnCreature->GetObjectGuid().GetString().c_str(), m_caster->GetObjectGuid().GetString().c_str());
+
+        // Notify original caster if not done already
+        if (m_originalCaster && m_originalCaster != m_caster && m_originalCaster->GetTypeId() == TYPEID_UNIT && ((Creature*)m_originalCaster)->AI())
+            ((Creature*)m_originalCaster)->AI()->JustSummoned((Creature*)spawnCreature);
+
+        SendEffectLogExecute(eff_idx, spawnCreature->GetObjectGuid());
     }
     else
         sLog.outError("New possessed creature (entry %d) NOT summoned. Owner is %s ", creature_entry, m_caster->GetObjectGuid().GetString().c_str());
-
-    if (m_caster->GetTypeId() == TYPEID_UNIT && ((Creature*)m_caster)->AI())
-        ((Creature*)m_caster)->AI()->JustSummoned((Creature*)spawnCreature);
-    if (m_originalCaster && m_originalCaster != m_caster && m_originalCaster->GetTypeId() == TYPEID_UNIT && ((Creature*)m_originalCaster)->AI())
-        ((Creature*)m_originalCaster)->AI()->JustSummoned((Creature*)spawnCreature);
-
-    SendEffectLogExecute(eff_idx, spawnCreature->GetObjectGuid());
 }
 
 void Spell::EffectLearnSpell(SpellEffectIndex eff_idx)
@@ -6879,8 +6887,6 @@ void Spell::DoSummonWild(SpellEffectIndex eff_idx, uint32 forceFaction)
                 summon->setFaction(forceFaction);
 
             // Notify original caster if not done already
-            if (m_caster->GetTypeId() == TYPEID_UNIT && ((Creature*)m_caster)->AI())
-                ((Creature*)m_caster)->AI()->JustSummoned((Creature*)summon);
             if (m_originalCaster && m_originalCaster != m_caster && m_originalCaster->GetTypeId() == TYPEID_UNIT && ((Creature*)m_originalCaster)->AI())
                 ((Creature*)m_originalCaster)->AI()->JustSummoned(summon);
 
@@ -7078,9 +7084,7 @@ void Spell::DoSummonVehicle(SpellEffectIndex eff_idx, uint32 forceFaction)
         m_caster->CastSpell(vehicle, m_mountspell, true);
         DEBUG_LOG("Caster (guidlow %d) summon vehicle (guidlow %d, entry %d) and mounted with spell %d ", m_caster->GetGUIDLow(), vehicle->GetGUIDLow(), vehicle->GetEntry(), m_mountspell->Id);
 
-        // Notify Summoner
-        if (m_caster->GetTypeId() == TYPEID_UNIT && ((Creature*)m_caster)->AI())
-            ((Creature*)m_caster)->AI()->JustSummoned(vehicle);
+        // Notify original caster if not done already
         if (m_originalCaster && m_originalCaster != m_caster && m_originalCaster->GetTypeId() == TYPEID_UNIT && ((Creature*)m_originalCaster)->AI())
             ((Creature*)m_originalCaster)->AI()->JustSummoned(vehicle);
 
@@ -9563,6 +9567,12 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     unitTarget->CastSpell(unitTarget, 54522, true);
                     break;
                 }
+                case 52124:                                 // Sky Darkener Assault
+                {
+                    if (unitTarget && unitTarget != m_caster)
+                        m_caster->CastSpell(unitTarget, 52125, false);
+                    break;
+                }
                 case 52357:                                 // Into the realm of shadows
                 {
                     if (!unitTarget)
@@ -9578,12 +9588,6 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
 
                     m_caster->CastSpell(m_caster, roll_chance_i(75) ? 52505 : m_spellInfo->CalculateSimpleValue(eff_idx), true);
                     ((Creature*)unitTarget)->ForcedDespawn();
-                    break;
-                }
-                case 52124:                                 // Sky Darkener Assault
-                {
-                    if (unitTarget && unitTarget != m_caster)
-                        m_caster->CastSpell(unitTarget, 52125, false);
                     break;
                 }
                 case 52694:                                 // Recall Eye of Acherus
@@ -12789,12 +12793,12 @@ void Spell::EffectBind(SpellEffectIndex eff_idx)
             return;
         }
 
-        loc.mapid       = st->target_mapId;
+        loc.SetMapId(st->target_mapId);
         loc.coord_x     = st->target_X;
         loc.coord_y     = st->target_Y;
         loc.coord_z     = st->target_Z;
         loc.orientation = st->target_Orientation;
-        area_id = sTerrainMgr.GetAreaId(loc.mapid, loc.coord_x, loc.coord_y, loc.coord_z);
+        area_id = sTerrainMgr.GetAreaId(loc.GetMapId(), loc.coord_x, loc.coord_y, loc.coord_z);
     }
     else
     {
@@ -12809,14 +12813,14 @@ void Spell::EffectBind(SpellEffectIndex eff_idx)
     data << float(loc.coord_x);
     data << float(loc.coord_y);
     data << float(loc.coord_z);
-    data << uint32(loc.mapid);
+    data << uint32(loc.GetMapId());
     data << uint32(area_id);
     player->SendDirectMessage( &data );
 
     DEBUG_LOG("New Home Position X is %f", loc.coord_x);
     DEBUG_LOG("New Home Position Y is %f", loc.coord_y);
     DEBUG_LOG("New Home Position Z is %f", loc.coord_z);
-    DEBUG_LOG("New Home MapId is %u", loc.mapid);
+    DEBUG_LOG("New Home MapId is %u", loc.GetMapId());
     DEBUG_LOG("New Home AreaId is %u", area_id);
 
     // zone update

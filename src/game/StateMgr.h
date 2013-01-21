@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 /dev/rsa for MangosR2 <http://github.com/MangosR2>
+ * Copyright (C) 2011-2013 /dev/rsa for MangosR2 <http://github.com/MangosR2>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 #define _STATEMGR_H
 
 #include "ObjectHandler.h"
+#include "LockedMap.h"
 #include "Common.h"
 #include "MotionMaster.h"
 #include "StateMgrImpl.h"
@@ -78,7 +79,7 @@ public:
 //    ActionInfo(ActionInfo const& _action) {};
 };
 
-typedef std::map<UnitActionPriority, ActionInfo> UnitActionStorage;
+typedef ACE_Based::LockedMap<UnitActionPriority, ActionInfo> UnitActionStorage;
 
 class UnitStateMgr
 {

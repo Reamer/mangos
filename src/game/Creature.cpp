@@ -135,7 +135,7 @@ bool CreatureCreatePos::Relocate(Creature* cr) const
 }
 
 Creature::Creature(CreatureSubtype subtype) :
-Unit(), i_AI(NULL),
+Unit(), i_AI(NULL), loot(this),
 lootForPickPocketed(false), lootForBody(false), lootForSkin(false),m_lootMoney(0),
 m_corpseDecayTimer(0), m_respawnTime(0), m_respawnDelay(25), m_corpseDelay(60), m_respawnradius(5.0f),
 m_subtype(subtype), m_defaultMovementType(IDLE_MOTION_TYPE), m_equipmentId(0),
@@ -201,7 +201,7 @@ void Creature::RemoveCorpse()
 
     float x, y, z, o;
     GetRespawnCoord(x, y, z, &o);
-    GetMap()->CreatureRelocation(this, x, y, z, o);
+    GetMap()->Relocation(this, x, y, z, o);
     DisableSpline();
 
     // forced recreate creature object at clients
@@ -1251,14 +1251,7 @@ bool Creature::CreateFromProto(uint32 guidlow, CreatureInfo const* cinfo, Team t
 
     Object::_Create(guidlow, cinfo->Entry, cinfo->GetHighGuid());
 
-    if (!UpdateEntry(cinfo->Entry, team, data, eventData, false))
-        return false;
-
-    // Checked at startup
-    if (GetCreatureInfo()->vehicleId)
-        SetVehicleId(GetCreatureInfo()->vehicleId);
-
-    return true;
+    return UpdateEntry(cinfo->Entry, team, data, eventData, false);
 }
 
 bool Creature::LoadFromDB(uint32 guidlow, Map* map)
@@ -1440,6 +1433,7 @@ void Creature::DeleteFromDB(uint32 lowguid, CreatureData const* data)
     WorldDatabase.PExecuteLog("DELETE FROM game_event_creature WHERE guid=%u", lowguid);
     WorldDatabase.PExecuteLog("DELETE FROM game_event_creature_data WHERE guid=%u", lowguid);
     WorldDatabase.PExecuteLog("DELETE FROM creature_battleground WHERE guid=%u", lowguid);
+    WorldDatabase.PExecuteLog("DELETE FROM creature_linking WHERE guid=%u OR master_guid=%u", lowguid, lowguid);
     WorldDatabase.CommitTransaction();
 }
 
@@ -2427,6 +2421,13 @@ void Creature::SetFactionTemporary(uint32 factionId, uint32 tempFactionFlags)
 {
     m_temporaryFactionFlags = tempFactionFlags;
     setFaction(factionId);
+
+    if (m_temporaryFactionFlags & TEMPFACTION_TOGGLE_NON_ATTACKABLE)
+        RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+    if (m_temporaryFactionFlags & TEMPFACTION_TOGGLE_OOC_NOT_ATTACK)
+        RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_OOC_NOT_ATTACKABLE);
+    if (m_temporaryFactionFlags & TEMPFACTION_TOGGLE_PASSIVE)
+        RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
 }
 
 void Creature::ClearTemporaryFaction()
@@ -2437,8 +2438,17 @@ void Creature::ClearTemporaryFaction()
     if (isCharmed())
         return;
 
-    m_temporaryFactionFlags = TEMPFACTION_NONE;
+    // Reset to original faction
     setFaction(GetCreatureInfo()->faction_A);
+    // Reset UNIT_FLAG_NON_ATTACKABLE, UNIT_FLAG_OOC_NOT_ATTACKABLE or UNIT_FLAG_PASSIVE flags
+    if (m_temporaryFactionFlags & TEMPFACTION_TOGGLE_NON_ATTACKABLE && GetCreatureInfo()->unit_flags & UNIT_FLAG_NON_ATTACKABLE)
+        SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+    if (m_temporaryFactionFlags & TEMPFACTION_TOGGLE_OOC_NOT_ATTACK && GetCreatureInfo()->unit_flags & UNIT_FLAG_OOC_NOT_ATTACKABLE && !isInCombat())
+        SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_OOC_NOT_ATTACKABLE);
+    if (m_temporaryFactionFlags & TEMPFACTION_TOGGLE_PASSIVE && GetCreatureInfo()->unit_flags & UNIT_FLAG_PASSIVE)
+        SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
+
+    m_temporaryFactionFlags = TEMPFACTION_NONE;
 }
 
 void Creature::SendAreaSpiritHealerQueryOpcode(Player* pl)

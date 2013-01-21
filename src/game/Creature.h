@@ -457,6 +457,9 @@ enum TemporaryFactionFlags                                  // Used at real fact
     TEMPFACTION_RESTORE_RESPAWN         = 0x01,             // Default faction will be restored at respawn
     TEMPFACTION_RESTORE_COMBAT_STOP     = 0x02,             // ... at CombatStop() (happens at creature death, at evade or custom scripte among others)
     TEMPFACTION_RESTORE_REACH_HOME      = 0x04,             // ... at reaching home in home movement (evade), if not already done at CombatStop()
+    TEMPFACTION_TOGGLE_NON_ATTACKABLE   = 0x08,             // Remove UNIT_FLAG_NON_ATTACKABLE(0x02) when faction is changed (reapply when temp-faction is removed)
+    TEMPFACTION_TOGGLE_OOC_NOT_ATTACK   = 0x10,             // Remove UNIT_FLAG_OOC_NOT_ATTACKABLE(0x100) when faction is changed (reapply when temp-faction is removed)
+    TEMPFACTION_TOGGLE_PASSIVE          = 0x20,             // Remove UNIT_FLAG_PASSIVE(0x200) when faction is changed (reapply when temp-faction is removed)
     TEMPFACTION_ALL,
 };
 
@@ -479,11 +482,12 @@ class MANGOS_DLL_SPEC Creature : public Unit
 
         bool HasStaticDBSpawnData() const;                  // listed in `creature` table and have fixed in DB guid
 
-        char const* GetSubName() const { return GetCreatureInfo()->SubName; }
+        char const* GetSubName() const { return m_creatureInfo->SubName; }
 
         void Update(uint32 update_diff, uint32 time) override;  // overwrite Unit::Update
 
         virtual void RegenerateAll(uint32 update_diff);
+
         void GetRespawnCoord(float& x, float& y, float& z, float* ori = NULL, float* dist = NULL) const;
         void SetSummonPoint(CreatureCreatePos const& pos) { m_respawnPos = pos.m_pos; }
         void SetRespawnCoord(float x, float y, float z, float ori) { m_respawnPos.x = x; m_respawnPos.y = y; m_respawnPos.z = z; m_respawnPos.o = ori; }

@@ -2604,9 +2604,12 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(Unit *pVictim, DamageInfo* damageI
                         {
                             triggered_spell_id = 66922;
                             basepoints[0] = int32(damage / GetSpellAuraMaxTicks(triggered_spell_id));
+
+                            // For first rank of Infusion of Light  has only 1/2 bonus
                             if (pVictim->HasAura(53569, EFFECT_INDEX_0))
                                 basepoints[0] = basepoints[0] >> 1;
-                            // If Pala has T9 4 boni then double heal
+
+                            // T9 - 4 paladin bonus cause double heal
                             if (pVictim->HasAura(67191))
                                 basepoints[0] = basepoints[0] << 1;
                         }
@@ -3776,13 +3779,6 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(Unit *pVictim, DamageIn
                     }
                     break;
                 }
-                //case 72408:                                 // Rune of Blood (Saurfang)
-                //{
-                    // Proc on targets with dummy aura (debuff cast by Saurfang)
-                   // if (pVictim && !pVictim->HasAura(72410))
-                   //     return SPELL_AURA_PROC_FAILED;
-                 //   break;
-                //}
             }
             break;
         case SPELLFAMILY_MAGE:

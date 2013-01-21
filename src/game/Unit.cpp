@@ -195,7 +195,7 @@ Unit::Unit() :
     movespline(new Movement::MoveSpline()),
     m_charmInfo(NULL),
     i_motionMaster(this),
-    m_ThreatManager(this),
+    m_ThreatManager(*this),
     m_HostileRefManager(new HostileRefManager(this)),
     m_stateMgr(this)
 {
@@ -399,7 +399,7 @@ void Unit::Update( uint32 update_diff, uint32 p_time )
         setAttackTimer(OFF_ATTACK, (update_diff >= base_att ? 0 : base_att - update_diff) );
     }
 
-    if (IsVehicle())
+    if (IsVehicle() && !IsInEvadeMode())
     {
         // Initialize vehicle if not done
         if (isAlive() && !GetVehicleKit()->IsInitialized())
@@ -520,9 +520,9 @@ bool Unit::SetPosition(float x, float y, float z, float orientation, bool telepo
         RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_MOVE);
 
         if (GetTypeId() == TYPEID_PLAYER)
-            GetMap()->PlayerRelocation((Player*)this, x, y, z, orientation);
+            GetMap()->Relocation((Player*)this, x, y, z, orientation);
         else
-            GetMap()->CreatureRelocation((Creature*)this, x, y, z, orientation);
+            GetMap()->Relocation((Creature*)this, x, y, z, orientation);
     }
     else if (turn)
         SetOrientation(orientation);
@@ -1664,7 +1664,7 @@ void Unit::CalculateSpellDamage(DamageInfo* damageInfo, float DamageMultiplier)
     if (damageInfo->damage > 0)
     {
         // physical damage => armor
-        if (damageInfo->SchoolMask() & SPELL_SCHOOL_MASK_NORMAL)
+        if ((damageInfo->SchoolMask() & SPELL_SCHOOL_MASK_NORMAL) && !damageInfo->GetSpellProto()->HasAttribute(SPELL_ATTR_EX3_CANT_MISS))
         {
             uint32 armor_affected_damage = CalcNotIgnoreDamageReduction(damageInfo);
             damageInfo->damage = damageInfo->damage - armor_affected_damage + CalcArmorReducedDamage(damageInfo->target, armor_affected_damage);
@@ -3015,17 +3015,16 @@ MeleeHitOutcome Unit::RollMeleeOutcomeAgainst (const Unit *pVictim, WeaponAttack
     int32 victimDefenseSkill = pVictim->GetDefenseSkillValue(this);
 
     // bonus from skills is 0.04%
-    int32    skillBonus  = 4 * ( attackerWeaponSkill - victimMaxSkillValueForLevel );
-    int32    sum = 0, tmp = 0;
-    int32    roll = urand (0, 10000);
+    int32 skillBonus  = 4 * (attackerWeaponSkill - victimMaxSkillValueForLevel);
+    int32 sum = 0;
+    int32 roll = urand(0, 10000);
+    int32 tmp = miss_chance;
 
     DEBUG_FILTER_LOG(LOG_FILTER_COMBAT, "RollMeleeOutcomeAgainst: skill bonus of %d for attacker", skillBonus);
     DEBUG_FILTER_LOG(LOG_FILTER_COMBAT, "RollMeleeOutcomeAgainst: rolled %d, miss %d, dodge %d, parry %d, block %d, crit %d",
         roll, miss_chance, dodge_chance, parry_chance, block_chance, crit_chance);
 
-    tmp = miss_chance;
-
-    if (tmp > 0 && roll < (sum += tmp ))
+    if (tmp > 0 && roll < (sum += tmp))
     {
         DEBUG_FILTER_LOG(LOG_FILTER_COMBAT, "RollMeleeOutcomeAgainst: MISS");
         return MELEE_HIT_MISS;
@@ -3610,7 +3609,7 @@ SpellMissInfo Unit::SpellResistResult(Unit* pVictim, SpellEntry const* spell)
             //    resist_mech = 5;
         }
 
-        // Need additional confirmation for next: 
+        // Need additional confirmation for next:
         // if (spell->Effect[eff] == SPELL_EFFECT_APPLY_AURA && IsCrowdControlAura(AuraType(spell->EffectApplyAuraName[eff])))
         //     resist_mech = 5;
     }
@@ -3631,9 +3630,9 @@ SpellMissInfo Unit::SpellResistResult(Unit* pVictim, SpellEntry const* spell)
         modResistChance
         );
 
-    if (modResistChance <  0) 
+    if (modResistChance <  0)
         modResistChance =  0;
-    else if (modResistChance > 100) 
+    else if (modResistChance > 100)
         modResistChance = 100;
 
     int32 rand = irand(0,100);
@@ -3646,7 +3645,7 @@ SpellMissInfo Unit::SpellResistResult(Unit* pVictim, SpellEntry const* spell)
         return SPELL_MISS_NONE;
 
     // Calculate plain resistance chances (binary resistances part 2, formula from http://www.wowwiki.com/Resistance)
-    // http://www.wowwiki.com/Resistance - "Resistance reduces the chance for the binary spell to land by a certain percentage. 
+    // http://www.wowwiki.com/Resistance - "Resistance reduces the chance for the binary spell to land by a certain percentage.
     // Spell hit will not reduce this chance. It is assumed that this percentage is exactly the damage reduction percentage given above."
 
     // Get base resistance values
@@ -3672,8 +3671,8 @@ SpellMissInfo Unit::SpellResistResult(Unit* pVictim, SpellEntry const* spell)
         effectiveRR,
         drp);
 
-    // http://www.wowwiki.com/Formulas:Magical_resistance - "Average resistance may be no higher than 75%." 
-    if (drp >  75) 
+    // http://www.wowwiki.com/Formulas:Magical_resistance - "Average resistance may be no higher than 75%."
+    if (drp >  75)
         drp =  75;
 
     modResistChance = 100 - drp;
@@ -4845,7 +4844,7 @@ bool Unit::AddSpellAuraHolder(SpellAuraHolderPtr holder)
         {
             if (iter->second == holder)
             {
-                sLog.outError("Unit::AddSpellAuraHolder cannot add SpellAuraHolder %u, to %s due to holder already added!", 
+                sLog.outError("Unit::AddSpellAuraHolder cannot add SpellAuraHolder %u, to %s due to holder already added!",
                     holder->GetId(),GetObjectGuid().GetString().c_str());
                 return false;
             }
@@ -9669,10 +9668,12 @@ void Unit::ClearInCombat()
     // Player's state will be cleared in Player::UpdateContestedPvP
     if (GetTypeId() == TYPEID_UNIT)
     {
-        if (isCharmed() || ((Creature*)this)->IsPet())
+        Creature* cThis = static_cast<Creature*>(this);
+
+        if (isCharmed() || cThis->IsPet())
             RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PET_IN_COMBAT);
 
-        if (((Creature*)this)->GetCreatureInfo()->unit_flags & UNIT_FLAG_OOC_NOT_ATTACKABLE)
+        if (cThis->GetCreatureInfo()->unit_flags & UNIT_FLAG_OOC_NOT_ATTACKABLE && !(cThis->GetTemporaryFactionFlags() & TEMPFACTION_TOGGLE_OOC_NOT_ATTACK))
             SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_OOC_NOT_ATTACKABLE);
 
         clearUnitState(UNIT_STAT_ATTACK_PLAYER);
@@ -10250,7 +10251,7 @@ void Unit::SetSpeedRate(UnitMoveType mtype, float rate, bool forced)
         m_speed_rate[mtype] = rate;
         propagateSpeedChange();
 
-        const uint16 SetSpeed2Opc_table[MAX_MOVE_TYPE][2]=
+        const Opcodes SetSpeed2Opc_table[MAX_MOVE_TYPE][2]=
         {
             {MSG_MOVE_SET_WALK_SPEED,       SMSG_FORCE_WALK_SPEED_CHANGE},
             {MSG_MOVE_SET_RUN_SPEED,        SMSG_FORCE_RUN_SPEED_CHANGE},
@@ -10423,7 +10424,7 @@ bool Unit::TauntApply(Unit* taunter, bool isSingleEffect)
 {
     MANGOS_ASSERT(GetTypeId() == TYPEID_UNIT);
 
-    if (!taunter 
+    if (!taunter
         || (taunter->GetTypeId() == TYPEID_PLAYER && ((Player*)taunter)->isGameMaster())
         || !taunter->isVisibleForOrDetect(this,this,true)
         || IsFriendlyTo(taunter))
@@ -10450,7 +10451,7 @@ bool Unit::TauntApply(Unit* taunter, bool isSingleEffect)
     }
 
     if (isSingleEffect)
-        getThreatManager().addThreat(taunter, getThreatManager().getCurrentVictim() ? 
+        getThreatManager().addThreat(taunter, getThreatManager().getCurrentVictim() ?
                                               getThreatManager().getCurrentVictim()->getThreat() : 1.0f);
     else
         getThreatManager().tauntApply(taunter);
@@ -10477,6 +10478,8 @@ void Unit::TauntFadeOut(Unit *taunter)
 
     if (m_ThreatManager.isThreatListEmpty())
     {
+        m_fixateTargetGuid.Clear();
+
         AddEvent(new EvadeDelayEvent(*this), EVADE_TIME_DELAY_MIN);
 
         if (m_isCreatureLinkingTrigger)
@@ -10495,6 +10498,27 @@ void Unit::TauntFadeOut(Unit *taunter)
         if (((Creature*)this)->AI())
             ((Creature*)this)->AI()->AttackStart(target);
     }
+}
+
+//======================================================================
+/// if pVictim is given, the npc will fixate onto pVictim, if NULL it will remove current fixation
+void Unit::FixateTarget(Unit* pVictim)
+{
+    if (!pVictim)                                           // Remove Fixation
+        m_fixateTargetGuid.Clear();
+    else if (pVictim->isTargetableForAttack())              // Apply Fixation
+        m_fixateTargetGuid = pVictim->GetObjectGuid();
+
+    // Start attacking the fixated target or the next proper one
+    SelectHostileTarget();
+}
+
+Unit* Unit::GetFixatedTarget()
+{
+    if (!GetMap() || m_fixateTargetGuid.IsEmpty())
+        return NULL;
+
+    return GetMap()->GetUnit(m_fixateTargetGuid);
 }
 
 //======================================================================
@@ -10529,12 +10553,26 @@ bool Unit::SelectHostileTarget(bool withEvade)
     Unit* target = NULL;
     Unit* oldTarget = getVictim();
 
-    // First checking if we have some taunt on us
+    // first check if we should fixate a target
+    if (m_fixateTargetGuid)
+    {
+        if (oldTarget && oldTarget->GetObjectGuid() == m_fixateTargetGuid)
+            target = oldTarget;
+        else
+        {
+            Unit* pFixateTarget = GetMap()->GetUnit(m_fixateTargetGuid);
+            if (pFixateTarget && pFixateTarget->isAlive() && !IsSecondChoiceTarget(pFixateTarget, true))
+                target = pFixateTarget;
+        }
+    }
+
+    // then checking if we have some taunt on us
+    if (!target)
     {
         AuraList const& tauntAuras = GetAurasByType(SPELL_AURA_MOD_TAUNT);
         if (!tauntAuras.empty())
         {
-            Unit* caster;
+            Unit* caster = NULL;
 
             // Find first available taunter target
             // Auras are pushed_back, last caster will be on the end
@@ -10552,7 +10590,7 @@ bool Unit::SelectHostileTarget(bool withEvade)
         }
     }
 
-    // No taunt aura or taunt aura caster is dead, standard target selection
+    // No valid fixate target, taunt aura or taunt aura caster is dead, standard target selection
     if (!target && !m_ThreatManager.isThreatListEmpty())
         target = m_ThreatManager.getHostileTarget();
 
@@ -10618,6 +10656,8 @@ bool Unit::SelectHostileTarget(bool withEvade)
         return false;
 
     // enter in evade mode in other case
+    m_fixateTargetGuid.Clear();
+
     AddEvent(new EvadeDelayEvent(*this), EVADE_TIME_DELAY_MIN);
 
     if (m_isCreatureLinkingTrigger)
@@ -12686,7 +12726,7 @@ Unit* Unit::SelectRandomUnfriendlyTarget(Unit* except /*= NULL*/, float radius /
 {
     std::list<Unit *> targets;
 
-    MaNGOS::AnyUnfriendlyUnitInObjectRangeCheck u_check(this, this, radius);
+    MaNGOS::AnyUnfriendlyUnitInObjectRangeCheck u_check(this, radius);
     MaNGOS::UnitListSearcher<MaNGOS::AnyUnfriendlyUnitInObjectRangeCheck> searcher(targets, u_check);
     Cell::VisitAllObjects(this, searcher, radius);
 
@@ -13049,7 +13089,7 @@ void Unit::NearTeleportTo( float x, float y, float z, float orientation, bool ca
     else
     {
         ExitVehicle(true);
-        GetMap()->CreatureRelocation((Creature*)this, x, y, z, orientation);
+        GetMap()->Relocation((Creature*)this, x, y, z, orientation);
         SendHeartBeat();
     }
 }
@@ -13206,7 +13246,7 @@ void Unit::ExitVehicle(bool forceDismount)
 
     Unit* vehicleBase = GetVehicle()->GetBase();
 
-    if (!vehicleBase || !vehicleBase->IsInWorld())
+    if (!vehicleBase || !vehicleBase->IsInWorld() || !vehicleBase->IsInitialized())
     {
         sLog.outError("Unit::ExitVehicle: %s try leave vehicle, but no vehicle base in world!", GetObjectGuid().GetString().c_str());
         _ExitVehicle();
@@ -13220,7 +13260,7 @@ void Unit::ExitVehicle(bool forceDismount)
 
     if (vehicleBase->GetObjectGuid().IsAnyTypeCreature())
     {
-        if (!(vehicleBase->GetVehicleInfo()->m_flags & (VEHICLE_FLAG_NOT_DISMISS | VEHICLE_FLAG_ACCESSORY))
+        if (!vehicleBase->GetVehicle() && !(vehicleBase->GetVehicleInfo()->m_flags & VEHICLE_FLAG_NOT_DISMISS)
             && ((Creature*)vehicleBase)->IsTemporarySummon())
             dismiss = true;
     }
@@ -13755,7 +13795,7 @@ void Unit::SetVehicleId(uint32 entry)
 
 VehicleEntry const* Unit::GetVehicleInfo() const
 {
-    return GetVehicleKit() ? GetVehicleKit()->GetEntry() : NULL; 
+    return GetVehicleKit() ? GetVehicleKit()->GetEntry() : NULL;
 }
 
 uint32 Unit::CalculateAuraPeriodicTimeWithHaste(SpellEntry const* spellProto, uint32 oldPeriodicTime)
@@ -13852,13 +13892,13 @@ bool Unit::IsVisibleTargetForSpell(WorldObject const* caster, SpellEntry const* 
 
     if (location && location->HasMap()) // check only for fully initialized WorldLocation
     {
-        DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST, "Unit::IsVisibleTargetForSpell check LOS for spell %u, caster %s, location %f %f %f, target %s", 
+        DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST, "Unit::IsVisibleTargetForSpell check LOS for spell %u, caster %s, location %f %f %f, target %s",
             spellInfo->Id, caster->GetObjectGuid().GetString().c_str(), location->x, location->y, location->z, GetObjectGuid().GetString().c_str());
-        return ((GetMapId() == location->mapid) && IsWithinLOS(location->x, location->y, location->z));
+        return ((GetMapId() == location->GetMapId()) && IsWithinLOS(location->x, location->y, location->z));
     }
     else
     {
-        DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST, "Unit::IsVisibleTargetForSpell check LOS for spell %u, caster %s, target %s", 
+        DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST, "Unit::IsVisibleTargetForSpell check LOS for spell %u, caster %s, target %s",
             spellInfo->Id, caster->GetObjectGuid().GetString().c_str(), GetObjectGuid().GetString().c_str());
         return IsWithinLOSInMap(caster);
     }
@@ -13972,10 +14012,13 @@ void Unit::UpdateSplineMovement(uint32 t_diff)
     if (m_movesplineTimer.Passed() || arrived)
     {
         m_movesplineTimer.Reset(POSITION_UPDATE_DELAY);
-        Movement::Location loc = movespline->ComputePosition();
+        Location loc = movespline->ComputePosition();
 
         if (IsBoarded())
+        {
+            m_movementInfo.ChangeTransportPosition(loc.x, loc.y, loc.z, loc.orientation);
             GetTransportInfo()->SetLocalPosition(loc.x, loc.y, loc.z, loc.orientation);
+        }
         else
             SetPosition(loc.x,loc.y,loc.z,loc.orientation);
     }
@@ -13996,7 +14039,7 @@ uint32 Unit::GetResistance(SpellSchoolMask schoolMask) const
         if (schoolMask & (1 << i))
         {
             int32 schoolRes = (GetObjectGuid().IsPlayer() || (GetObjectGuid().IsPet() && GetOwner() && GetOwner()->GetObjectGuid().IsPlayer())) ?
-                              GetResistance(SpellSchools(i)) : 
+                              GetResistance(SpellSchools(i)) :
                               floor(GetResistanceBuffMods(SpellSchools(i), true) + GetResistanceBuffMods(SpellSchools(i), false));
             if (resistance < schoolRes)
                 resistance = schoolRes;

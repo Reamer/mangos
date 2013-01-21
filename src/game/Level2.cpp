@@ -1505,8 +1505,7 @@ bool ChatHandler::HandleModifyRepCommand(char* args)
     if (!*args)
         return false;
 
-    Player* target = NULL;
-    target = getSelectedPlayer();
+    Player* target = getSelectedPlayer();
 
     if (!target)
     {
@@ -1977,7 +1976,7 @@ bool ChatHandler::HandleNpcMoveCommand(char* args)
             const_cast<CreatureData*>(data)->posZ = z;
             const_cast<CreatureData*>(data)->orientation = o;
         }
-        pCreature->GetMap()->CreatureRelocation(pCreature, x, y, z, o);
+        pCreature->GetMap()->Relocation(pCreature, x, y, z, o);
         pCreature->GetMotionMaster()->Initialize();
         if (pCreature->isAlive())                           // dead creature will reset movement generator at respawn
         {
@@ -2633,6 +2632,8 @@ bool ChatHandler::HandlePInfoCommand(char* args)
     std::string last_login = GetMangosString(LANG_ERROR);
 
     QueryResult* result = LoginDatabase.PQuery("SELECT a.id, a.username, aa.gmlevel, a.last_ip, a.last_login, a.email FROM account a LEFT JOIN account_access aa ON (a.id = aa.id) WHERE a.id = '%u' AND aa.RealmID = '%u'", accId, sWorld.getConfig(CONFIG_UINT32_REALMID));
+    if(!result)
+        QueryResult* result = LoginDatabase.PQuery("SELECT a.id, a.username, aa.gmlevel, a.last_ip, a.last_login, a.email FROM account a LEFT JOIN account_access aa ON (a.id = aa.id) WHERE a.id = '%u'", accId);
 
     if (result)
     {
@@ -5507,12 +5508,9 @@ bool ChatHandler::HandleMmapPathCommand(char* args)
 
     // this entry visible only to GM's with "gm on"
     static const uint32 WAYPOINT_NPC_ENTRY = 1;
-    Creature* wp = NULL;
     for (uint32 i = 0; i < pointPath.size(); ++i)
-    {
-        wp = player->SummonCreature(WAYPOINT_NPC_ENTRY, pointPath[i].x, pointPath[i].y, pointPath[i].z, 0, TEMPSUMMON_TIMED_DESPAWN, 9000);
+        player->SummonCreature(WAYPOINT_NPC_ENTRY, pointPath[i].x, pointPath[i].y, pointPath[i].z, 0, TEMPSUMMON_TIMED_DESPAWN, 9000);
         // TODO: make creature not sink/fall
-    }
 
     return true;
 }

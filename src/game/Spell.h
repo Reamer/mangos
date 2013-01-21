@@ -663,10 +663,10 @@ class Spell
         GOTargetList   m_UniqueGOTargetInfo;
         ItemTargetList m_UniqueItemInfo;
 
+        void AddTarget(ObjectGuid targetGuid, SpellEffectIndex effIndex);
+
         void AddUnitTarget(Unit* target, SpellEffectIndex effIndex);
-        void AddUnitTarget(ObjectGuid unitGuid, SpellEffectIndex effIndex);
         void AddGOTarget(GameObject* target, SpellEffectIndex effIndex);
-        void AddGOTarget(ObjectGuid goGuid, SpellEffectIndex effIndex);
         void AddItemTarget(Item* target, SpellEffectIndex effIndex);
 
         void DoAllEffectOnTarget(TargetInfo *target);
@@ -891,8 +891,8 @@ namespace MaNGOS
 
                         if (!itr->getSource()->IsVisibleTargetForSpell(i_originalCaster, i_spell.m_spellInfo, &i_center))
                             continue;
+                        break;
                     }
-                    break;
                     case SPELL_TARGETS_ALL:
                         break;
                     default: continue;

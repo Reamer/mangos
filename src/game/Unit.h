@@ -413,9 +413,9 @@ enum UnitState
     // More room for other MMGens
 
     // High-Level states (usually only with Creatures)
-    //UNIT_STAT_NO_COMBAT_MOVEMENT    = 0x01000000,           // Combat Movement for MoveChase stopped
+    UNIT_STAT_NO_COMBAT_MOVEMENT    = 0x01000000,           // Combat Movement for MoveChase stopped
     UNIT_STAT_RUNNING               = 0x02000000,           // SetRun for waypoints and such
-    //UNIT_STAT_WAYPOINT_PAUSED       = 0x04000000,           // Waypoint-Movement paused genericly (ie by script)
+    UNIT_STAT_WAYPOINT_PAUSED       = 0x04000000,           // Waypoint-Movement paused genericly (ie by script)
 
     UNIT_STAT_IGNORE_PATHFINDING    = 0x10000000,           // do not use pathfinding in any MovementGenerator
 
@@ -634,13 +634,18 @@ enum MovementFlags
     MOVEFLAG_SWIMMING           = 0x00200000,               // appears with fly flag also
     MOVEFLAG_ASCENDING          = 0x00400000,               // swim up also
     MOVEFLAG_DESCENDING         = 0x00800000,               // swim down also
-    MOVEFLAG_CAN_FLY            = 0x01000000,               // can fly in 3.3?
-    MOVEFLAG_FLYING             = 0x02000000,               // Actual flying mode
+    MOVEFLAG_CAN_FLY            = 0x01000000,               // Appears when unit can fly AND also walk
+    MOVEFLAG_FLYING             = 0x02000000,               // unit is actually flying. pretty sure this is only used for players. creatures use disable_gravity
     MOVEFLAG_SPLINE_ELEVATION   = 0x04000000,               // used for flight paths
     MOVEFLAG_SPLINE_ENABLED     = 0x08000000,               // used for flight paths
     MOVEFLAG_WATERWALKING       = 0x10000000,               // prevent unit from falling through water
     MOVEFLAG_SAFE_FALL          = 0x20000000,               // active rogue safe fall spell (passive)
-    MOVEFLAG_HOVER              = 0x40000000
+    MOVEFLAG_HOVER              = 0x40000000,               // hover, cannot jump
+
+    MOVEFLAG_MASK_MOVING =
+        MOVEFLAG_FORWARD | MOVEFLAG_BACKWARD | MOVEFLAG_STRAFE_LEFT | MOVEFLAG_STRAFE_RIGHT |
+        MOVEFLAG_PITCH_UP | MOVEFLAG_PITCH_DOWN | MOVEFLAG_FALLING | MOVEFLAG_FALLINGFAR | MOVEFLAG_ASCENDING | MOVEFLAG_DESCENDING |
+        MOVEFLAG_SPLINE_ELEVATION,
 };
 
 // flags that use in movement check for example at spell casting
@@ -784,6 +789,7 @@ class MovementInfo
         uint32 GetFallTime() const { return fallTime; }
         void ChangeOrientation(float o) { pos.o = o; }
         void ChangePosition(float x, float y, float z, float o) { pos.x = x; pos.y = y; pos.z = z; pos.o = o; }
+        void ChangeTransportPosition(float x, float y, float z, float o) { t_pos.x = x; t_pos.y = y; t_pos.z = z; t_pos.o = o; }
         void UpdateTime(uint32 _time) { time = _time; }
 
         struct JumpInfo
@@ -1479,9 +1485,9 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         uint32 GetSpellCritDamageReduction(uint32 damage) const { return GetCombatRatingDamageReduction(CR_CRIT_TAKEN_SPELL, 2.2f, 33.0f, damage); }
 
         // player or player's pet resilience (-1%), cap 100%
-        uint32 GetMeleeDamageReduction(uint32 damage) const { return GetCombatRatingDamageReduction(CR_HIT_TAKEN_MELEE, 2.0f, 100.0f, damage); }
-        uint32 GetRangedDamageReduction(uint32 damage) const { return GetCombatRatingDamageReduction(CR_HIT_TAKEN_RANGED, 2.0f, 100.0f, damage); }
-        uint32 GetSpellDamageReduction(uint32 damage) const { return GetCombatRatingDamageReduction(CR_HIT_TAKEN_SPELL, 2.0f, 100.0f, damage); }
+        uint32 GetMeleeDamageReduction(uint32 damage) const { return GetCombatRatingDamageReduction(CR_CRIT_TAKEN_MELEE, 2.0f, 100.0f, damage); }
+        uint32 GetRangedDamageReduction(uint32 damage) const { return GetCombatRatingDamageReduction(CR_CRIT_TAKEN_MELEE, 2.0f, 100.0f, damage); }
+        uint32 GetSpellDamageReduction(uint32 damage) const { return GetCombatRatingDamageReduction(CR_CRIT_TAKEN_MELEE, 2.0f, 100.0f, damage); }
 
         float  MeleeSpellMissChance(Unit* pVictim, WeaponAttackType attType, int32 skillDiff, SpellEntry const *spell);
         SpellMissInfo MeleeSpellHitResult(Unit* pVictim, SpellEntry const* spell);
@@ -1909,6 +1915,11 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         bool SelectHostileTarget(bool withEvade = true);
         bool TauntApply(Unit* pVictim, bool isSingleEffect = false);
         void TauntFadeOut(Unit *taunter);
+
+        void FixateTarget(Unit* pVictim);
+        ObjectGuid const& GetFixatedTargetGuid() { return m_fixateTargetGuid; };
+        Unit* GetFixatedTarget();
+
         ThreatManager& getThreatManager() { return m_ThreatManager; }
         ThreatManager const& getThreatManager() const { return m_ThreatManager; }
         void addHatedBy(HostileReference* pHostileReference) { m_HostileRefManager->insertFirst(pHostileReference); };
@@ -2306,6 +2317,8 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
 
         ObjectGuid m_TotemSlot[MAX_TOTEM_SLOT];
         UnitStateMgr m_stateMgr;
+
+        ObjectGuid m_fixateTargetGuid;                      //< Stores the Guid of a fixated target
 
     private:                                                // Error traps for some wrong args using
         // this will catch and prevent build for any cases when all optional args skipped and instead triggered used non boolean type

@@ -131,6 +131,10 @@ SpellCastTargets::~SpellCastTargets()
 
 void SpellCastTargets::setUnitTarget(Unit* target)
 {
+
+    if (target && !(target->isType(TYPEMASK_UNIT)))
+        return;
+
     if (target && !(m_targetMask & TARGET_FLAG_DEST_LOCATION))
     {
         m_destX = target->GetPositionX();
@@ -396,6 +400,7 @@ Spell::Spell( Unit* caster, SpellEntry const *info, bool triggered, ObjectGuid o
     m_delayStart = 0;
     m_delayAtDamageCount = 0;
     m_damage = 0;
+    damage = 0;
 
     m_applyMultiplierMask = 0;
 
@@ -462,7 +467,6 @@ Spell::Spell( Unit* caster, SpellEntry const *info, bool triggered, ObjectGuid o
     m_needAliveTargetMask = 0;
 
     m_spellFlags = SPELL_FLAG_NORMAL;
-
     CleanupTargetList();
 }
 
@@ -739,7 +743,7 @@ void Spell::FillTargetMap()
                 }
             }
         }
-
+        GuidList currentTargets;
         for (UnitList::iterator itr = tmpUnitLists[effToIndex[i]].begin(); itr != tmpUnitLists[effToIndex[i]].end();)
         {
             if (!CheckTarget(*itr, SpellEffectIndex(i)))
@@ -748,13 +752,16 @@ void Spell::FillTargetMap()
                 continue;
             }
             else
+            {
+                currentTargets.push_back((*itr)->GetObjectGuid());
                 ++itr;
+            }
         }
 
-        if (!tmpUnitLists[effToIndex[i]].empty())
+        if (!currentTargets.empty())
         {
-            for (UnitList::const_iterator iunit = tmpUnitLists[effToIndex[i]].begin(); iunit != tmpUnitLists[effToIndex[i]].end(); ++iunit)
-                AddUnitTarget((*iunit), SpellEffectIndex(i));
+            for (GuidList::const_iterator iguid = currentTargets.begin(); iguid != currentTargets.end(); ++iguid)
+                AddTarget((*iguid), SpellEffectIndex(i));
         }
     }
 }
@@ -1004,10 +1011,48 @@ this piece of code make delayed stun and other effects for charge-like spells. s
     m_UniqueTargetInfo.push_back(target);
 }
 
-void Spell::AddUnitTarget(ObjectGuid unitGuid, SpellEffectIndex effIndex)
+void Spell::AddTarget(ObjectGuid targetGuid, SpellEffectIndex effIndex)
 {
-    if (Unit* unit = m_caster->GetObjectGuid() == unitGuid ? m_caster : ObjectAccessor::GetUnit(*m_caster, unitGuid))
-        AddUnitTarget(unit, effIndex);
+    if (targetGuid.IsEmpty())
+        return;
+
+    switch(targetGuid.GetHigh())
+    {
+        case HIGHGUID_UNIT:
+        case HIGHGUID_VEHICLE:
+        case HIGHGUID_PET:
+        case HIGHGUID_PLAYER:
+        {
+            // Only for speedup (may be removed later)
+            if (m_caster->GetObjectGuid() == targetGuid)
+                AddUnitTarget(m_caster, effIndex);
+            else if (Unit* unit = ObjectAccessor::GetUnit(*m_caster, targetGuid))
+                AddUnitTarget(unit, effIndex);
+            break;
+        }
+        case HIGHGUID_GAMEOBJECT:
+        case HIGHGUID_TRANSPORT:
+        case HIGHGUID_DYNAMICOBJECT:
+        case HIGHGUID_MO_TRANSPORT:
+        {
+            if (GameObject* object = m_caster->GetMap()->GetGameObject(targetGuid))
+                AddGOTarget(object, effIndex);
+            break;
+        }
+        case HIGHGUID_CORPSE:
+        case HIGHGUID_ITEM:
+        {
+            sLog.outError("Spell::AddTarget currently this type of targets (%s) supported by another way!", targetGuid.GetString().c_str());
+            break;
+        }
+/*
+        HIGHGUID_INSTANCE:
+        HIGHGUID_GROUP:
+*/
+        default:
+            sLog.outError("Spell::AddTarget unhandled type of spell target (%s)!", targetGuid.GetString().c_str());
+            break;
+    }
 }
 
 void Spell::AddGOTarget(GameObject* pVictim, SpellEffectIndex effIndex)
@@ -1016,6 +1061,20 @@ void Spell::AddGOTarget(GameObject* pVictim, SpellEffectIndex effIndex)
         return;
 
     ObjectGuid targetGUID = pVictim->GetObjectGuid();
+
+    // Check target is effectible to this effect ?
+    GameobjectTypes gameobjectType = pVictim->GetGoType();
+    switch(m_spellInfo->Effect[effIndex])
+    {
+        case SPELL_EFFECT_WMO_DAMAGE:
+        case SPELL_EFFECT_WMO_REPAIR:
+        case SPELL_EFFECT_WMO_CHANGE:
+            if (gameobjectType != GAMEOBJECT_TYPE_DESTRUCTIBLE_BUILDING)
+                return;
+            break;
+        default:
+            break;
+    }
 
     // Lookup target in already in list
     for(GOTargetList::iterator ihit = m_UniqueGOTargetInfo.begin(); ihit != m_UniqueGOTargetInfo.end(); ++ihit)
@@ -1072,12 +1131,6 @@ void Spell::AddGOTarget(GameObject* pVictim, SpellEffectIndex effIndex)
     m_UniqueGOTargetInfo.push_back(target);
 }
 
-void Spell::AddGOTarget(ObjectGuid goGuid, SpellEffectIndex effIndex)
-{
-    if (GameObject* go = m_caster->GetMap()->GetGameObject(goGuid))
-        AddGOTarget(go, effIndex);
-}
-
 void Spell::AddItemTarget(Item* pitem, SpellEffectIndex effIndex)
 {
     if (m_spellInfo->Effect[effIndex] == 0)
@@ -1111,7 +1164,10 @@ void Spell::DoAllEffectOnTarget(TargetInfo* target)
     // Get mask of effects for target
     uint32 mask = target->effectMask;
 
-    Unit* unit = m_caster->GetObjectGuid() == target->targetGUID ? m_caster : ObjectAccessor::GetUnit(*m_caster, target->targetGUID);
+    Unit* unit = (m_caster->GetObjectGuid() == target->targetGUID) ? 
+                    m_caster : 
+                    ObjectAccessor::GetUnit(*m_caster, target->targetGUID);
+
     if (!unit)
         return;
 
@@ -1365,7 +1421,7 @@ void Spell::DoAllEffectOnTarget(TargetInfo* target)
 
 void Spell::DoSpellHitOnUnit(Unit* unit, uint32 effectMask)
 {
-    if (!unit || (!effectMask && !damage))
+    if (!unit || !unit->isType(TYPEMASK_UNIT) || (!effectMask && !damage))
         return;
 
     Unit* realCaster = GetAffectiveCaster();
@@ -5419,8 +5475,8 @@ SpellCastResult Spell::CheckCast(bool strict)
                 !m_caster->IsIgnoreUnitState(m_spellInfo, m_spellInfo->TargetAuraState == AURA_STATE_FROZEN ? IGNORE_UNIT_TARGET_NON_FROZEN : IGNORE_UNIT_TARGET_STATE))
                 return SPELL_FAILED_TARGET_AURASTATE;
 
-            // Not allow casting on flying player
-            if (target->IsTaxiFlying())
+            // Not allow direct casting on flying player (enable only server-side casts)
+            if (target->IsTaxiFlying() && !m_spellInfo->HasAttribute(SPELL_ATTR_HIDE_IN_COMBAT_LOG))
                 return SPELL_FAILED_BAD_TARGETS;
 
             if(!m_IsTriggeredSpell && !target->IsVisibleTargetForSpell(m_caster, m_spellInfo))
@@ -7899,11 +7955,6 @@ bool Spell::CheckTarget(Unit* target, SpellEffectIndex eff )
         case SPELL_EFFECT_FRIEND_SUMMON:
         case SPELL_EFFECT_SUMMON_PLAYER:                    // from anywhere
             break;
-        case SPELL_EFFECT_THREAT:
-        case SPELL_EFFECT_THREAT_ALL:
-            if ( target->GetTypeId() == TYPEID_PLAYER && !target->GetCharmer() )
-                return false;
-            break;
         case SPELL_EFFECT_DUMMY:
             break;
         case SPELL_EFFECT_RESURRECT_NEW:
@@ -8839,17 +8890,7 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
             FillAreaTargets(targetUnitMap, radius, PUSH_SELF_CENTER, SPELL_TARGETS_AOE_DAMAGE, GetAffectiveCaster());
             break;
         }
-        /*case 69298: // Cancel Resistant To Blight (Festergut)
-        {
-            UnitList tmpUnitMap;
-            FillAreaTargets(tmpUnitMap, radius, PUSH_SELF_CENTER, SPELL_TARGETS_AOE_DAMAGE);
-            for (UnitList::const_iterator itr = tmpUnitMap.begin(); itr != tmpUnitMap.end(); ++itr)
-            {
-                if ((*itr) && (*itr)->GetTypeId() == TYPEID_PLAYER)
-                    targetUnitMap.push_back(*itr);
-            }
-            break;
-        }*/
+
         case 69782: // Ooze Flood (Rotface)
         case 69796:
         case 69798:
@@ -9172,23 +9213,6 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
             FillAreaTargets(targetUnitMap, radius, PUSH_SELF_CENTER, SPELL_TARGETS_AOE_DAMAGE);
             targetUnitMap.remove(m_caster);
         }
-        /*case 72905: // Frostbolt Volley (Lady Deathwhisper)
-        case 72906:
-        case 72907:
-        case 72908:
-        {
-            UnitList tempTargetUnitMap;
-            FillAreaTargets(tempTargetUnitMap, radius, PUSH_SELF_CENTER, SPELL_TARGETS_AOE_DAMAGE);
-            for (UnitList::const_iterator iter = tempTargetUnitMap.begin(); iter != tempTargetUnitMap.end(); ++iter)
-            {
-                if (!(*iter)->GetCharmerOrOwnerPlayerOrPlayerItself())
-                    continue;
-
-                targetUnitMap.push_back((*iter));
-            }
-
-            break;
-        }*/
         /*case 72378: // Blood Nova (Saurfang)
         case 73058:
         {
