@@ -11419,7 +11419,7 @@ void Spell::EffectSummonPlayer(SpellEffectIndex /*eff_idx*/)
     float x, y, z;
     m_caster->GetClosePoint(x, y, z, unitTarget->GetObjectBoundingRadius());
 
-    ((Player*)unitTarget)->SetSummonPoint(m_caster->GetMapId(),x,y,z);
+    ((Player*)unitTarget)->SetSummonPoint(WorldLocation(m_caster->GetMapId(), x, y, z));
 
     WorldPacket data(SMSG_SUMMON_REQUEST, 8+4+4);
     data << m_caster->GetObjectGuid();                      // summoner guid
