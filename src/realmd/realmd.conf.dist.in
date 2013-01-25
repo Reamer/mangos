@@ -129,10 +129,6 @@ ConfVersion=2010062001
 #   Time period in hours till last IP is free for all
 #       Default: 48
 #
-#   MultiIPIgnoreGMLevel
-#   Make it possible to ignore GM Accounts
-#       Default: 2 (GM)
-#
 ###################################################################################################################
 
 LoginDatabaseInfo = "127.0.0.1;3306;mangos;mangos;realmd"
@@ -161,4 +157,3 @@ AutoRegistration.Amount = 1
 MultiIPCheck = 0
 MultiIPLimit = 10
 MultiIPPeriodInHours = 48
-MultiIPIgnoreGMLevel = 2

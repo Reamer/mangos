@@ -419,42 +419,55 @@ bool AuthSocket::_HandleLogonChallenge()
             {
                 int32 iplimit = sConfig.GetIntDefault("MultiIPLimit", 10);
                 int32 multiIPdelay = sConfig.GetIntDefault("MultiIPPeriodInHours", 48);
-                int32 IgnoreGMLevel = sConfig.GetIntDefault("MultiIPIgnoreGMLevel", SEC_GAMEMASTER);
                 // If a GM account login ignore MultiIP
-                if (secLevel < IgnoreGMLevel)
+                QueryResult* ipcheck = LoginDatabase.PQuery("SELECT id FROM account WHERE last_ip = '%s' AND id != %u AND last_login > NOW() - INTERVAL %u HOUR ORDER BY last_login DESC;", get_remote_address().c_str(), accountId, multiIPdelay);
+                if (ipcheck)
                 {
-                    QueryResult* ipcheck = LoginDatabase.PQuery("SELECT id FROM account WHERE last_ip = '%s' AND id != %u AND last_login > NOW() - INTERVAL %u HOUR ORDER BY last_login DESC;", get_remote_address().c_str(), accountId, multiIPdelay);
-                    if (ipcheck)
+                    // build whitelist
+                    std::list<uint32> accountsInWhitelist;
+                    accountsInWhitelist.clear();
+                    QueryResult* IDsinwhite = LoginDatabase.PQuery("SELECT whitelist FROM multi_IP_whitelist WHERE whitelist LIKE '%|%u|%'", accountId);
+                    if (IDsinwhite)
                     {
-                        do
-                        {
-                            Field* pFields =ipcheck->Fetch();
-                            uint32 MultiAccountID = pFields[0].GetUInt32();
-                            //TODO check for GM Level
-                            bool isGM = false;
-                            if (!isGM)
-                            {
-                                --iplimit;
-                            }
-                        }
-                        while (ipcheck->NextRow());
+                        Tokens whitelistaccounts((*IDsinwhite)[0].GetCppString(),'|');
+                        bool isInWhite = false;
+                        for (Tokens::const_iterator itr = whitelistaccounts.begin(); itr != whitelistaccounts.end(); ++itr)
+                            accountsInWhitelist.push_back(atoi(*itr));
+                        delete IDsinwhite;
+                    }
 
-                        delete ipcheck;
-                    }
-                    /*
-                     * default case 10 allowed account with same last_ip
-                     * we found 9 account with current ip. NOTE: actual account is not in list
-                     * 10 - 9 - 1
-                     *          ^ current account
-                     *      ^ account in list
-                     * ^ allowed
-                     */
-                    if (iplimit <= 1)
+                    do
                     {
-                        DEBUG_LOG("[AuthChallenge] Account '%s' is multi IP - '%s'", _login.c_str(), lastIP.c_str());
-                        result = WOW_FAIL_SUSPENDED;
-                        blockLogin = true;
+                        Field* pFields =ipcheck->Fetch();
+                        uint32 MultiAccountID = pFields[0].GetUInt32();
+                        bool isInWhite = false;
+                        for (std::list<uint32>::const_iterator itr = accountsInWhitelist.begin(); itr != accountsInWhitelist.end(); ++itr)
+                        {
+                            if (*itr == MultiAccountID)
+                                isInWhite = true;
+                        }
+                        if (!isInWhite)
+                        {
+                            --iplimit;
+                        }
                     }
+                    while (ipcheck->NextRow());
+
+                    delete ipcheck;
+                }
+                /*
+                 * default case 10 allowed account with same last_ip
+                 * we found 9 account with current ip. NOTE: actual account is not in list
+                 * 10 - 9 - 1
+                 *          ^ current account
+                 *      ^ account in list
+                 * ^ allowed
+                 */
+                if (iplimit < 1)
+                {
+                    DEBUG_LOG("[AuthChallenge] Account '%s' is multi IP - '%s'", _login.c_str(), lastIP.c_str());
+                    result = WOW_FAIL_SUSPENDED;
+                    blockLogin = true;
                 }
             }
             ///- If the IP is 'locked', check that the player comes indeed from the correct IP address
