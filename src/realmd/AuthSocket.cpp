@@ -421,7 +421,7 @@ bool AuthSocket::_HandleLogonChallenge()
                 int32 multiIPdelay = sConfig.GetIntDefault("MultiIPPeriodInHours", 48);
                 int32 IgnoreGMLevel = sConfig.GetIntDefault("MultiIPIgnoreGMLevel", SEC_GAMEMASTER);
                 // If a GM account login ignore MultiIP
-                if (secLevel >= IgnoreGMLevel)
+                if (secLevel < IgnoreGMLevel)
                 {
                     QueryResult* ipcheck = LoginDatabase.PQuery("SELECT id FROM account WHERE last_ip = '%s' AND id != %u AND last_login > NOW() - INTERVAL %u HOUR ORDER BY last_login DESC;", get_remote_address().c_str(), accountId, multiIPdelay);
                     if (ipcheck)
