@@ -466,7 +466,7 @@ bool AuthSocket::_HandleLogonChallenge()
                 if (iplimit < 1)
                 {
                     DEBUG_LOG("[AuthChallenge] Account '%s' is multi IP - '%s'", _login.c_str(), lastIP.c_str());
-                    result = WOW_FAIL_SUSPENDED;
+                    result = WOW_FAIL_PARENTCONTROL;
                     blockLogin = true;
                 }
             }
