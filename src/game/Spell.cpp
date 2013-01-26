@@ -9186,7 +9186,7 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
             unMaxTargets = 1;
             break;
         }
-        case 72873: // Malleable Goo (Putricide)
+        /*case 72873: // Malleable Goo (Putricide)
         case 72874:
         case 72550:
         case 72458:
@@ -9202,9 +9202,8 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
                 if ((*itr) && !(*itr)->GetObjectGuid().IsVehicle())
                     targetUnitMap.push_back(*itr);
             }
-            targetUnitMap.remove(m_caster);
             break;
-        }
+        }*/
         case 72038: // Empowered Shock Vortex (Blood Council)
         case 72815:
         case 72816:
