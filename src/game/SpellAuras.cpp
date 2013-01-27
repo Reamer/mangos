@@ -6755,20 +6755,12 @@ void Aura::HandlePeriodicDamage(bool apply, bool Real)
         {
             if (apply)
             {
-                target->CastSpell(target, 70917, true); // Bounce Protection
-                if (Unit *pCaster = GetCaster())
-                {
-                    if (SpellAuraHolderPtr holder = pCaster->GetSpellAuraHolder(GetId()))
-                    {
-                        GetHolder()->SetAuraDuration(holder->GetAuraDuration());
-                        GetHolder()->SendAuraUpdate(false);
-                    }
-                }
+                target->CastSpell(target, 70917, true); // apply Search Spell
             }
             else
             {
                 target->RemoveAurasDueToSpell(70917); // remove Search Periodic
-                target->CastSpell(target, 70953, true); // Plague Sickness
+                target->CastSpell(target, 70953, true); // apply Plague Sickness
             }
 
             break;

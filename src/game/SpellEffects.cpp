@@ -10636,8 +10636,21 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     if (unitTarget)
                     {
                         m_caster->CastSpell(m_caster, 70955, true);     // Cast Protection Spell on self
-                        m_caster->CastSpell(unitTarget, 70911, true);   // apply Plague to new target
-                        m_caster->RemoveAurasDueToSpell(70911);
+                        uint32 spellId = 70911;
+
+                        SpellEntry const* spellEntry = sSpellStore.LookupEntry(spellId);
+                        if (spellEntry && spellEntry->SpellDifficultyId && m_caster->IsInWorld() && m_caster->GetMap()->IsDungeon())
+                            if (SpellEntry const* spellDiffEntry = GetSpellEntryByDifficulty(spellEntry->SpellDifficultyId, m_caster->GetMap()->GetDifficulty(), m_caster->GetMap()->IsRaid()))
+                                spellId = spellDiffEntry->Id;
+
+                        if (SpellAuraHolderPtr holder = m_caster->GetSpellAuraHolder(spellId))
+                        {
+                            unitTarget->AddSpellAuraHolder(holder);
+                            m_caster->RemoveSpellAuraHolder(holder);
+                        }
+
+                        //m_caster->CastSpell(unitTarget, 70911, true);   // apply Plague to new target
+                        //m_caster->RemoveAurasDueToSpell(70911);
                     }
                     return;
                 }
