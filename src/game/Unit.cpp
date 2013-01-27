@@ -423,7 +423,7 @@ void Unit::Update( uint32 update_diff, uint32 p_time )
 bool Unit::UpdateMeleeAttackingState()
 {
     Unit *victim = getVictim();
-    if (!victim || !CanAttackAndMoveWhileNonMeleeSpellCasted(false))
+    if (!victim || IsNonMeleeSpellCasted(false))
         return false;
 
     if (!isAttackReady(BASE_ATTACK) && !(isAttackReady(OFF_ATTACK) && haveOffhandWeapon()))
@@ -4280,22 +4280,6 @@ void Unit::FinishSpell(CurrentSpellTypes spellType, bool ok /*= true*/)
         spell->SendChannelUpdate(0);
 
     spell->finish(ok);
-}
-bool Unit::CanAttackAndMoveWhileNonMeleeSpellCasted(bool withDelayed, bool skipChanneled, bool skipAutorepeat) const
-{
-    if (!IsInWorld())
-        return false;
-
-    if (m_currentSpells[CURRENT_GENERIC_SPELL] && m_currentSpells[CURRENT_GENERIC_SPELL]->m_spellInfo->HasAttribute(SPELL_ATTR_EX5_MOVE_AND_AUTOHIT_IS_POSSIBLE_WHILE_CASTING))
-        return true;
-
-    if (m_currentSpells[CURRENT_CHANNELED_SPELL] && m_currentSpells[CURRENT_CHANNELED_SPELL]->m_spellInfo->HasAttribute(SPELL_ATTR_EX5_MOVE_AND_AUTOHIT_IS_POSSIBLE_WHILE_CASTING))
-        return true;
-
-    if (m_currentSpells[CURRENT_AUTOREPEAT_SPELL] && m_currentSpells[CURRENT_AUTOREPEAT_SPELL]->m_spellInfo->HasAttribute(SPELL_ATTR_EX5_MOVE_AND_AUTOHIT_IS_POSSIBLE_WHILE_CASTING))
-        return true;
-
-    return !IsNonMeleeSpellCasted(withDelayed, skipChanneled, skipAutorepeat);
 }
 
 bool Unit::IsNonMeleeSpellCasted(bool withDelayed, bool skipChanneled, bool skipAutorepeat) const
