@@ -2538,6 +2538,7 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                     targetUnitMap.remove(m_caster);
                     break;
                 case 63881:                                 // Malady of the Mind   Ulduar Yogg Saron
+                case 70920:                                 // Unbound Plague Search Effect (ICC -Putricide)
                     FillAreaTargets(targetUnitMap, radius, PUSH_SELF_CENTER, SPELL_TARGETS_FRIENDLY, GetCastingObject());
                     targetUnitMap.remove(m_caster);
                     break;

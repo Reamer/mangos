@@ -990,6 +990,7 @@ bool IsPositiveEffect(SpellEntry const *spellproto, SpellEffectIndex effIndex)
                             break;
                     }
                 }   break;
+                case SPELL_AURA_MOD_MECHANIC_DAMAGE_TAKEN_PERCENT:
                 case SPELL_AURA_ADD_FLAT_MODIFIER:          // mods
                 case SPELL_AURA_ADD_PCT_MODIFIER:
                 {
