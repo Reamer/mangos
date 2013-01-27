@@ -9044,10 +9044,6 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
             }
             break;
         }
-        case 70447: // Volatile Ooze Adhesive (Putricide)
-        case 72836:
-        case 72837:
-        case 72838:
         case 70672: // Gaseous Bloat (Putricide)
         case 72455:
         case 72832:
@@ -9122,17 +9118,7 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
             }
             break;
         }
-        case 70911: // Unbound Plague (Putricide)
-        case 72854:
-        case 72855:
-        case 72856:
-        {
-            if (m_targets.getUnitTarget())
-                targetUnitMap.push_back(m_targets.getUnitTarget());
-
-            break;
-        }
-        case 70920: // Unbound Plague Search Effect (Putricide)
+        /*case 70920: // Unbound Plague Search Effect (Putricide)
         {
             UnitList tempTargetUnitMap;
             FillAreaTargets(tempTargetUnitMap, radius, PUSH_SELF_CENTER, SPELL_TARGETS_ALL);
@@ -9149,7 +9135,7 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
             targetUnitMap.remove(m_caster);
             unMaxTargets = 1;
             break;
-        }
+        }*/
         case 71075: // Invocation of Blood (V) Move
         case 71079: // Invocation of Blood (K) Move
         case 71082: // Invocation of Blood (T) Move

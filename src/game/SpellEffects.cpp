@@ -3693,6 +3693,10 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                 case 71908:
                 case 72270:
                 case 72271:
+                case 72295:                                 // Malleable Goo (ICC -Professor Putricide)
+                case 72615:
+                case 74280:
+                case 74281:
                 {
                     if (unitTarget)
                         m_caster->CastSpell(unitTarget, m_spellInfo->CalculateSimpleValue(eff_idx), true);
@@ -10631,10 +10635,10 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                 {
                     if (unitTarget)
                     {
+                        m_caster->CastSpell(m_caster, 70955, true);     // Cast Protection Spell on self
                         m_caster->CastSpell(unitTarget, 70911, true);   // apply Plague to new target
                         m_caster->RemoveAurasDueToSpell(70911);
                     }
-
                     return;
                 }
                 case 71255:                                 // Choking Gas Bomb (Putricide)
