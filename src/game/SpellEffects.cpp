@@ -10642,13 +10642,10 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                         if (spellEntry && spellEntry->SpellDifficultyId && m_caster->IsInWorld() && m_caster->GetMap()->IsDungeon())
                             if (SpellEntry const* spellDiffEntry = GetSpellEntryByDifficulty(spellEntry->SpellDifficultyId, m_caster->GetMap()->GetDifficulty(), m_caster->GetMap()->IsRaid()))
                                 spellId = spellDiffEntry->Id;
-
                         if (SpellAuraHolderPtr holder = m_caster->GetSpellAuraHolder(spellId))
                         {
-                            unitTarget->AddSpellAuraHolder(holder);
-                            m_caster->RemoveSpellAuraHolder(holder);
+                            m_caster->RemoveAurasDueToSpellBySteal(spellId, holder->GetCasterGuid(), unitTarget);
                         }
-
                         //m_caster->CastSpell(unitTarget, 70911, true);   // apply Plague to new target
                         //m_caster->RemoveAurasDueToSpell(70911);
                     }
