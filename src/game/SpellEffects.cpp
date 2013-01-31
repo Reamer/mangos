@@ -674,7 +674,7 @@ void Spell::EffectSchoolDMG(SpellEffectIndex effect_idx)
                     }
                     case 72506: // 10hero
                     {
-                        if (SpellAuraHolderPtr holder = m_caster->GetSpellAuraHolder(72745))
+                        if (SpellAuraHolderPtr holder = m_caster->GetSpellAuraHolder(72671))
                         {
                             uint32 stack = holder->GetStackAmount();
                             switch(stack)
@@ -3790,6 +3790,17 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                         return;
 
                     m_originalCaster->CastSpell(unitTarget, 72380, true);
+                    return;
+                }
+                case 72840:                                 // Volatile Experiment
+                case 72841:
+                case 72842:
+                case 72843:
+                {
+                    if (!unitTarget)
+                        return;
+                    uint32 spellid = roll_chance_i(50) ? 70352 : 70353;
+                    unitTarget->CastSpell(unitTarget, spellid, true);
                     return;
                 }
                 // CYBER CUSTOM STUFF BEGIN
@@ -10636,8 +10647,8 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                     if (unitTarget)
                     {
                         m_caster->CastSpell(m_caster, 70955, true);     // Cast Protection Spell on self
-                        uint32 spellId = 70911;
 
+                        uint32 spellId = 70911;
                         SpellEntry const* spellEntry = sSpellStore.LookupEntry(spellId);
                         if (spellEntry && spellEntry->SpellDifficultyId && m_caster->IsInWorld() && m_caster->GetMap()->IsDungeon())
                             if (SpellEntry const* spellDiffEntry = GetSpellEntryByDifficulty(spellEntry->SpellDifficultyId, m_caster->GetMap()->GetDifficulty(), m_caster->GetMap()->IsRaid()))
@@ -10646,8 +10657,6 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                         {
                             m_caster->RemoveAurasDueToSpellBySteal(spellId, holder->GetCasterGuid(), unitTarget);
                         }
-                        //m_caster->CastSpell(unitTarget, 70911, true);   // apply Plague to new target
-                        //m_caster->RemoveAurasDueToSpell(70911);
                     }
                     return;
                 }

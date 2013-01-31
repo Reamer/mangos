@@ -3437,21 +3437,7 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
             }
             case 70308:                                     // Mutated Transformation (Putricide)
             {
-                uint32 entry = 37672;
-
-                if (target->GetMap()->GetDifficulty() == RAID_DIFFICULTY_25MAN_NORMAL ||
-                    target->GetMap()->GetDifficulty() == RAID_DIFFICULTY_25MAN_HEROIC)
-                {
-                    entry = 38285;
-                }
-
-                if (Creature *pAbomination = target->SummonCreature(entry, target->GetPositionX(), target->GetPositionY(), target->GetPositionZ(), target->GetOrientation(), TEMPSUMMON_DEAD_DESPAWN, 0))
-                {
-                    pAbomination->setFaction(target->getFaction());
-                    target->CastSpell(pAbomination, 46598, true);
-                    pAbomination->CastSpell(pAbomination, 70405, true);
-                }
-
+                target->CastSpell(target, 70311, true);
                 return;
             }
             case 72087:                                     // Kinetic Bomb Knockback
@@ -10710,6 +10696,9 @@ m_permanent(false), m_isRemovedOnShapeLost(true), m_deleted(false), m_in_use(0)
         case 71564:                                         // Deadly Precision
         case 74396:                                         // Fingers of Frost
         case 70672:                                         // Gaseous Bloat (Putricide)
+        case 72455:
+        case 72832:
+        case 72833:
             m_stackAmount = m_spellProto->StackAmount;
             break;
     }

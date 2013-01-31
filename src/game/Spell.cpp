@@ -9045,14 +9045,6 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
             }
             break;
         }
-        case 70672: // Gaseous Bloat (Putricide)
-        case 72455:
-        case 72832:
-        case 72833:
-        {
-            targetUnitMap.push_back(m_targets.getUnitTarget());
-            break;
-        }
         case 70499: // Vile Spirits Visual Effect (Lich King)
         {
             radius = 100.0f;
@@ -9089,17 +9081,6 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
             }
             break;
         }
-        case 70701: // Expunged Gas (Putricide)
-        {
-            UnitList tempTargetUnitMap;
-            FillAreaTargets(tempTargetUnitMap, radius, PUSH_SELF_CENTER, SPELL_TARGETS_FRIENDLY);
-            for (UnitList::iterator itr = tempTargetUnitMap.begin(); itr != tempTargetUnitMap.end(); ++itr)
-            {
-                if ((*itr) && !(*itr)->GetObjectGuid().IsVehicle())
-                    targetUnitMap.push_back(*itr);
-            }
-            break;
-        }
         case 70728: // Exploit Weakness triggered
         case 70840: // Devious Minds triggered
         {
@@ -9119,24 +9100,6 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
             }
             break;
         }
-        /*case 70920: // Unbound Plague Search Effect (Putricide)
-        {
-            UnitList tempTargetUnitMap;
-            FillAreaTargets(tempTargetUnitMap, radius, PUSH_SELF_CENTER, SPELL_TARGETS_ALL);
-            for (UnitList::const_iterator iter = tempTargetUnitMap.begin(); iter != tempTargetUnitMap.end(); ++iter)
-            {
-                // target only other players which dont have Mutated Transformation aura on self
-                if ((*iter) && (*iter)->GetTypeId() == TYPEID_PLAYER &&
-                    !(*iter)->GetDummyAura(70308))
-                {
-                    targetUnitMap.push_back(*iter);
-                }
-            }
-
-            targetUnitMap.remove(m_caster);
-            unMaxTargets = 1;
-            break;
-        }*/
         case 71075: // Invocation of Blood (V) Move
         case 71079: // Invocation of Blood (K) Move
         case 71082: // Invocation of Blood (T) Move
