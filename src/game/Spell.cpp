@@ -3383,12 +3383,14 @@ void Spell::prepare(SpellCastTargets const* targets, Aura const* triggeredByAura
     // without adding to cast type slot
     // will not show cast bar but will show effects at casting time etc
 
-    Unit* procTarget = m_targets.getUnitTarget();
-    if (!procTarget)
-        procTarget = m_caster;
+    if (m_spellInfo->speed > 0.0f && GetCastTime())
+    {
+        Unit* procTarget = m_targets.getUnitTarget();
+        if (!procTarget)
+            procTarget = m_caster;
 
-    m_caster->ProcDamageAndSpell(procTarget, m_procAttacker, PROC_FLAG_NONE, PROC_EX_CAST_START, 0, m_attackType, m_spellInfo);
-
+        m_caster->ProcDamageAndSpell(procTarget, m_procAttacker, 0, PROC_EX_CAST_END, 0, m_attackType, m_spellInfo);
+    }
 }
 
 void Spell::cancel(bool force)

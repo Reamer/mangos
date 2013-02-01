@@ -1083,9 +1083,8 @@ void Object::MarkForClientUpdate()
 }
 
 WorldObject::WorldObject()
-    : m_groupLootTimer(0), loot(this), m_groupLootId(0), m_lootGroupRecipientId(0), m_transportInfo(NULL),
-    m_currMap(NULL), m_position(WorldLocation()), m_viewPoint(*this), m_isActiveObject(false),
-    m_LastUpdateTime(WorldTimer::getMSTime())
+    : loot(this), m_groupLootTimer(0), m_groupLootId(0), m_lootGroupRecipientId(0), m_transportInfo(NULL),
+    m_currMap(NULL), m_position(WorldLocation()), m_viewPoint(*this), m_isActiveObject(false), m_LastUpdateTime(WorldTimer::getMSTime())
 {
 }
 
@@ -1207,7 +1206,13 @@ float WorldObject::GetDistance(const WorldObject* obj) const
     float dz = GetPositionZ() - obj->GetPositionZ();
     float sizefactor = GetObjectBoundingRadius() + obj->GetObjectBoundingRadius();
     float dist = sqrt((dx*dx) + (dy*dy) + (dz*dz)) - sizefactor;
-    return ( dist > 0 ? dist : 0);
+    return ( dist > M_NULL_F ? dist : 0.0f);
+}
+
+float WorldObject::GetDistance(WorldLocation const& loc) const
+{
+    float dist = GetPosition().GetDistance(loc) - GetObjectBoundingRadius();
+    return (dist > M_NULL_F ? dist : 0.0f);
 }
 
 float WorldObject::GetDistance2d(float x, float y) const
@@ -1216,7 +1221,7 @@ float WorldObject::GetDistance2d(float x, float y) const
     float dy = GetPositionY() - y;
     float sizefactor = GetObjectBoundingRadius();
     float dist = sqrt((dx*dx) + (dy*dy)) - sizefactor;
-    return ( dist > 0 ? dist : 0);
+    return ( dist > M_NULL_F ? dist : 0.0f);
 }
 
 float WorldObject::GetDistance(float x, float y, float z) const
@@ -1226,7 +1231,7 @@ float WorldObject::GetDistance(float x, float y, float z) const
     float dz = GetPositionZ() - z;
     float sizefactor = GetObjectBoundingRadius();
     float dist = sqrt((dx*dx) + (dy*dy) + (dz*dz)) - sizefactor;
-    return ( dist > 0 ? dist : 0);
+    return ( dist > M_NULL_F ? dist : 0.0f);
 }
 
 float WorldObject::GetDistance2d(const WorldObject* obj) const
@@ -1235,7 +1240,7 @@ float WorldObject::GetDistance2d(const WorldObject* obj) const
     float dy = GetPositionY() - obj->GetPositionY();
     float sizefactor = GetObjectBoundingRadius() + obj->GetObjectBoundingRadius();
     float dist = sqrt((dx*dx) + (dy*dy)) - sizefactor;
-    return ( dist > 0 ? dist : 0);
+    return ( dist > M_NULL_F ? dist : 0.0f);
 }
 
 float WorldObject::GetDistanceZ(const WorldObject* obj) const
@@ -1243,7 +1248,7 @@ float WorldObject::GetDistanceZ(const WorldObject* obj) const
     float dz = fabs(GetPositionZ() - obj->GetPositionZ());
     float sizefactor = GetObjectBoundingRadius() + obj->GetObjectBoundingRadius();
     float dist = dz - sizefactor;
-    return ( dist > 0 ? dist : 0);
+    return ( dist > M_NULL_F ? dist : 0.0f);
 }
 
 bool WorldObject::IsWithinDist3d(float x, float y, float z, float dist2compare) const
@@ -1341,7 +1346,7 @@ bool WorldObject::IsInRange(WorldObject const* obj, float minRange, float maxRan
     float sizefactor = GetObjectBoundingRadius() + obj->GetObjectBoundingRadius();
 
     // check only for real range
-    if (minRange > 0.0f)
+    if (minRange > M_NULL_F)
     {
         float mindist = minRange + sizefactor;
         if (distsq < mindist * mindist)
@@ -1361,7 +1366,7 @@ bool WorldObject::IsInRange2d(float x, float y, float minRange, float maxRange) 
     float sizefactor = GetObjectBoundingRadius();
 
     // check only for real range
-    if (minRange > 0.0f)
+    if (minRange > M_NULL_F)
     {
         float mindist = minRange + sizefactor;
         if (distsq < mindist * mindist)
@@ -1382,7 +1387,7 @@ bool WorldObject::IsInRange3d(float x, float y, float z, float minRange, float m
     float sizefactor = GetObjectBoundingRadius();
 
     // check only for real range
-    if (minRange > 0.0f)
+    if (minRange > M_NULL_F)
     {
         float mindist = minRange + sizefactor;
         if (distsq < mindist * mindist)
@@ -1480,7 +1485,7 @@ bool WorldObject::isInBack(WorldObject const* target, float distance, float arc)
 
 void WorldObject::GetRandomPoint( float x, float y, float z, float distance, float &rand_x, float &rand_y, float &rand_z) const
 {
-    if (distance == 0)
+    if (fabs(distance) < M_NULL_F)
     {
         rand_x = x;
         rand_y = y;

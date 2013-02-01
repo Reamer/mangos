@@ -11863,7 +11863,7 @@ void Spell::EffectLeapForward(SpellEffectIndex eff_idx)
         float x,y,z;
         m_targets.getDestination(x,y,z);
 
-        // Try to normalize Z coord 
+        // Try to normalize Z coord
         m_caster->UpdateGroundPositionZ(x, y, z);
         z += 0.2f;
 
@@ -12018,9 +12018,9 @@ void Spell::EffectCharge(SpellEffectIndex /*eff_idx*/)
     float speed = m_spellInfo->speed ? m_spellInfo->speed : BASE_CHARGE_SPEED;
 
     DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST, "Spell::EffectCharge spell %u caster %s target %s speed %f dest. point %f %f %f",
-             m_spellInfo->Id, 
-             m_caster ? m_caster->GetObjectGuid().GetString().c_str() : "<none>", 
-             unitTarget ? unitTarget->GetObjectGuid().GetString().c_str() : "<none>", 
+             m_spellInfo->Id,
+             m_caster ? m_caster->GetObjectGuid().GetString().c_str() : "<none>",
+             unitTarget ? unitTarget->GetObjectGuid().GetString().c_str() : "<none>",
              speed, z, y, z);
 
     if (m_caster->IsFalling())
