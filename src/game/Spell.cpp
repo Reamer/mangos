@@ -3994,7 +3994,6 @@ void Spell::SendSpellCooldown()
         }
     }
 
-
     // (1) have infinity cooldown but set at aura apply, (2) passive cooldown at triggering
     if (m_spellInfo->HasAttribute(SPELL_ATTR_DISABLED_WHILE_ACTIVE) || m_spellInfo->HasAttribute(SPELL_ATTR_PASSIVE))
         return;
@@ -5328,8 +5327,7 @@ Unit* Spell::GetPrefilledUnitTargetOrUnitTarget(SpellEffectIndex effIndex) const
 SpellCastResult Spell::CheckCast(bool strict)
 {
     // check cooldowns to prevent cheating (ignore passive spells, that client side visual only)
-    if (m_caster->GetTypeId()==TYPEID_PLAYER && !m_spellInfo->HasAttribute(SPELL_ATTR_PASSIVE) &&
-        ((Player*)m_caster)->HasSpellCooldown(m_spellInfo))
+    if (!m_spellInfo->HasAttribute(SPELL_ATTR_PASSIVE) && m_caster->HasSpellCooldown(m_spellInfo))
     {
         if (m_triggeredByAuraSpell)
             return SPELL_FAILED_DONT_REPORT;
