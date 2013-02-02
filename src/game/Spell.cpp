@@ -2249,6 +2249,9 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
 
                     for(SpellScriptTarget::const_iterator i_spellST = bounds.first; i_spellST != bounds.second; ++i_spellST)
                     {
+                        if (!i_spellST->second.CanHitWithSpellEffect(effIndex))
+                            continue;
+
                         // only creature entries supported for this target type
                         if (i_spellST->second.type == SPELL_TARGET_TYPE_GAMEOBJECT)
                             continue;
@@ -2298,6 +2301,8 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
 
                     for(SpellScriptTarget::const_iterator i_spellST = bounds.first; i_spellST != bounds.second; ++i_spellST)
                     {
+                        if (!i_spellST->second.CanHitWithSpellEffect(effIndex))
+                            continue;
                         // only creature entries supported for this target type
                         if (i_spellST->second.type == SPELL_TARGET_TYPE_GAMEOBJECT)
                             continue;
@@ -2364,6 +2369,9 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
             {
                 for(SpellScriptTarget::const_iterator i_spellST = bounds.first; i_spellST != bounds.second; ++i_spellST)
                 {
+                    if (!i_spellST->second.CanHitWithSpellEffect(effIndex))
+                        continue;
+
                     if (i_spellST->second.type == SPELL_TARGET_TYPE_GAMEOBJECT)
                     {
                         // search all GO's with entry, within range of m_destN
@@ -5782,6 +5790,9 @@ SpellCastResult Spell::CheckCast(bool strict)
 
                 for(SpellScriptTarget::const_iterator i_spellST = bounds.first; i_spellST != bounds.second; ++i_spellST)
                 {
+                    if (!i_spellST->second.CanHitWithSpellEffect(SpellEffectIndex(j)))
+                        continue;
+
                     switch(i_spellST->second.type)
                     {
                         case SPELL_TARGET_TYPE_GAMEOBJECT:
