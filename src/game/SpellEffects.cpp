@@ -3649,7 +3649,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                 }
                 case 70769:                                 // Divine Storm!
                 {
-                    ((Player*)m_caster)->RemoveSpellCooldown(53385, true);
+                    m_caster->RemoveSpellCooldown(53385, true);
                     return;
                 }
                 case 70961:                                 // Shattered Bones (Icecrown Citadel, trash mob The Damned)
@@ -3829,23 +3829,21 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
             {
                 case 11958:                                 // Cold Snap
                 {
-                    if (m_caster->GetTypeId()!=TYPEID_PLAYER)
-                        return;
-
                     // immediately finishes the cooldown on Frost spells
-                    const SpellCooldowns& cm = ((Player *)m_caster)->GetSpellCooldownMap();
-                    for (SpellCooldowns::const_iterator itr = cm.begin(); itr != cm.end();)
+                    SpellCooldowns const* cm = m_caster->GetSpellCooldownMap();
+                    SpellCooldowns::const_iterator itr, next;
+                    for (SpellCooldowns::const_iterator itr = cm->begin(); itr != cm->end();itr = next)
                     {
+                        next = itr;
+                        ++next;
                         SpellEntry const *spellInfo = sSpellStore.LookupEntry(itr->first);
 
                         if (spellInfo->SpellFamilyName == SPELLFAMILY_MAGE &&
                             (GetSpellSchoolMask(spellInfo) & SPELL_SCHOOL_MASK_FROST) &&
                             spellInfo->Id != 11958 && GetSpellRecoveryTime(spellInfo) > 0)
                         {
-                            ((Player*)m_caster)->RemoveSpellCooldown((itr++)->first, true);
+                            m_caster->RemoveSpellCooldown(itr->first, true);
                         }
-                        else
-                            ++itr;
                     }
                     return;
                 }
@@ -4149,23 +4147,21 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                 }
                 case 14185:                                 // Preparation
                 {
-                    if (m_caster->GetTypeId()!=TYPEID_PLAYER)
-                        return;
-
                     bool glyph = m_caster->HasAura(56819);
                     //immediately finishes the cooldown on certain Rogue abilities
-                    const SpellCooldowns& cm = ((Player *)m_caster)->GetSpellCooldownMap();
-                    for (SpellCooldowns::const_iterator itr = cm.begin(); itr != cm.end();)
+                    SpellCooldowns const* cm = m_caster->GetSpellCooldownMap();
+                    SpellCooldowns::const_iterator itr, next;
+                    for (SpellCooldowns::const_iterator itr = cm->begin(); itr != cm->end();itr = next)
                     {
+                        next = itr;
+                        ++itr;
                         SpellEntry const *spellInfo = sSpellStore.LookupEntry(itr->first);
 
                         if (spellInfo->SpellFamilyName == SPELLFAMILY_ROGUE && spellInfo->GetSpellFamilyFlags().test<CF_ROGUE_EVASION, CF_ROGUE_SPRINT, CF_ROGUE_VANISH, CF_ROGUE_COLD_BLOOD, CF_ROGUE_SHADOWSTEP>())
-                            ((Player*)m_caster)->RemoveSpellCooldown((itr++)->first,true);
+                            m_caster->RemoveSpellCooldown(itr->first,true);
                         // Glyph of Preparation
                         else if (glyph && (spellInfo->SpellFamilyName == SPELLFAMILY_ROGUE && (spellInfo->GetSpellFamilyFlags().test<CF_ROGUE_KICK, CF_ROGUE_MISC>() || spellInfo->Id == 51722)))
-                            ((Player*)m_caster)->RemoveSpellCooldown((itr++)->first,true);
-                        else
-                            ++itr;
+                            m_caster->RemoveSpellCooldown(itr->first,true);
                     }
                     return;
                 }
@@ -4238,22 +4234,20 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
             {
                 case 23989:                                 // Readiness talent
                 {
-                    if (m_caster->GetTypeId()!=TYPEID_PLAYER)
-                        return;
-
                     //immediately finishes the cooldown for hunter abilities
-                    const SpellCooldowns& cm = ((Player*)m_caster)->GetSpellCooldownMap();
-                    for (SpellCooldowns::const_iterator itr = cm.begin(); itr != cm.end();)
+                    SpellCooldowns const* cm = m_caster->GetSpellCooldownMap();
+                    SpellCooldowns::const_iterator itr, next;
+                    for (SpellCooldowns::const_iterator itr = cm->begin(); itr != cm->end();itr = next)
                     {
+                        next = itr;
+                        ++next;
                         SpellEntry const *spellInfo = sSpellStore.LookupEntry(itr->first);
 
                         if (spellInfo->SpellFamilyName == SPELLFAMILY_HUNTER &&
                             spellInfo->Id != 23989 &&
                             spellInfo->SpellIconID != 1680 &&
                             GetSpellRecoveryTime(spellInfo) > 0 )
-                            ((Player*)m_caster)->RemoveSpellCooldown((itr++)->first,true);
-                        else
-                            ++itr;
+                            m_caster->RemoveSpellCooldown(itr->first,true);
                     }
                     return;
                 }
@@ -4373,7 +4367,7 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                     // non-standard cast requirement check
                     if (!friendTarget || !friendTarget->IsInCombat())
                     {
-                        ((Player*)m_caster)->RemoveSpellCooldown(m_spellInfo->Id,true);
+                        m_caster->RemoveSpellCooldown(m_spellInfo->Id,true);
                         SendCastResult(SPELL_FAILED_TARGET_AFFECTING_COMBAT);
                         return;
                     }
@@ -4874,14 +4868,10 @@ void Spell::EffectTriggerSpell(SpellEffectIndex effIndex)
             unitTarget->RemoveSpellsCausingAura(SPELL_AURA_MOD_DECREASE_SPEED);
             unitTarget->RemoveSpellsCausingAura(SPELL_AURA_MOD_STALKED);
 
-            // if this spell is given to NPC it must handle rest by it's own AI
-            if (unitTarget->GetTypeId() != TYPEID_PLAYER)
-                return;
-
             uint32 spellId = 1784;
             // reset cooldown on it if needed
-            if (((Player*)unitTarget)->HasSpellCooldown(spellId))
-                ((Player*)unitTarget)->RemoveSpellCooldown(spellId);
+            if (unitTarget->HasSpellCooldown(spellId))
+                unitTarget->RemoveSpellCooldown(spellId);
 
             m_caster->CastSpell(unitTarget, spellId, true);
             return;
@@ -5007,8 +4997,7 @@ void Spell::EffectTriggerSpell(SpellEffectIndex effIndex)
         // Init dest coordinates
         float x,y,z;
         m_targets.getDestination(x, y, z);
-        if (m_caster->GetTypeId() == TYPEID_PLAYER)
-            ((Player*)m_caster)->RemoveSpellCooldown(triggered_spell_id);
+        m_caster->RemoveSpellCooldown(triggered_spell_id);
 
         MaNGOS::NormalizeMapCoord(x);
         MaNGOS::NormalizeMapCoord(y);
@@ -5041,8 +5030,7 @@ void Spell::EffectTriggerMissileSpell(SpellEffectIndex effect_idx)
         return;
     }
 
-    if (m_caster->GetTypeId() == TYPEID_PLAYER)
-        ((Player*)m_caster)->RemoveSpellCooldown(triggered_spell_id);
+    m_caster->RemoveSpellCooldown(triggered_spell_id);
 
     if ((m_targets.m_targetMask & TARGET_FLAG_DEST_LOCATION) || m_caster == unitTarget )
     {
@@ -9465,10 +9453,10 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                 case 50725:                                 // Vigilance - remove cooldown on Taunt
                 {
                     Unit* caster = GetAffectiveCaster();
-                    if (!caster || caster->GetTypeId() != TYPEID_PLAYER)
+                    if (!caster)
                         return;
 
-                    ((Player*)caster)->RemoveSpellCategoryCooldown(82, true);
+                    caster->RemoveSpellCategoryCooldown(82, true);
                     return;
                 }
                 case 50810:                                 // Shatter (Krystallus)
@@ -9798,7 +9786,7 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                 {
                     if (!unitTarget)
                         return;
-                    
+
                     unitTarget->CastSpell(unitTarget, 58648, true);
                     unitTarget->CastSpell(unitTarget, 57398, true);
                     break;
@@ -10987,12 +10975,12 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                         //}
                     }
 
-                    if (spellId && m_caster->GetTypeId() == TYPEID_PLAYER && !((Player*)m_caster)->HasSpellCooldown(spellId))
+                    if (spellId && !m_caster->HasSpellCooldown(spellId))
                     {
                         m_caster->CastCustomSpell(target, spellId, &basePoint, 0, 0, true);
 
                         if (spellId == 53359) // Disarm from Chimera Shot should have 1 min cooldown
-                            ((Player*)m_caster)->AddSpellCooldown(spellId, 0, uint32(time(NULL) + MINUTE));
+                            m_caster->AddSpellCooldown(spellId, 0, uint32(time(NULL) + MINUTE));
                     }
 
                     return;
@@ -11218,8 +11206,8 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                         return;
                     }
                     finish(true);
-                    ((Player*)m_caster)->RemoveSpellCooldown(m_spellInfo->CalculateSimpleValue(EFFECT_INDEX_2),true);
-                    ((Player*)m_caster)->RemoveSpellCooldown(m_spellInfo->CalculateSimpleValue(EFFECT_INDEX_1),true);
+                    m_caster->RemoveSpellCooldown(m_spellInfo->CalculateSimpleValue(EFFECT_INDEX_2),true);
+                    m_caster->RemoveSpellCooldown(m_spellInfo->CalculateSimpleValue(EFFECT_INDEX_1),true);
                     CancelGlobalCooldown();
                     return;
                 }
@@ -12277,7 +12265,7 @@ void Spell::EffectSummonAllTotems(SpellEffectIndex eff_idx)
                         return;
                     }
 
-                    if (!((Player*)m_caster)->HasSpellCooldown(spell_Id))
+                    if (!m_caster->HasSpellCooldown(spell_Id))
                         m_caster->CastSpell(unitTarget,spellInfo,true);
                 }
 }
