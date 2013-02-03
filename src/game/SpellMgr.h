@@ -935,7 +935,10 @@ struct SpellTargetEntry
     uint32 targetEntry;
     uint32 invEffectMask;
 
-    bool CanHitWithSpellEffect(SpellEffectIndex effect) const;
+    bool CanHitWithSpellEffect(SpellEffectIndex effect) const
+    {
+        return invEffectMask ? !(invEffectMask & 1 << effect) :  true;
+    }
 };
 
 typedef UNORDERED_MULTIMAP<uint32,SpellTargetEntry> SpellScriptTarget;
