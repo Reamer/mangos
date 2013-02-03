@@ -5540,7 +5540,3 @@ void SpellMgr::LoadSpellDbc()
     }
 }
 
-bool SpellTargetEntry::CanHitWithSpellEffect(SpellEffectIndex effect) const
-{
-    return invEffectMask ? !(invEffectMask & 1 << effect) :  true;
-}
