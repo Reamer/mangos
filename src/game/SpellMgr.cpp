@@ -5539,3 +5539,9 @@ void SpellMgr::LoadSpellDbc()
         }
     }
 }
+
+bool SpellTargetEntry::CanHitWithSpellEffect(SpellEffectIndex effect) const
+{
+    sLog.outError("effect %u - inveffectMask %u",effect, invEffectMask);
+    return invEffectMask ? !(invEffectMask & 1 << effect) :  true;
+}
