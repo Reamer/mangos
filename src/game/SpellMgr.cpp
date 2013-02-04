@@ -2881,6 +2881,14 @@ float SpellMgr::GetSpellRadiusWithCustom(SpellEntry const* spellInfo, Unit const
                 case 56438:                                 // Arcane Overload
                     radius = radius * caster->GetObjectScale();
                     break;
+                case 70346:                                 // Slime Puddle (ICC - Professor Putricide)
+                case 72456:
+                case 72868:
+                case 72869:
+                    radius = 5.0f;
+                    if (SpellAuraHolderPtr holder = caster->GetSpellAuraHolder(70347))
+                        radius += holder->GetStackAmount() * 0.2f;
+                    break;
                 default:
                     break;
             }
