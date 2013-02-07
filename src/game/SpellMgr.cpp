@@ -2654,6 +2654,10 @@ uint32 SpellMgr::GetSpellMaxTargetsWithCustom(SpellEntry const* spellInfo, Unit 
                 case 72838:
                 case 70450:                                 // Blood Mirror
                 case 70837:                                 // Blood Mirror
+                case 70672:                                 // Gaseous Bloat (ICC, Professor Putricide)
+                case 72455:
+                case 72832:
+                case 72833:
                 case 70882:                                 // Slime Spray Summon Trigger (ICC, Rotface)
                 case 70911:                                 // Unbound Plague (ICC, Putricide)
                 case 72854:
