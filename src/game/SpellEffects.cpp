@@ -6841,7 +6841,7 @@ void Spell::DoSummonWild(SpellEffectIndex eff_idx, uint32 forceFaction)
         default:
             break;
     }
-    TempSummonType summonType = m_duration <= 0 ? TEMPSUMMON_DEAD_DESPAWN : TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT;
+    TempSummonType summonType = m_duration <= 0 ? TEMPSUMMON_DEAD_DESPAWN : TEMPSUMMON_TIMED_OR_DEAD_DESPAWN;
 
     uint32 uDuration = m_duration > 0 ? uint32(m_duration) : 0;
 
