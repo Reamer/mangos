@@ -2273,6 +2273,13 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
                 }
             }
 
+            /*
+             *  HACK for Tear Gas Cancel here we hit creatures like 37672, 37562, 37697 - Ooze, Gas and mutated abomination
+             *  But we should also hit Player
+             */
+            if (m_spellInfo->Id == 71620)
+                FillAreaTargets(targetUnitMap, radius, PUSH_DEST_CENTER, targetB);
+
             // exclude caster
             targetUnitMap.remove(m_caster);
             break;
