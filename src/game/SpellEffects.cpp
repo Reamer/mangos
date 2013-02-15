@@ -563,27 +563,29 @@ void Spell::EffectSchoolDMG(SpellEffectIndex effect_idx)
                         int32 extraDamage = 0;
                         damage = 1;
 
-                        SpellAuraHolderPtr holder = m_caster->GetSpellAuraHolder(70672);
-                        if (!holder)
-                            holder = m_caster->GetSpellAuraHolder(72455);
-                        if (!holder)
-                            holder = m_caster->GetSpellAuraHolder(72832);
-                        if (!holder)
-                            holder = m_caster->GetSpellAuraHolder(72833);
-
-                        if (holder)
+                        if (Unit* pVictim = m_caster->getVictim())
                         {
-                            stack = holder->GetStackAmount();
+                            SpellAuraHolderPtr holder = pVictim->GetSpellAuraHolder(70672);
+                            if (!holder)
+                                holder = pVictim->GetSpellAuraHolder(72455);
+                            if (!holder)
+                                holder = pVictim->GetSpellAuraHolder(72832);
+                            if (!holder)
+                                holder = pVictim->GetSpellAuraHolder(72833);
 
-                            if (m_caster->GetMap()->GetDifficulty() >= RAID_DIFFICULTY_25MAN_NORMAL)
-                                extraDamage = 1500;
-                            else
-                                extraDamage = 1250;
+                            if (holder)
+                            {
+                                stack = holder->GetStackAmount();
+
+                                if (pVictim->GetMap()->GetDifficulty() >= RAID_DIFFICULTY_25MAN_NORMAL)
+                                    extraDamage = 1500;
+                                else
+                                    extraDamage = 1250;
+                            }
+
+                            for (uint32 i = 1; i <= stack; ++i)
+                                damage += extraDamage * i;
                         }
-
-                        for (uint32 i = 1; i <= stack; ++i)
-                            damage += extraDamage * i;
-
                         break;
                     }
                     // Vampiric Bite (Queen Lana'thel)
