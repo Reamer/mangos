@@ -2928,15 +2928,15 @@ void Spell::SetTargetMap(SpellEffectIndex effIndex, uint32 targetMode, UnitList&
         }
         case TARGET_TABLE_X_Y_Z_COORDINATES:
         {
-            SpellTargetPosition const* st = sSpellMgr.GetSpellTargetPosition(m_spellInfo->Id);
+            WorldLocation const* st = sSpellMgr.GetSpellTargetPosition(m_spellInfo->Id);
             if (st)
             {
-                m_targets.setDestination(st->target_X, st->target_Y, st->target_Z);
+                m_targets.setDestination(st->x, st->y, st->z);
                 // TODO - maybe use an (internal) value for the map for neat far teleport handling
 
                 // far-teleport spells are handled in SpellEffect, elsewise report an error about an unexpected map (spells are always locally)
-                if (st->target_mapId != m_caster->GetMapId() && m_spellInfo->Effect[effIndex] != SPELL_EFFECT_TELEPORT_UNITS)
-                    sLog.outError( "SPELL: wrong map (%u instead %u) target coordinates for spell ID %u", st->target_mapId, m_caster->GetMapId(), m_spellInfo->Id);
+                if (st->GetMapId() != m_caster->GetMapId() && m_spellInfo->Effect[effIndex] != SPELL_EFFECT_TELEPORT_UNITS)
+                    sLog.outError( "SPELL: wrong map (%u instead %u) target coordinates for spell ID %u", st->GetMapId(), m_caster->GetMapId(), m_spellInfo->Id);
             }
             else
                 sLog.outError("SPELL: unknown target coordinates for spell ID %u", m_spellInfo->Id);
@@ -4522,7 +4522,7 @@ void Spell::SendSpellGo()
 
     m_caster->SendMessageToSet(&data, true);
 
-    DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST,"Spell::SendSpellGo: %s cast spell %u on %s, targets count (mask %u) %u %u %u",
+    DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST,"Spell::SendSpellGo: %s cast spell %u on %s, targets count (mask %u) "SIZEFMTD" "SIZEFMTD" "SIZEFMTD,
                 m_caster->GetObjectGuid().GetString().c_str(),
                 m_spellInfo->Id,
                 m_targets.getUnitTarget() ? m_targets.getUnitTarget()->GetObjectGuid().GetString().c_str() : "<none>",
@@ -4835,7 +4835,7 @@ void Spell::SendChannelUpdate(uint32 time)
         }
         else if (m_spellInfo->HasAttribute(SPELL_ATTR_EX_FARSIGHT) && m_caster->GetTypeId() == TYPEID_PLAYER)
         {
-            if (DynamicObject* dynObj = m_caster->GetDynObject(m_triggeredByAuraSpell ? m_triggeredByAuraSpell->Id : m_spellInfo->Id))
+            if (/*DynamicObject* dynObj = */m_caster->GetDynObject(m_triggeredByAuraSpell ? m_triggeredByAuraSpell->Id : m_spellInfo->Id))
                 ((Player*)m_caster)->SetViewPoint(NULL);
         }
 
@@ -8417,11 +8417,11 @@ bool Spell::FillCustomTargetMap(SpellEffectIndex i, UnitList &targetUnitMap)
         {
             if (m_spellInfo->Id == 29318)
             {
-                SpellTargetPosition const* st = sSpellMgr.GetSpellTargetPosition(m_spellInfo->Id);
+                WorldLocation const* st = sSpellMgr.GetSpellTargetPosition(m_spellInfo->Id);
                 if(st)
                 {
-                    if (st->target_mapId == m_caster->GetMapId())
-                        m_targets.setDestination(st->target_X, st->target_Y, st->target_Z);
+                    if (st->GetMapId() == m_caster->GetMapId())
+                        m_targets.setDestination(st->x, st->y, st->z);
                 }
             }
             UnitList tempTargetUnitMap1;    // all targets

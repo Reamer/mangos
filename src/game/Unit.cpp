@@ -192,7 +192,6 @@ void GlobalCooldownMgr::CancelGlobalCooldown(SpellEntry const* spellInfo)
 // Methods of class Unit
 
 Unit::Unit() :
-    movespline(new Movement::MoveSpline()),
     m_charmInfo(NULL),
     i_motionMaster(this),
     m_ThreatManager(*this),
@@ -329,7 +328,6 @@ Unit::~Unit()
         CleanupDeletedHolders(true);
 
         delete m_charmInfo;
-        delete movespline;
     }
     delete m_HostileRefManager;
 
@@ -564,11 +562,7 @@ bool Unit::CanReachWithMeleeAttack(Unit* pVictim, float flat_mod /*= 0.0f*/) con
     float reach = GetMeleeAttackDistance(pVictim) + flat_mod;
 
     // This check is not related to bounding radius of both units!
-    float dx = GetPositionX() - pVictim->GetPositionX();
-    float dy = GetPositionY() - pVictim->GetPositionY();
-    float dz = GetPositionZ() - pVictim->GetPositionZ();
-
-    return dx*dx + dy*dy + dz*dz < reach*reach;
+    return GetPosition().GetDistance(pVictim->GetPosition()) < reach;
 
 }
 
@@ -2228,7 +2222,7 @@ void Unit::CalculateDamageAbsorbAndResist(Unit *pCaster, DamageInfo* damageInfo,
     // Reflect damage spells (not cast any damage spell in aura lookup)
     uint32 reflectSpell = 0;
     int32  reflectDamage = 0;
-    Aura const*  reflectTriggeredBy = NULL;                       // expected as not expired at reflect as in current cases
+    AuraPair reflectTriggeredBy;                                      // expected as not expired at reflect as in current cases
     // Death Prevention Aura
     SpellEntry const*  preventDeathSpell = NULL;
     int32  preventDeathAmount = 0;
@@ -2355,7 +2349,7 @@ void Unit::CalculateDamageAbsorbAndResist(Unit *pCaster, DamageInfo* damageInfo,
                         else
                             reflectDamage = currentAbsorb / 2;
                         reflectSpell = 33619;
-                        reflectTriggeredBy = (*i)();
+                        reflectTriggeredBy = *i;
                         break;
                     }
                     if (spellProto->Id == 39228 ||              // Argussian Compass
@@ -2474,7 +2468,7 @@ void Unit::CalculateDamageAbsorbAndResist(Unit *pCaster, DamageInfo* damageInfo,
                                     else
                                         reflectDamage = (*k)->GetModifier()->m_amount * RemainingDamage/100;
                                     reflectSpell = 33619;
-                                    reflectTriggeredBy = (*i)();
+                                    reflectTriggeredBy = *i;
                                     break;
                                 }
                                 default:
@@ -2590,12 +2584,8 @@ void Unit::CalculateDamageAbsorbAndResist(Unit *pCaster, DamageInfo* damageInfo,
     }
 
     // Cast back reflect damage spell
-    if (canReflect && reflectSpell)
-    {
-        reflectTriggeredBy->GetHolder()->SetInUse(true);                 // lock from deletion (possible redundant, need check)
-        CastCustomSpell(pCaster, reflectSpell, &reflectDamage, NULL, NULL, true, NULL, reflectTriggeredBy);
-        reflectTriggeredBy->GetHolder()->SetInUse(false);                // free lock from deletion
-    }
+    if (canReflect && reflectSpell && !reflectTriggeredBy.IsEmpty(false))
+        CastCustomSpell(pCaster, reflectSpell, &reflectDamage, NULL, NULL, true, NULL, reflectTriggeredBy());
 
     // absorb by mana cost
     AuraList const& vManaShield = GetAurasByType(SPELL_AURA_MANA_SHIELD);
@@ -4343,7 +4333,7 @@ void Unit::SetInFront(Unit const* target)
 
 void Unit::SetFacingTo(float ori)
 {
-    Movement::MoveSplineInit init(*this);
+    Movement::MoveSplineInit<Unit*> init(*this);
     init.SetFacing(ori);
     init.Launch();
 }
@@ -7476,12 +7466,9 @@ float Unit::GetCombatDistance( const Unit* target ) const
     if (!target)
         return 0.0f;
 
-    float radius = target->GetFloatValue(UNIT_FIELD_COMBATREACH) + GetFloatValue(UNIT_FIELD_COMBATREACH);
-    float dx = GetPositionX() - target->GetPositionX();
-    float dy = GetPositionY() - target->GetPositionY();
-    float dz = GetPositionZ() - target->GetPositionZ();
-    float dist = sqrt((dx*dx) + (dy*dy) + (dz*dz)) - radius;
-    return ( dist > 0 ? dist : 0);
+    float radius = GetFloatValue(UNIT_FIELD_COMBATREACH) + target->GetFloatValue(UNIT_FIELD_COMBATREACH);
+    float dist = GetPosition().GetDistance(target->GetPosition()) - radius;
+    return (dist > M_NULL_F ? dist : 0.0f);
 }
 
 void Unit::SetPet(Pet* pet)
@@ -8560,32 +8547,52 @@ bool Unit::IsSpellCrit(Unit *pVictim, SpellEntry const *spellProto, SpellSchoolM
             break;
         }
         case SPELL_DAMAGE_CLASS_MELEE:
-            // Rend and Tear crit chance with Ferocious Bite on bleeding target
-            if (spellProto->SpellFamilyName == SPELLFAMILY_DRUID)
+        {
+            // Custom crit by class
+            switch (spellProto->SpellFamilyName)
             {
-                if (spellProto->GetSpellFamilyFlags().test<CF_DRUID_RIP_BITE>())
+                case SPELLFAMILY_WARRIOR:
                 {
-                    if (pVictim->HasAuraState(AURA_STATE_BLEEDING))
+                    // Victory Rush
+                    if (spellProto->GetSpellFamilyFlags().test<CF_WARRIOR_VICTORY_RUSH>())
                     {
-                        Unit::AuraList const& aura = GetAurasByType(SPELL_AURA_DUMMY);
-                        for(Unit::AuraList::const_iterator itr = aura.begin(); itr != aura.end(); ++itr)
+                        // Glyph of Victory Rush
+                        if (Aura* aura = GetAura(58382, EFFECT_INDEX_0))
+                            crit_chance += aura->GetModifier()->m_amount;
+                    }
+                    break;
+                }
+                case SPELLFAMILY_DRUID:
+                {
+                    // Rend and Tear crit chance with Ferocious Bite on bleeding target
+                    if (spellProto->GetSpellFamilyFlags().test<CF_DRUID_RIP_BITE>())
+                    {
+                        if (pVictim && pVictim->HasAuraState(AURA_STATE_BLEEDING))
                         {
-                            if ((*itr)->GetSpellProto()->SpellIconID == 2859 && (*itr)->GetEffIndex() == 1)
+                            Unit::AuraList const& aura = GetAurasByType(SPELL_AURA_DUMMY);
+                            for(Unit::AuraList::const_iterator itr = aura.begin(); itr != aura.end(); ++itr)
                             {
-                                crit_chance += (*itr)->GetModifier()->m_amount;
-                                break;
+                                if ((*itr)->GetSpellProto()->SpellIconID == 2859 && (*itr)->GetEffIndex() == 1)
+                                {
+                                    crit_chance += (*itr)->GetModifier()->m_amount;
+                                    break;
+                                }
                             }
                         }
                     }
+                    break;
                 }
+                default:
+                    break;
             }
             /* no break */
+        }
         case SPELL_DAMAGE_CLASS_RANGED:
         {
             if (pVictim)
                 crit_chance += GetUnitCriticalChance(attackType, pVictim);
 
-            crit_chance+= GetTotalAuraModifierByMiscMask(SPELL_AURA_MOD_SPELL_CRIT_CHANCE_SCHOOL, schoolMask);
+            crit_chance += GetTotalAuraModifierByMiscMask(SPELL_AURA_MOD_SPELL_CRIT_CHANCE_SCHOOL, schoolMask);
             break;
         }
         default:
@@ -12434,7 +12441,7 @@ void Unit::StopMoving()
     if (!IsInWorld())
         return;
 
-    Movement::MoveSplineInit init(*this);
+    Movement::MoveSplineInit<Unit*> init(*this);
     init.SetFacing(GetOrientation());
     init.Launch();
 }
@@ -14008,9 +14015,6 @@ bool Unit::HasMorePoweredBuff(uint32 spellId)
 
 void Unit::UpdateSplineMovement(uint32 t_diff)
 {
-    enum{
-        POSITION_UPDATE_DELAY = 400,
-    };
 
     if (movespline->Finalized())
         return;
@@ -14024,7 +14028,7 @@ void Unit::UpdateSplineMovement(uint32 t_diff)
     m_movesplineTimer.Update(t_diff);
     if (m_movesplineTimer.Passed() || arrived)
     {
-        m_movesplineTimer.Reset(POSITION_UPDATE_DELAY);
+        m_movesplineTimer.Reset(sWorld.getConfig(CONFIG_UINT32_POSITION_UPDATE_DELAY));
         Location loc = movespline->ComputePosition();
 
         if (IsBoarded())

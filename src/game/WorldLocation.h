@@ -55,6 +55,8 @@ struct MANGOS_DLL_SPEC Location : public Vector3
 
     float GetDistance(Location const& loc) const;
 
+    bool IsEmpty() const;
+
     union
     {
         float orientation;
@@ -163,6 +165,8 @@ struct MANGOS_DLL_SPEC WorldLocation : public Position
     WorldLocation& operator = (WorldLocation const& loc);
 
     float GetDistance(WorldLocation const& loc) const;
+
+    float GetDistance(Location const& loc) const;
 
     private:
     int32     mapid;                      // mapid    = -1 for not fully initialized WorldLocation

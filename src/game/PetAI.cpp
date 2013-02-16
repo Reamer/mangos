@@ -195,7 +195,7 @@ void PetAI::Reset()
 
     m_creature->GetMotionMaster()->MoveTargetedHome();
 
-    DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS,"PetAI::Reset %s, AI %u dist %f, spells: %u %u %u %u %u %u %u %u %u %u %u %u",
+    DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS,"PetAI::Reset %s, AI %u dist %f, spells: "SIZEFMTD" "SIZEFMTD" "SIZEFMTD" "SIZEFMTD" "SIZEFMTD" "SIZEFMTD" "SIZEFMTD" "SIZEFMTD" "SIZEFMTD" "SIZEFMTD" "SIZEFMTD" "SIZEFMTD ,
         m_creature->GetObjectGuid().GetString().c_str(),
         m_AIType,
         m_attackDistance,
@@ -792,7 +792,6 @@ void PetAI::UpdateAI(const uint32 diff)
             }
         }
     }
-
 }
 
 bool PetAI::_isVisible(Unit *u) const

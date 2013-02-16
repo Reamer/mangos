@@ -1216,22 +1216,20 @@ void SpellMgr::LoadSpellTargetPositions()
 
         uint32 Spell_ID = fields[0].GetUInt32();
 
-        SpellTargetPosition st;
+        WorldLocation st = WorldLocation(fields[1].GetUInt32(),
+                                         fields[2].GetFloat(),
+                                         fields[3].GetFloat(),
+                                         fields[4].GetFloat(),
+                                         fields[5].GetFloat());
 
-        st.target_mapId       = fields[1].GetUInt32();
-        st.target_X           = fields[2].GetFloat();
-        st.target_Y           = fields[3].GetFloat();
-        st.target_Z           = fields[4].GetFloat();
-        st.target_Orientation = fields[5].GetFloat();
-
-        MapEntry const* mapEntry = sMapStore.LookupEntry(st.target_mapId);
+        MapEntry const* mapEntry = sMapStore.LookupEntry(st.GetMapId());
         if (!mapEntry)
         {
-            sLog.outErrorDb("Spell (ID:%u) target map (ID: %u) does not exist in `Map.dbc`.",Spell_ID,st.target_mapId);
+            sLog.outErrorDb("Spell (ID:%u) target map (ID: %u) does not exist in `Map.dbc`.",Spell_ID,st.GetMapId());
             continue;
         }
 
-        if (st.target_X==0 && st.target_Y==0 && st.target_Z==0)
+        if (fabs(st.x) < M_NULL_F && fabs(st.y) < M_NULL_F && fabs(st.z) < M_NULL_F)
         {
             sLog.outErrorDb("Spell (ID:%u) target coordinates not provided.",Spell_ID);
             continue;
@@ -1253,7 +1251,7 @@ void SpellMgr::LoadSpellTargetPositions()
                 // additional requirements
                 if (spellInfo->Effect[i]==SPELL_EFFECT_BIND && spellInfo->EffectMiscValue[i])
                 {
-                    uint32 zone_id = sTerrainMgr.GetAreaId(st.target_mapId, st.target_X, st.target_Y, st.target_Z);
+                    uint32 zone_id = st.GetZoneId();
                     if (int32(zone_id) != spellInfo->EffectMiscValue[i])
                     {
                         sLog.outErrorDb("Spell (Id: %u) listed in `spell_target_position` expected point to zone %u bit point to zone %u.",Spell_ID, spellInfo->EffectMiscValue[i], zone_id);
@@ -2507,6 +2505,9 @@ bool SpellMgr::IsTargetMatchedWithCreatureType(SpellEntry const* pSpellInfo, Uni
 {
     uint32 spellCreatureTargetMask = pSpellInfo->TargetCreatureType;
 
+    if (IsSpellWithCasterSourceTargetsOnly(pSpellInfo))
+        return true;
+
     // Curse of Doom: not find another way to fix spell target check :/
     if (pSpellInfo->SpellFamilyName == SPELLFAMILY_WARLOCK && pSpellInfo->Category == 1179)
     {
@@ -2850,10 +2851,6 @@ float SpellMgr::GetSpellRadiusWithCustom(SpellEntry const* spellInfo, Unit const
                 case 73143:                                 // Bone Spike Graveyard (during Bone Storm) (Icecrown Citadel, Lord Marrowgar encounter, 25N)
                 case 73144:                                 // Bone Spike Graveyard (during Bone Storm) (Icecrown Citadel, Lord Marrowgar encounter, 10H)
                 case 73145:                                 // Bone Spike Graveyard (during Bone Storm) (Icecrown Citadel, Lord Marrowgar encounter, 25H)
-                case 69195:                                 // Pungent Blight
-                case 71219:
-                case 73031:
-                case 73032:
                     radius = DEFAULT_VISIBILITY_INSTANCE;
                     break;
                 case 72350:                                 // Fury of Frostmourne
@@ -5551,4 +5548,3 @@ void SpellMgr::LoadSpellDbc()
         }
     }
 }
-

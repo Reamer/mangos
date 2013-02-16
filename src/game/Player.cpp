@@ -2116,7 +2116,6 @@ void Player::AddToWorld()
         if (m_items[i])
             m_items[i]->AddToWorld();
     }
-    SetViewPoint(NULL);
 }
 
 void Player::RemoveFromWorld(bool remove)
@@ -15917,8 +15916,8 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder)
                 }
                 else
                 {
-                    SetLocationMapId(at->target_mapId);
-                    Relocate(at->target_X, at->target_Y, at->target_Z, at->target_Orientation);
+                    SetLocationMapId(at->loc.GetMapId());
+                    Relocate(at->loc);
                 }
             }
             else
@@ -16427,7 +16426,7 @@ void Player::_LoadAuras(QueryResult *result, uint32 timediff)
 
             if (caster_guid.IsEmpty() || !caster_guid.IsUnit())
             {
-                sLog.outError("Player::LoadAuras Unknown caster %u, ignore.",fields[0].GetUInt64());
+                sLog.outError("Player::LoadAuras Unknown caster %lu, ignore.",fields[0].GetUInt64());
                 continue;
             }
 
@@ -18398,8 +18397,11 @@ void Player::_SaveSpells()
     SqlStatement stmtDel = CharacterDatabase.CreateStatement(delSpells, "DELETE FROM character_spell WHERE guid = ? and spell = ?");
     SqlStatement stmtIns = CharacterDatabase.CreateStatement(insSpells, "INSERT INTO character_spell (guid,spell,active,disabled) VALUES (?, ?, ?, ?)");
 
-    for (PlayerSpellMap::iterator itr = m_spells.begin(), next = m_spells.begin(); itr != m_spells.end();)
+    PlayerSpellMap::iterator itr, next;
+    for (itr = m_spells.begin(); itr != m_spells.end(); itr = next)
     {
+        next = itr;
+        ++next;
         uint32 talentCosts = GetTalentSpellCost(itr->first);
 
         if (!talentCosts)
@@ -18413,13 +18415,11 @@ void Player::_SaveSpells()
         }
 
         if (itr->second.state == PLAYERSPELL_REMOVED)
-            m_spells.erase(itr++);
+            m_spells.erase(itr);
         else
         {
             itr->second.state = PLAYERSPELL_UNCHANGED;
-            ++itr;
         }
-
     }
 }
 
@@ -20655,6 +20655,7 @@ void Player::SendInitialPacketsBeforeAddToMap()
         m_movementInfo.AddMovementFlag(MOVEFLAG_FLYING);
 
     SetMover(this);
+    SetViewPoint(NULL);
 }
 
 void Player::SendInitialPacketsAfterAddToMap()
@@ -23886,18 +23887,18 @@ void Player::LoadAccountLinkedState()
     if (referredAccounts)
     {
         if (referredAccounts->size() > sWorld.getConfig(CONFIG_UINT32_RAF_MAXREFERERS))
-            sLog.outError("Player:RAF:Warning: loaded %u referred accounts instead of %u for player %s",referredAccounts->size(),sWorld.getConfig(CONFIG_UINT32_RAF_MAXREFERERS),GetObjectGuid().GetString().c_str());
+            sLog.outError("Player:RAF:Warning: loaded "SIZEFMTD" referred accounts instead of %u for player %s",referredAccounts->size(),sWorld.getConfig(CONFIG_UINT32_RAF_MAXREFERERS),GetObjectGuid().GetString().c_str());
         else
-            DEBUG_LOG("Player:RAF: loaded %u referred accounts for player %s",referredAccounts->size(),GetObjectGuid().GetString().c_str());
+            DEBUG_LOG("Player:RAF: loaded "SIZEFMTD" referred accounts for player %s",referredAccounts->size(),GetObjectGuid().GetString().c_str());
     }
 
     RafLinkedList const* referalAccounts = sAccountMgr.GetRAFAccounts(GetSession()->GetAccountId(), false);
     if (referalAccounts)
     {
         if (referalAccounts->size() > sWorld.getConfig(CONFIG_UINT32_RAF_MAXREFERALS))
-            sLog.outError("Player:RAF:Warning: loaded %u referal accounts instead of %u for player %s",referalAccounts->size(),sWorld.getConfig(CONFIG_UINT32_RAF_MAXREFERALS),GetObjectGuid().GetString().c_str());
+            sLog.outError("Player:RAF:Warning: loaded "SIZEFMTD" referal accounts instead of %u for player %s",referalAccounts->size(),sWorld.getConfig(CONFIG_UINT32_RAF_MAXREFERALS),GetObjectGuid().GetString().c_str());
         else
-            DEBUG_LOG("Player:RAF: loaded %u referal accounts for player %s",referalAccounts->size(),GetObjectGuid().GetString().c_str());
+            DEBUG_LOG("Player:RAF: loaded "SIZEFMTD" referal accounts for player %s",referalAccounts->size(),GetObjectGuid().GetString().c_str());
     }
 }
 
@@ -23929,11 +23930,11 @@ AreaLockStatus Player::GetAreaTriggerLockStatus(AreaTrigger const* at, Difficult
     if (!at)
         return AREA_LOCKSTATUS_UNKNOWN_ERROR;
 
-    MapEntry const* mapEntry = sMapStore.LookupEntry(at->target_mapId);
+    MapEntry const* mapEntry = sMapStore.LookupEntry(at->loc.GetMapId());
     if (!mapEntry)
         return AREA_LOCKSTATUS_UNKNOWN_ERROR;
 
-    MapDifficultyEntry const* mapDiff = GetMapDifficultyData(at->target_mapId,difficulty);
+    MapDifficultyEntry const* mapDiff = GetMapDifficultyData(at->loc.GetMapId(),difficulty);
     if (mapEntry->IsDungeon() && !mapDiff)
         return AREA_LOCKSTATUS_MISSING_DIFFICULTY;
 
@@ -24017,8 +24018,8 @@ AreaLockStatus Player::GetAreaTriggerLockStatus(AreaTrigger const* at, Difficult
     }
 
     // If the map is not created, assume it is possible to enter it.
-    DungeonPersistentState* state = GetBoundInstanceSaveForSelfOrGroup(at->target_mapId);
-    Map* map = sMapMgr.FindMap(at->target_mapId, state ? state->GetInstanceId() : 0);
+    DungeonPersistentState* state = GetBoundInstanceSaveForSelfOrGroup(at->loc.GetMapId());
+    Map* map = sMapMgr.FindMap(at->loc.GetMapId(), state ? state->GetInstanceId() : 0);
 
     if (map && at->combatMode == 1)
     {
@@ -24034,7 +24035,7 @@ AreaLockStatus Player::GetAreaTriggerLockStatus(AreaTrigger const* at, Difficult
         if (((DungeonMap*)map)->GetPlayersCountExceptGMs() >= ((DungeonMap*)map)->GetMaxPlayers())
             return AREA_LOCKSTATUS_INSTANCE_IS_FULL;
 
-        InstancePlayerBind* pBind = GetBoundInstance(at->target_mapId, GetDifficulty(mapEntry->IsRaid()));
+        InstancePlayerBind* pBind = GetBoundInstance(at->loc.GetMapId(), GetDifficulty(mapEntry->IsRaid()));
         if (pBind && pBind->perm && pBind->state != state)
             return AREA_LOCKSTATUS_HAS_BIND;
 
@@ -24096,10 +24097,10 @@ bool Player::CheckTransferPossibility(AreaTrigger const*& at, bool b_onlyMainReq
     if (!at)
         return false;
 
-    if (at->target_mapId == GetMapId())
+    if (at->loc.GetMapId() == GetMapId())
         return true;
 
-    MapEntry const* targetMapEntry = sMapStore.LookupEntry(at->target_mapId);
+    MapEntry const* targetMapEntry = sMapStore.LookupEntry(at->loc.GetMapId());
 
     if (!targetMapEntry)
         return false;
@@ -24135,11 +24136,11 @@ bool Player::CheckTransferPossibility(AreaTrigger const*& at, bool b_onlyMainReq
             }
 
             // need find areatrigger to inner dungeon for landing point
-            if (at->target_mapId != corpseMapId)
+            if (at->loc.GetMapId() != corpseMapId)
             {
                 if (AreaTrigger const* corpseAt = sObjectMgr.GetMapEntranceTrigger(corpseMapId))
                 {
-                    targetMapEntry = sMapStore.LookupEntry(corpseAt->target_mapId);
+                    targetMapEntry = sMapStore.LookupEntry(corpseAt->loc.GetMapId());
                     at = corpseAt;
                 }
             }
@@ -24152,7 +24153,7 @@ bool Player::CheckTransferPossibility(AreaTrigger const*& at, bool b_onlyMainReq
 
     AreaLockStatus status = GetAreaTriggerLockStatus(at, GetDifficulty(targetMapEntry->IsRaid()));
 
-    DEBUG_LOG("Player::CheckTransferPossibility %s check lock status of map %u (difficulty %u), result is %u", GetGuidStr().c_str(), at->target_mapId, GetDifficulty(targetMapEntry->IsRaid()), status);
+    DEBUG_LOG("Player::CheckTransferPossibility %s check lock status of map %u (difficulty %u), result is %u", GetGuidStr().c_str(), at->loc.GetMapId(), GetDifficulty(targetMapEntry->IsRaid()), status);
 
     if (b_onlyMainReq)
     {
@@ -24177,13 +24178,13 @@ bool Player::CheckTransferPossibility(AreaTrigger const*& at, bool b_onlyMainReq
             GetSession()->SendAreaTriggerMessage(GetSession()->GetMangosString(LANG_LEVEL_MINREQUIRED), at->requiredLevel);
             return false;
         case AREA_LOCKSTATUS_ZONE_IN_COMBAT:
-            SendTransferAborted(at->target_mapId, TRANSFER_ABORT_ZONE_IN_COMBAT);
+            SendTransferAborted(at->loc.GetMapId(), TRANSFER_ABORT_ZONE_IN_COMBAT);
             return false;
         case AREA_LOCKSTATUS_INSTANCE_IS_FULL:
-            SendTransferAborted(at->target_mapId, TRANSFER_ABORT_MAX_PLAYERS);
+            SendTransferAborted(at->loc.GetMapId(), TRANSFER_ABORT_MAX_PLAYERS);
             return false;
         case AREA_LOCKSTATUS_QUEST_NOT_COMPLETED:
-            if (at->target_mapId == 269)
+            if (at->loc.GetMapId() == 269)
             {
                 GetSession()->SendAreaTriggerMessage(GetSession()->GetMangosString(LANG_TELEREQ_QUEST_BLACK_MORASS));
                 return false;
@@ -24203,25 +24204,25 @@ bool Player::CheckTransferPossibility(AreaTrigger const*& at, bool b_onlyMainReq
         case AREA_LOCKSTATUS_MISSING_DIFFICULTY:
             {
                 Difficulty difficulty = GetDifficulty(targetMapEntry->IsRaid());
-                SendTransferAborted(at->target_mapId, TRANSFER_ABORT_DIFFICULTY, difficulty > RAID_DIFFICULTY_10MAN_HEROIC ? RAID_DIFFICULTY_10MAN_HEROIC : difficulty);
+                SendTransferAborted(at->loc.GetMapId(), TRANSFER_ABORT_DIFFICULTY, difficulty > RAID_DIFFICULTY_10MAN_HEROIC ? RAID_DIFFICULTY_10MAN_HEROIC : difficulty);
                 return false;
             }
         case AREA_LOCKSTATUS_INSUFFICIENT_EXPANSION:
-            SendTransferAborted(at->target_mapId, TRANSFER_ABORT_INSUF_EXPAN_LVL, targetMapEntry->Expansion());
+            SendTransferAborted(at->loc.GetMapId(), TRANSFER_ABORT_INSUF_EXPAN_LVL, targetMapEntry->Expansion());
             return false;
         case AREA_LOCKSTATUS_NOT_ALLOWED:
         case AREA_LOCKSTATUS_HAS_BIND:
-            SendTransferAborted(at->target_mapId, TRANSFER_ABORT_MAP_NOT_ALLOWED);
+            SendTransferAborted(at->loc.GetMapId(), TRANSFER_ABORT_MAP_NOT_ALLOWED);
             return false;
         // TODO: messages for other cases
         case AREA_LOCKSTATUS_RAID_LOCKED:
-            SendTransferAborted(at->target_mapId, TRANSFER_ABORT_NEED_GROUP);
+            SendTransferAborted(at->loc.GetMapId(), TRANSFER_ABORT_NEED_GROUP);
             return false;
         // TODO: messages for other cases
         case AREA_LOCKSTATUS_UNKNOWN_ERROR:
         default:
-            SendTransferAborted(at->target_mapId, TRANSFER_ABORT_ERROR);
-            sLog.outError("Player::CheckTransferPossibility player %s has unhandled AreaLockStatus %u in map %u (difficulty %u), do nothing", GetGuidStr().c_str(), status, at->target_mapId, GetDifficulty(targetMapEntry->IsRaid()));
+            SendTransferAborted(at->loc.GetMapId(), TRANSFER_ABORT_ERROR);
+            sLog.outError("Player::CheckTransferPossibility player %s has unhandled AreaLockStatus %u in map %u (difficulty %u), do nothing", GetGuidStr().c_str(), status, at->loc.GetMapId(), GetDifficulty(targetMapEntry->IsRaid()));
             return false;
     }
 

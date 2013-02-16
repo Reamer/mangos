@@ -18,10 +18,12 @@
 
 #ifndef MANGOS_CALENDAR_H
 #define MANGOS_CALENDAR_H
+
 #include "Policies/Singleton.h"
 #include "Common.h"
 #include "ObjectGuid.h"
 #include "SharedDefines.h"
+#include "World.h"
 
 enum CalendarEventType
 {
@@ -222,6 +224,28 @@ class CalendarMgr : public MaNGOS::Singleton<CalendarMgr, MaNGOS::ClassLevelLock
         uint32 GenerateEventLowGuid()                    { return m_EventGuids.Generate();  }
         uint32 GenerateInviteLowGuid()                   { return m_InviteGuids.Generate(); }
 
+        // remapping DB ids
+        #define DELETED_ID UINT32_MAX
+        enum TRemapAction
+        {
+            RA_DEL_EXPIRED,
+            RA_REMAP_EVENTS,
+            RA_REMAP_INVITES
+        };
+        typedef std::pair<uint32, uint32> TRemapGee;
+        typedef std::list<TRemapGee> TRemapData;
+
+        struct IsNotRemap { bool operator() (const TRemapGee& gee) { return gee.first == gee.second || gee.second == DELETED_ID; } };
+
+        bool IsEventReadyForRemove(time_t eventTime)
+        {
+            int32 delaySec = sWorld.getConfig(CONFIG_INT32_CALENDAR_REMOVE_EXPIRED_EVENTS_DELAY);
+            return delaySec < 0 ? false : eventTime + time_t(delaySec) <= time(NULL);
+        }
+        void DBRemap(TRemapAction remapAction, TRemapData& remapData, bool& dbTransactionUsed);
+        void DBRemoveExpiredEventsAndRemapData();
+
+        // utils
         inline bool IsDeletedEvent(CalendarEventStore::const_iterator iter) { return iter->second.HasFlag(CALENDAR_STATE_FLAG_DELETED); }
         inline bool IsValidEvent(CalendarEventStore::const_iterator iter) { return iter != m_EventStore.end() && !IsDeletedEvent(iter); }
 

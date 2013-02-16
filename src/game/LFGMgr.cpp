@@ -1715,11 +1715,11 @@ void LFGMgr::Teleport(Player* pPlayer, bool out, bool fromOpcode /*= false*/)
         }
         else if (AreaTrigger const* at = sObjectMgr.GetMapEntranceTrigger(dungeon->map))
         {
-            mapid = at->target_mapId;
-            x = at->target_X;
-            y = at->target_Y;
-            z = at->target_Z;
-            orientation = at->target_Orientation;
+            mapid = at->loc.GetMapId();
+            x = at->loc.x;
+            y = at->loc.y;
+            z = at->loc.z;
+            orientation = at->loc.o;
         }
         else
         {
@@ -2064,8 +2064,8 @@ void LFGMgr::SetRoles(LFGRolesMap* rolesMap)
         return;
     DEBUG_LOG("LFGMgr::SetRoles set roles for rolesmap size = %u",uint8(rolesMap->size()));
 
-    LFGRoleMask oldRoles;
-    LFGRoleMask newRole;
+    LFGRoleMask oldRoles = LFG_ROLE_MASK_NONE;
+    LFGRoleMask newRole = LFG_ROLE_MASK_NONE;
     ObjectGuid  tankGuid;
     ObjectGuid  healGuid;
 
@@ -2081,7 +2081,7 @@ void LFGMgr::SetRoles(LFGRolesMap* rolesMap)
     if (tmpMap.size() == 1)
     {
         tankGuid = tmpMap.begin()->first;
-        newRole    = LFGRoleMask(tmpMap.begin()->second & ~LFG_ROLE_MASK_HEALER_DAMAGE);
+        newRole = LFGRoleMask(tmpMap.begin()->second & ~LFG_ROLE_MASK_HEALER_DAMAGE);
     }
     else
     {
@@ -2090,7 +2090,7 @@ void LFGMgr::SetRoles(LFGRolesMap* rolesMap)
             tankGuid = itr->first;
             LFGRolesMap::iterator itr2 = rolesMap->find(tankGuid);
             oldRoles = itr2->second;
-            newRole    = LFGRoleMask(itr->second & ~LFG_ROLE_MASK_HEALER_DAMAGE);
+            newRole = LFGRoleMask(itr->second & ~LFG_ROLE_MASK_HEALER_DAMAGE);
 
             itr2->second = LFGRoleMask(newRole);
 
@@ -2302,7 +2302,7 @@ bool LFGMgr::TryAddMembersToGroup(Group* pGroup, GuidSet const* players)
 // no GuidSet Pointer because with this copy of GuidSet we make maybe a Proposal
 void LFGMgr::CompleteGroup(Group* pGroup, GuidSet players, LFGDungeonEntry const* dungeon)
 {
-    DEBUG_LOG("LFGMgr:CompleteGroup: Try complete group %u with %u players", pGroup->GetObjectGuid().GetCounter(), players.size());
+    DEBUG_LOG("LFGMgr:CompleteGroup: Try complete group %u with "SIZEFMTD" players", pGroup->GetObjectGuid().GetCounter(), players.size());
     LFGDungeonEntry const* chosenDungeon;
     // if we have already a chosen dungeon, then use it. This Group is in Offer Continue
     if (pGroup->GetLFGGroupState()->GetChosenDungeon())
@@ -2317,7 +2317,7 @@ void LFGMgr::CompleteGroup(Group* pGroup, GuidSet players, LFGDungeonEntry const
     {
         SetGroupRoles(pGroup, &players);
         uint32 ID = CreateProposal(chosenDungeon, pGroup, players);
-        DEBUG_LOG("LFGMgr:CompleteGroup: dungeons for group %u with %u players found, created proposal %u", pGroup->GetObjectGuid().GetCounter(), players.size(), ID);
+        DEBUG_LOG("LFGMgr:CompleteGroup: dungeons for group %u with "SIZEFMTD" players found, created proposal %u", pGroup->GetObjectGuid().GetCounter(), players.size(), ID);
     }
 }
 
@@ -2340,7 +2340,7 @@ bool LFGMgr::TryCreateGroup()
         if (type == LFG_TYPE_RAID || type == LFG_TYPE_NONE || type == LFG_TYPE_MAX) // the last two cases should never appear, but for save we continue
             continue;
 
-        DEBUG_LOG("LFGMgr:TryCreateGroup: Try create group  with %u players", players.size());
+        DEBUG_LOG("LFGMgr:TryCreateGroup: Try create group  with "SIZEFMTD" players", players.size());
 
         GuidSet newGroup;
         for (GuidSet::const_iterator playersitr = players.begin(); playersitr != players.end(); ++playersitr)
@@ -2491,7 +2491,7 @@ void LFGMgr::SendStatistic()
         LFGQueueInfo const* info = &infoMapitr->second;
         GuidSet groupGuids = info->groupGuids;
         GuidSet playerGuids = info->playerGuids;
-        DEBUG_LOG("LFGMgr::SendStatistic: DungeonID %u with %u Groups and %u Players", dungeon->ID, groupGuids.size(), playerGuids.size());
+        DEBUG_LOG("LFGMgr::SendStatistic: DungeonID %u with "SIZEFMTD" Groups and "SIZEFMTD" Players", dungeon->ID, groupGuids.size(), playerGuids.size());
         switch (LFGType(dungeon->type))
         {
             case LFG_TYPE_RAID:
