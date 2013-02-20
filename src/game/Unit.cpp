@@ -3549,19 +3549,11 @@ SpellMissInfo Unit::MagicSpellHitResult(Unit* pVictim, SpellEntry const* spell)
 SpellMissInfo Unit::SpellResistResult(Unit* pVictim, SpellEntry const* spell)
 {
     // Only binary resisted spells calculated here
-    if (!spell ||  !IsBinaryResistedSpell(spell))
+    if (!spell || !IsBinaryResistedSpell(spell))
         return SPELL_MISS_NONE;
 
     // Can`t resist on dead target
     if (!pVictim->isAlive())
-        return SPELL_MISS_NONE;
-
-    // Seems as spell this type cannot be resisted. but this may be not true.
-    if (spell->HasAttribute(SPELL_ATTR_UNAFFECTED_BY_INVULNERABILITY) || spell->HasAttribute(SPELL_ATTR_EX4_IGNORE_RESISTANCES))
-        return SPELL_MISS_NONE;
-
-    // Spell this type can't be resisted
-    if ((spell->SchoolMask & SPELL_SCHOOL_MASK_NORMAL) || spell->HasAttribute(SPELL_ATTR_EX3_CANT_MISS))
         return SPELL_MISS_NONE;
 
     // Impossible resist friendly spells
