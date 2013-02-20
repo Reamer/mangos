@@ -3546,10 +3546,10 @@ SpellMissInfo Unit::MagicSpellHitResult(Unit* pVictim, SpellEntry const* spell)
     return SPELL_MISS_NONE;
 }
 
-SpellMissInfo Unit::SpellResistResult(Unit* pVictim, SpellEntry const* spell)
+SpellMissInfo Unit::SpellResistResult(Unit* pVictim, SpellEntry const* spellInfo)
 {
     // Only binary resisted spells calculated here
-    if (!spell || !IsBinaryResistedSpell(spell))
+    if (!spellInfo || !IsBinaryResistedSpell(spellInfo))
         return SPELL_MISS_NONE;
 
     // Can`t resist on dead target
@@ -3557,85 +3557,21 @@ SpellMissInfo Unit::SpellResistResult(Unit* pVictim, SpellEntry const* spell)
         return SPELL_MISS_NONE;
 
     // Impossible resist friendly spells
-    if (!IsNonPositiveSpell(spell) && IsFriendlyTo(pVictim))
+    if (!IsNonPositiveSpell(spellInfo) && IsFriendlyTo(pVictim))
         return SPELL_MISS_NONE;
 
-    // Calculate binary resist chance part 1 - base (by level) resistance + chance modifications.
-    // Source of formulas - http://www.wowwiki.com/Formulas:Magical_resistance
-    int32 modBaseResistChance = CalculateBaseSpellHitChance(pVictim); // "negative" chance == "Not resist chance"
-
-    // Spellmod from SPELLMOD_RESIST_MISS_CHANCE
-    if (Player* modOwner = GetSpellModOwner())
-        modOwner->ApplySpellMod(spell->Id, SPELLMOD_RESIST_MISS_CHANCE, modBaseResistChance);
-
-    int32 modResistChance = modBaseResistChance;
-
-    // Reduce spell hit chance for dispel mechanic spells from victim SPELL_AURA_MOD_DISPEL_RESIST
-    if (IsDispelSpell(spell))
-        modResistChance -= pVictim->GetTotalAuraModifier(SPELL_AURA_MOD_DISPEL_RESIST);
-
-    // Chance resist mechanic (select max value from every mechanic spell effect)
-    int32 resist_mech = 0;
-
-    // Get effects mechanic and chance
-    for (uint8 eff = 0; eff < MAX_EFFECT_INDEX; ++eff)
-    {
-        int32 effect_mech = GetEffectMechanic(spell, SpellEffectIndex(eff));
-        if (effect_mech)
-        {
-            int32 temp = pVictim->GetTotalAuraModifierByMiscValue(SPELL_AURA_MOD_MECHANIC_RESISTANCE, effect_mech);
-            if (resist_mech < temp)
-                resist_mech = temp;
-
-            // crowd control effect, base resistance chance 5%
-            // to be confirmed: is there really base resistance to CC mechanics ?
-            // if ((1 << effect_mech) & IMMUNE_TO_MOVEMENT_IMPAIRMENT_AND_LOSS_CONTROL_MASK && resist_mech < 5)
-            //    resist_mech = 5;
-        }
-
-        // Need additional confirmation for next:
-        // if (spell->Effect[eff] == SPELL_EFFECT_APPLY_AURA && IsCrowdControlAura(AuraType(spell->EffectApplyAuraName[eff])))
-        //     resist_mech = 5;
-    }
-
-    // Apply mod
-    modResistChance -= resist_mech;
-
-    // Chance resist debuff
-    if (spell->HasAttribute(SPELL_ATTR_EX6_NO_STACK_DEBUFF_MAJOR))
-        modResistChance -= pVictim->GetTotalAuraModifierByMiscValue(SPELL_AURA_MOD_DEBUFF_RESISTANCE, int32(spell->Dispel));
-
-    DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST, "Unit::SpellResistResult  calculation part 1 (base - binary/hit resist chance): caster %s, target %s, spell %u, base:%i, mechanic:%i mod:%i",
-        GetObjectGuid().GetString().c_str(),
-        pVictim->GetObjectGuid().GetString().c_str(),
-        spell->Id,
-        modBaseResistChance,
-        resist_mech,
-        modResistChance
-        );
-
-    if (modResistChance <  0)
-        modResistChance =  0;
-    else if (modResistChance > 100)
-        modResistChance = 100;
-
-    int32 rand = irand(0,100);
-
-    if (rand > modResistChance)
-        return SPELL_MISS_RESIST;
-
-    // Part 2 not applyed to holy and melee spells.
-    if (spell->SchoolMask & (SPELL_SCHOOL_MASK_NORMAL | SPELL_SCHOOL_MASK_HOLY))
-        return SPELL_MISS_NONE;
-
-    // Calculate plain resistance chances (binary resistances part 2, formula from http://www.wowwiki.com/Resistance)
+    // Calculate plain resistance chances (binary resistances part, formula from http://www.wowwiki.com/Resistance)
     // http://www.wowwiki.com/Resistance - "Resistance reduces the chance for the binary spell to land by a certain percentage.
     // Spell hit will not reduce this chance. It is assumed that this percentage is exactly the damage reduction percentage given above."
 
     // Get base resistance values
-    uint32 targetResistance = pVictim->GetResistance(SpellSchoolMask(spell->SchoolMask));
+    uint32 targetResistance = pVictim->GetResistance(SpellSchoolMask(spellInfo->SchoolMask));
 
-    uint32 ignoreTargetResistance = GetTotalAuraModifierByMiscMask(SPELL_AURA_MOD_TARGET_RESISTANCE, spell->SchoolMask);
+    // Chance resist debuff
+    if (spellInfo->HasAttribute(SPELL_ATTR_EX6_NO_STACK_DEBUFF_MAJOR))
+        targetResistance += pVictim->GetTotalAuraModifierByMiscValue(SPELL_AURA_MOD_DEBUFF_RESISTANCE, int32(spellInfo->Dispel));
+
+    uint32 ignoreTargetResistance = GetTotalAuraModifierByMiscMask(SPELL_AURA_MOD_TARGET_RESISTANCE, spellInfo->SchoolMask);
     if (targetResistance < ignoreTargetResistance)
         targetResistance = 0;
     else
@@ -3646,10 +3582,10 @@ SpellMissInfo Unit::SpellResistResult(Unit* pVictim, SpellEntry const* spell)
     uint32 effectiveRR = targetResistance + std::max(((int)pVictim->GetLevelForTarget(this) - (int)GetLevelForTarget(pVictim)) * 5, 0) - std::min(targetResistance, spellPenetration);
     uint32 drp = uint32(100.0f * ((float)effectiveRR / (((pVictim->GetLevelForTarget(this) > 80) ? 510.0f : 400.0f) + (float)effectiveRR)));
 
-    DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST, "Unit::SpellResistResult  calculation part 2 (damage reduction percentage): caster %s, target %s, spell %u, targetResistance:%i, penetration:%u, effectiveRR:%u, DRP:%u",
+    DEBUG_FILTER_LOG(LOG_FILTER_SPELL_CAST, "Unit::SpellResistResult  calculation part (damage reduction percentage): caster %s, target %s, spell %u, targetResistance:%i, penetration:%u, effectiveRR:%u, DRP:%u",
         GetObjectGuid().GetString().c_str(),
         pVictim->GetObjectGuid().GetString().c_str(),
-        spell->Id,
+        spellInfo->Id,
         targetResistance,
         spellPenetration,
         effectiveRR,
@@ -3659,9 +3595,9 @@ SpellMissInfo Unit::SpellResistResult(Unit* pVictim, SpellEntry const* spell)
     if (drp >  75)
         drp =  75;
 
-    modResistChance = 100 - drp;
+    int32 modResistChance = 100 - drp;
 
-    rand = irand(0,100);
+    int32 rand = irand(0,100);
 
     if (rand > modResistChance)
         return SPELL_MISS_RESIST;
