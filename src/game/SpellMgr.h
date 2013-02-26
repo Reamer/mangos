@@ -659,9 +659,12 @@ inline Mechanics GetEffectMechanic(SpellEntry const* spellInfo, SpellEffectIndex
 
 inline bool IsBinaryResistedSpell(SpellEntry const* spellInfo) 
 {
+    if (!spellInfo)
+        return false;
+
     if (IsAreaOfEffectSpell(spellInfo) ||
             spellInfo->HasAttribute(SPELL_ATTR_EX6_EXPLICIT_NO_BINARY_RESIST) ||
-            spellInfo->HasAttribute(SPELL_ATTR_UNAFFECTED_BY_INVULNERABILITY) ||
+            spellInfo->HasAttribute(SPELL_ATTR_UNAFFECTED_BY_INVULNERABILITY) || //???
             spellInfo->HasAttribute(SPELL_ATTR_EX4_IGNORE_RESISTANCES) ||
            (spellInfo->SchoolMask & SPELL_SCHOOL_MASK_NORMAL) ||
             spellInfo->HasAttribute(SPELL_ATTR_EX3_CANT_MISS))
@@ -673,7 +676,7 @@ inline bool IsBinaryResistedSpell(SpellEntry const* spellInfo)
         return true;
 
     return false;
-};
+}
 
 inline uint32 GetDispellMask(DispelType dispel)
 {
