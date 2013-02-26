@@ -272,6 +272,13 @@ void  LFGGroupState::DecreaseKicksLeft()
         --m_uiKicksLeft;
 }
 
+LFGQueueInfo::LFGQueueInfo()
+{
+    groupGuids.clear();
+    playerGuids.clear();
+    ResetStats();
+}
+
 void LFGQueueInfo::ResetStats()
 {
     tanks    = 0;

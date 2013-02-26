@@ -275,7 +275,7 @@ struct LFGProposal
 // Stores player or group queue info
 struct LFGQueueInfo
 {
-    LFGQueueInfo() { ResetStats(); };
+    LFGQueueInfo();
     GuidSet groupGuids;
     GuidSet playerGuids;
 

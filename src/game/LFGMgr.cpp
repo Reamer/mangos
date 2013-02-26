@@ -490,9 +490,11 @@ void LFGMgr::AddToQueue(ObjectGuid guid, LFGDungeonEntry const* pDungeon)
 void LFGMgr::RemoveFromQueue(ObjectGuid guid)
 {
     WriteGuard Guard(GetLock());
-    LFGQueueInfoMap::iterator itr = m_queueInfoMap.begin();
-    while (itr != m_queueInfoMap.end())
+    LFGQueueInfoMap::iterator itr, next;
+    for (itr = m_queueInfoMap.begin(); itr != m_queueInfoMap.end(); itr = next)
     {
+        next = itr;
+        ++next;
         LFGDungeonEntry const* dungeon = itr->first;
         LFGQueueInfo* pInfo = &itr->second;
         DEBUG_LOG("LFGMgr::RemoveFromQueue: %s %u removed, dungeonID %u",(guid.IsGroup() ? "group" : "player"), guid.GetCounter(), dungeon->ID);
@@ -507,10 +509,8 @@ void LFGMgr::RemoveFromQueue(ObjectGuid guid)
         if (pInfo->playerGuids.empty() && pInfo->groupGuids.empty())
         {
             DEBUG_LOG("LFGMgr::RemoveFromQueue: dungeonID %u contains no members. Delete", dungeon->ID);
-            m_queueInfoMap.erase(itr++);
+            m_queueInfoMap.erase(itr);
         }
-        else
-            ++itr;
     }
 }
 
