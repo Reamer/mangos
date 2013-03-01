@@ -2665,6 +2665,9 @@ uint32 SpellMgr::GetSpellMaxTargetsWithCustom(SpellEntry const* spellInfo, Unit 
                 case 72855:
                 case 72856:
                 case 70920:                                 // Unbound Plague Search Effect (ICC, Putricide)
+                case 71075:                                 // Invocation of Blood (V) Move
+                case 71079:                                 // Invocation of Blood (K) Move
+                case 71082:                                 // Invocation of Blood (T) Move
                 case 71445:                                 // Twilight Bloodbolt
                 case 71471:                                 // Twilight Bloodbolt
                 case 71714:                                 // Flame Ball Search Spell (ICC, Blood Council)
