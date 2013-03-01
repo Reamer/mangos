@@ -2301,6 +2301,10 @@ void Unit::CalculateDamageAbsorbAndResist(Unit *pCaster, DamageInfo* damageInfo,
 
             // Max Amount can be absorbed by this aura
             int32  currentAbsorb = mod->m_amount;
+            if (spellProto->HasAttribute(SPELL_ATTR_EX6_PCT_ABSORB))
+            {
+                currentAbsorb = damageInfo->damage/100 * spellProto->CalculateSimpleValue((*i)->GetEffIndex());
+            }
 
             // Found empty aura (impossible but..)
             if (currentAbsorb <=0 )
