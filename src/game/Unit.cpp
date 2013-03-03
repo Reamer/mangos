@@ -2283,6 +2283,22 @@ void Unit::CalculateDamageAbsorbAndResist(Unit *pCaster, DamageInfo* damageInfo,
         }
     }
 
+    // PcT absorb cases
+    AuraList const& vAbsorb = GetAurasByType(SPELL_AURA_SCHOOL_ABSORB);
+    for(AuraList::const_iterator i = vAbsorb.begin(); i != vAbsorb.end() && RemainingDamage > 0; ++i)
+    {
+        // only work with proper school mask damage
+        Modifier const* i_mod = (*i)->GetModifier();
+        if (!(i_mod->m_miscvalue & damageInfo->SchoolMask()))
+            continue;
+
+        SpellEntry const* i_spellProto = (*i)->GetSpellProto();
+
+        if (i_spellProto->HasAttribute(SPELL_ATTR_EX6_PCT_ABSORB))
+        {
+            RemainingDamage -= RemainingDamage/100 * i_spellProto->CalculateSimpleValue((*i)->GetEffIndex());
+        }
+    }
     // Incanter's Absorption, for converting to spell power
     int32 incanterAbsorption = 0;
 
@@ -2301,10 +2317,6 @@ void Unit::CalculateDamageAbsorbAndResist(Unit *pCaster, DamageInfo* damageInfo,
 
             // Max Amount can be absorbed by this aura
             int32  currentAbsorb = mod->m_amount;
-            if (spellProto->HasAttribute(SPELL_ATTR_EX6_PCT_ABSORB))
-            {
-                currentAbsorb = damageInfo->damage/100 * spellProto->CalculateSimpleValue((*i)->GetEffIndex());
-            }
 
             // Found empty aura (impossible but..)
             if (currentAbsorb <=0 )
