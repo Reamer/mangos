@@ -2245,7 +2245,7 @@ void Unit::CalculateDamageAbsorbAndResist(Unit *pCaster, DamageInfo* damageInfo,
         return;
     }
 
-    // full absorb cases (by chance)
+    // full and PcT absorb cases (by chance)
     AuraList const& vAbsorb = GetAurasByType(SPELL_AURA_SCHOOL_ABSORB);
     for(AuraList::const_iterator i = vAbsorb.begin(); i != vAbsorb.end() && RemainingDamage > 0; ++i)
     {
@@ -2255,6 +2255,14 @@ void Unit::CalculateDamageAbsorbAndResist(Unit *pCaster, DamageInfo* damageInfo,
             continue;
 
         SpellEntry const* i_spellProto = (*i)->GetSpellProto();
+
+        // PCT Absorb
+        if (i_spellProto->HasAttribute(SPELL_ATTR_EX6_PCT_ABSORB))
+        {
+            RemainingDamage -= RemainingDamage/100 * i_spellProto->CalculateSimpleValue((*i)->GetEffIndex());
+        }
+
+        // Full Absorb
         // Fire Ward or Frost Ward
         if (i_spellProto->SpellFamilyName == SPELLFAMILY_MAGE && i_spellProto->GetSpellFamilyFlags().test<CF_MAGE_FIRE_WARD, CF_MAGE_FROST_WARD>())
         {
@@ -2283,22 +2291,6 @@ void Unit::CalculateDamageAbsorbAndResist(Unit *pCaster, DamageInfo* damageInfo,
         }
     }
 
-    // PcT absorb cases
-    AuraList const& vAbsorb = GetAurasByType(SPELL_AURA_SCHOOL_ABSORB);
-    for(AuraList::const_iterator i = vAbsorb.begin(); i != vAbsorb.end() && RemainingDamage > 0; ++i)
-    {
-        // only work with proper school mask damage
-        Modifier const* i_mod = (*i)->GetModifier();
-        if (!(i_mod->m_miscvalue & damageInfo->SchoolMask()))
-            continue;
-
-        SpellEntry const* i_spellProto = (*i)->GetSpellProto();
-
-        if (i_spellProto->HasAttribute(SPELL_ATTR_EX6_PCT_ABSORB))
-        {
-            RemainingDamage -= RemainingDamage/100 * i_spellProto->CalculateSimpleValue((*i)->GetEffIndex());
-        }
-    }
     // Incanter's Absorption, for converting to spell power
     int32 incanterAbsorption = 0;
 
