@@ -2259,7 +2259,7 @@ void Unit::CalculateDamageAbsorbAndResist(Unit *pCaster, DamageInfo* damageInfo,
         // PCT Absorb
         if (i_spellProto->HasAttribute(SPELL_ATTR_EX6_PCT_ABSORB))
         {
-            RemainingDamage -= RemainingDamage/100 * i_spellProto->CalculateSimpleValue((*i)->GetEffIndex());
+            RemainingDamage -= RemainingDamage * (i_spellProto->CalculateSimpleValue((*i)->GetEffIndex())/100);
         }
 
         // Full Absorb
