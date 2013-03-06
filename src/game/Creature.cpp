@@ -299,8 +299,7 @@ bool Creature::InitEntry(uint32 Entry, CreatureData const* data /*=NULL*/, GameE
     UpdateSpeed(MOVE_WALK, false);
     UpdateSpeed(MOVE_RUN,  false);
 
-    if (GetObjectGuid().IsPet())
-        SetLevitate(cinfo->InhabitType & INHABIT_AIR, 2.0f);
+    SetLevitate(cinfo->InhabitType & INHABIT_AIR, GetObjectGuid().IsPet() ? 2.0f : 4.0f);
 
     // checked at loading
     m_defaultMovementType = MovementGeneratorType(cinfo->MovementType);

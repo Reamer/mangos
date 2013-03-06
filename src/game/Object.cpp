@@ -1496,7 +1496,11 @@ void WorldObject::UpdateAllowedPositionZ(float x, float y, float &z) const
             if (((Creature const*)this)->IsLevitating())
             {
                 float ground_z = GetMap()->GetHeight(GetPhaseMask(), x, y, z);
-                z  = ground_z + ((Creature const*)this)->GetFloatValue(UNIT_FIELD_HOVERHEIGHT) + GetObjectBoundingRadius() * GetObjectScale();
+                float min_z  = ground_z + ((Creature const*)this)->GetFloatValue(UNIT_FIELD_HOVERHEIGHT) + GetObjectBoundingRadius() * GetObjectScale();
+                if (!((Creature const*)this)->CanFly() || z < min_z)
+                {
+                    z = min_z;
+                }
             }
             // non fly unit don't must be in air
             // non swim unit must be at ground (mostly speedup, because it don't must be in water and water level check less fast
