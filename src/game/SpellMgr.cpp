@@ -1227,7 +1227,7 @@ void SpellMgr::LoadSpellTargetPositions()
             continue;
         }
 
-        if (fabs(st.x) < M_NULL_F && fabs(st.y) < M_NULL_F && fabs(st.z) < M_NULL_F)
+        if (st.IsEmpty())
         {
             sLog.outErrorDb("Spell (ID:%u) target coordinates not provided.",Spell_ID);
             continue;
@@ -1243,11 +1243,14 @@ void SpellMgr::LoadSpellTargetPositions()
         bool found = false;
         for(int i = 0; i < MAX_EFFECT_INDEX; ++i)
         {
-            if (spellInfo->EffectImplicitTargetA[i] == TARGET_TABLE_X_Y_Z_COORDINATES || spellInfo->EffectImplicitTargetB[i] == TARGET_TABLE_X_Y_Z_COORDINATES ||
+            if (spellInfo->EffectImplicitTargetA[i] == TARGET_TABLE_X_Y_Z_COORDINATES ||
+                spellInfo->EffectImplicitTargetB[i] == TARGET_TABLE_X_Y_Z_COORDINATES ||
+                spellInfo->EffectImplicitTargetA[i] == TARGET_SCRIPT_COORDINATES ||
+                spellInfo->EffectImplicitTargetB[i] == TARGET_SCRIPT_COORDINATES ||
                 spellInfo->EffectImplicitTargetB[i] == TARGET_SELF2)
             {
                 // additional requirements
-                if (spellInfo->Effect[i]==SPELL_EFFECT_BIND && spellInfo->EffectMiscValue[i])
+                if (spellInfo->Effect[i] == SPELL_EFFECT_BIND && spellInfo->EffectMiscValue[i])
                 {
                     uint32 zone_id = st.GetZoneId();
                     if (int32(zone_id) != spellInfo->EffectMiscValue[i])
@@ -2235,6 +2238,9 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
     if (!spellInfo_1 || !spellInfo_2)
         return false;
 
+    #define MatchedSpellIdPair(Id_1, Id_2) ((spellInfo_1->Id == Id_1 && spellInfo_2->Id == Id_2) || (spellInfo_1->Id == Id_2 && spellInfo_2->Id == Id_1))
+    #define MatchedIconIdPair(Id_1, Id_2) ((spellInfo_1->SpellIconID == Id_1 && spellInfo_2->SpellIconID == Id_2) || (spellInfo_1->SpellIconID == Id_2 && spellInfo_2->SpellIconID == Id_1))
+
     // Specific spell family spells
     // also some SpellIconID exceptions related to late checks (isModifier)
     switch (spellInfo_1->SpellFamilyName)
@@ -2242,18 +2248,15 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
         case SPELLFAMILY_GENERIC:
         {
             // BG_WS_SPELL_FOCUSED_ASSAULT & BG_WS_SPELL_BRUTAL_ASSAULT
-            if ((spellInfo_1->Id == 46392 && spellInfo_2->Id == 46393) ||
-                (spellInfo_1->Id == 46393 && spellInfo_2->Id == 46392))
+            if (MatchedSpellIdPair(46392, 46393))
                 return true;
 
             // Dark Essence & Light Essence
-            if ((spellInfo_1->Id == 65684 && spellInfo_2->Id == 65686) ||
-                (spellInfo_2->Id == 65684 && spellInfo_1->Id == 65686))
+            if (MatchedSpellIdPair(65684, 65686))
                 return true;
 
-            //Potent Fungus and Mini must remove each other (Amanitar encounter, Ahn'kahet)
-            if ((spellInfo_1->Id == 57055 && spellInfo_2->Id == 56648) ||
-                (spellInfo_2->Id == 57055 && spellInfo_1->Id == 56648))
+            // Potent Fungus and Mini must remove each other (Amanitar encounter, Ahn'kahet)
+            if (MatchedSpellIdPair(57055, 56648))
                 return true;
 
             // Mirrored Soul (FoS - Devourer) - and other Boss spells
@@ -2272,8 +2275,7 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
             if (spellInfo_2->SpellFamilyName == SPELLFAMILY_WARLOCK)
             {
                 // Corruption & Seed of corruption
-                if ((spellInfo_1->SpellIconID == 313 && spellInfo_2->SpellIconID == 1932) ||
-                    (spellInfo_2->SpellIconID == 313 && spellInfo_1->SpellIconID == 1932))
+                if (MatchedIconIdPair(313, 1932))
                 {
                     if (spellInfo_1->SpellVisual[0] != 0 && spellInfo_2->SpellVisual[0] != 0)
                         return true;                        // can't be stacked
@@ -2321,8 +2323,7 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
             if (spellInfo_2->SpellFamilyName == SPELLFAMILY_DEATHKNIGHT)
             {
                 // Crypt Fever and Ebon Plague
-                if((spellInfo_1->SpellIconID == 264 && spellInfo_2->SpellIconID == 1933) ||
-                   (spellInfo_2->SpellIconID == 264 && spellInfo_1->SpellIconID == 1933))
+                if (MatchedIconIdPair(264, 1933))
                     return true;
             }
             break;
