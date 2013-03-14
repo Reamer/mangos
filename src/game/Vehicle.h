@@ -78,6 +78,7 @@ class MANGOS_DLL_SPEC VehicleKit : public TransportBase
 
         void Reset();
         void InstallSpecificAccessory(uint32 entry, uint32 accessoryEntry = 0, int8 seatId = -1);
+        void InstallAccessory(int8 seatID);
 
         bool HasEmptySeat(int8 seatId) const;
         int8 GetNextEmptySeatWithFlag(int8 seatId, bool next = true, uint32 VehicleSeatFlag = 0) const;

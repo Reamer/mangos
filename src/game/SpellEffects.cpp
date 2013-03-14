@@ -723,7 +723,7 @@ void Spell::EffectSchoolDMG(SpellEffectIndex effect_idx)
                                     damage = urand(4500, 5500);
                                     break;
                                 case 5:
-                                    damage = urand(10000, 1200);
+                                    damage = urand(10000, 12000);
                                     break;
                                 default:
                                     damage = 4000 * stack;
@@ -1995,11 +1995,14 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                 }
                 case 42631:                                 // Fire Bomb (explode)
                 {
-                    if (!unitTarget)
+                    if (!unitTarget || unitTarget->GetTypeId() != TYPEID_UNIT)
                         return;
 
                     unitTarget->RemoveAurasDueToSpell(42629);
                     unitTarget->CastSpell(unitTarget, 42630, true);
+
+                    // despawn the bomb after exploding
+                    ((Creature*)unitTarget)->ForcedDespawn(3000);
                     return;
                 }
                 case 42793:                                 // Burn Body
@@ -3803,6 +3806,15 @@ void Spell::EffectDummy(SpellEffectIndex eff_idx)
                         return;
                     uint32 spellid = roll_chance_i(50) ? 70352 : 70353;
                     unitTarget->CastSpell(unitTarget, spellid, true);
+                    return;
+                }
+                case 74452:                                 // Conflagration
+                {
+                    if (!unitTarget || unitTarget->GetTypeId() != TYPEID_PLAYER)
+                        return;
+
+                    m_caster->CastSpell(unitTarget, 74453, true);
+                    m_caster->CastSpell(unitTarget, 74454, true, NULL, NULL, m_caster->GetObjectGuid(), m_spellInfo);
                     return;
                 }
                 // CYBER CUSTOM STUFF BEGIN
@@ -10776,6 +10788,13 @@ void Spell::EffectScriptEffect(SpellEffectIndex eff_idx)
                             ((Creature*)m_caster)->ForcedDespawn(800);
                     }
                     return;
+                }
+                case 74455:                                 // Conflagration
+                {
+                    if (!unitTarget)
+                        return;
+
+                    unitTarget->CastSpell(m_caster, m_spellInfo->CalculateSimpleValue(eff_idx), true);
                 }
             }
             break;

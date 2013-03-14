@@ -35,11 +35,7 @@ struct MANGOS_DLL_SPEC Location : public Vector3
         : Vector3(x, y, z), orientation(o)
     {}
 
-    Location(const Vector3& v) 
-        : Vector3(v), orientation(0.0f)
-    {}
-
-    Location(const Vector3& v, float o) 
+    Location(const Vector3& v, float o = 0.0f)
         : Vector3(v), orientation(o)
     {}
 
@@ -57,6 +53,11 @@ struct MANGOS_DLL_SPEC Location : public Vector3
 
     bool IsEmpty() const;
 
+    float const& getX() const { return x; };
+    float const& getY() const { return y; };
+    float const& getZ() const { return z; };
+    float const& getO() const { return orientation; };
+
     union
     {
         float orientation;
@@ -67,31 +68,27 @@ struct MANGOS_DLL_SPEC Location : public Vector3
 struct MANGOS_DLL_SPEC Position : public Location
 {
     Position() 
-        : Location(), coord_x(x), coord_y(y), coord_z(z), m_phaseMask(PHASEMASK_NORMAL)
+        : Location(), m_phaseMask(PHASEMASK_NORMAL)
     {};
 
     Position(float _x, float _y, float _z, float _o = 0.0f)
-        : Location(_x, _y, _z, _o), coord_x(x), coord_y(y), coord_z(z), m_phaseMask(PHASEMASK_NORMAL)
+        : Location(_x, _y, _z, _o), m_phaseMask(PHASEMASK_NORMAL)
     {};
 
     Position(float _x, float _y, float _z, float _o, uint32 phaseMask)
-        : Location(_x, _y, _z, _o), coord_x(x), coord_y(y), coord_z(z), m_phaseMask(phaseMask)
+        : Location(_x, _y, _z, _o), m_phaseMask(phaseMask)
     {};
 
     Position(Position const &pos)
-        : Location(pos.x, pos.y, pos.z, pos.orientation), coord_x(x), coord_y(y), coord_z(z), m_phaseMask(pos.GetPhaseMask())
+        : Location(pos.x, pos.y, pos.z, pos.orientation), m_phaseMask(pos.GetPhaseMask())
     {}
 
     Position(Position const &pos, uint32 phaseMask)
-        : Location(pos.x, pos.y, pos.z, pos.orientation), coord_x(x), coord_y(y), coord_z(z), m_phaseMask(phaseMask)
+        : Location(pos.x, pos.y, pos.z, pos.orientation), m_phaseMask(phaseMask)
     {}
 
     virtual ~Position()
     {};
-
-    float& coord_x;
-    float& coord_y;
-    float& coord_z;
 
     uint32 m_phaseMask;
 
@@ -116,8 +113,8 @@ struct MANGOS_DLL_SPEC WorldLocation : public Position
         : Position(), mapid(-1), instance(0), realmid(0)
     {}
 
-    WorldLocation(uint32 _mapid, float _x, float _y, float _z, float _o = 0)
-        : Position(_x, _y, _z, _o), mapid(_mapid), instance(0), realmid(0)
+    WorldLocation(uint32 _mapid, float _x, float _y, float _z, float _o = 0, uint32 phaseMask = PHASEMASK_NORMAL)
+        : Position(_x, _y, _z, _o, phaseMask), mapid(_mapid), instance(0), realmid(0)
     {}
 
     WorldLocation(uint32 _mapid, uint32 _instance, uint32 _realmid)

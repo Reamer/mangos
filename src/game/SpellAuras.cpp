@@ -33,7 +33,7 @@
 #include "Group.h"
 #include "UpdateData.h"
 #include "ObjectAccessor.h"
-#include "Policies/SingletonImp.h"
+#include "Policies/Singleton.h"
 #include "Totem.h"
 #include "Creature.h"
 #include "Formulas.h"
@@ -378,7 +378,7 @@ static AuraType const frozenAuraTypes[] = { SPELL_AURA_MOD_ROOT, SPELL_AURA_MOD_
 Aura::Aura(AuraClassType type, SpellEntry const* spellproto, SpellEffectIndex eff, int32 *currentBasePoints, SpellAuraHolderPtr holder, Unit *target, Unit *caster, Item* castItem) :
 m_periodicTimer(0), m_periodicTick(0), m_removeMode(AURA_REMOVE_BY_DEFAULT),
 m_effIndex(eff), m_deleted(false), m_positive(false), m_isPeriodic(false), m_isAreaAura(false),
-m_isPersistent(false), m_spellAuraHolder(holder), m_classType(type)
+m_isPersistent(false), m_isActive(false), m_spellAuraHolder(holder), m_classType(type)
 {
     MANGOS_ASSERT(target);
     MANGOS_ASSERT(spellproto && spellproto == sSpellStore.LookupEntry( spellproto->Id ) && "`info` must be pointer to sSpellStore element");
@@ -998,9 +998,14 @@ void Aura::ApplyModifier(bool apply, bool Real)
 {
     AuraType aura = m_modifier.m_auraname;
 
+    MANGOS_ASSERT(aura < TOTAL_AURAS);
+
     GetHolder()->SetInUse(true);
-    if (aura < TOTAL_AURAS)
-        (*this.*AuraHandler [aura])(apply, Real);
+
+    (*this.*AuraHandler [aura])(apply, Real);
+
+    m_isActive = apply;
+
     GetHolder()->SetInUse(false);
 }
 
@@ -1469,18 +1474,17 @@ void Aura::TriggerSpell()
                     case 24834:                             // Shadow Bolt Whirl
                     {
                         uint32 spellForTick[8] = { 24820, 24821, 24822, 24823, 24835, 24836, 24837, 24838 };
-                        uint32 tick = GetAuraTicks();
-                        if (tick < 8)
-                        {
-                            trigger_spell_id = spellForTick[tick];
+                        uint32 tick = (GetAuraTicks() + 7/*-1*/) % 8;
 
-                            // casted in left/right (but triggered spell have wide forward cone)
-                            float forward = target->GetOrientation();
-                            float angle = target->GetOrientation() + ( tick % 2 == 0 ? M_PI_F / 2 : - M_PI_F / 2);
-                            target->SetOrientation(angle);
-                            triggerTarget->CastSpell(triggerTarget, trigger_spell_id, true, NULL, this, casterGUID);
-                            target->SetOrientation(forward);
-                        }
+                        // casted in left/right (but triggered spell have wide forward cone)
+                        float forward = target->GetOrientation();
+                        if (tick <= 3)
+                            target->SetOrientation(forward + 0.75f * M_PI_F - tick * M_PI_F / 8);       // Left
+                        else
+                            target->SetOrientation(forward - 0.75f * M_PI_F + (8 - tick) * M_PI_F / 8); // Right
+
+                        triggerTarget->CastSpell(triggerTarget, spellForTick[tick], true, NULL, this, casterGUID);
+                        target->SetOrientation(forward);
                         return;
                     }
 //                    // Stink Trap
@@ -3673,7 +3677,7 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                     if (apply)
                         target->m_AuraFlags |= UNIT_AURAFLAG_ALIVE_INVISIBLE;
                     else
-                        target->m_AuraFlags |= ~UNIT_AURAFLAG_ALIVE_INVISIBLE;
+                        target->m_AuraFlags &= ~UNIT_AURAFLAG_ALIVE_INVISIBLE;
                     return;
             }
             break;
@@ -8514,13 +8518,13 @@ void Aura::PeriodicTick()
     if (target->IsImmuneToSpell(spellProto, GetAffectiveCaster() ? GetAffectiveCaster()->IsFriendlyTo(target) : true))
         return;
 
-    switch(m_modifier.m_auraname)
+    switch (m_modifier.m_auraname)
     {
         case SPELL_AURA_PERIODIC_DAMAGE:
         case SPELL_AURA_PERIODIC_DAMAGE_PERCENT:
         {
             // don't damage target if not alive, possible death persistent effects
-            if (!target->IsInWorld() ||  !target->isAlive())
+            if (!target->IsInWorld() || !target->isAlive())
                 return;
 
             Unit* pCaster = GetAffectiveCaster();
@@ -8552,7 +8556,7 @@ void Aura::PeriodicTick()
                 case 71316:
                 case 71317:
                 {
-                    if (target->GetHealth() == target->GetMaxHealth() )
+                    if (target->GetHealth() == target->GetMaxHealth())
                     {
                         target->RemoveAurasDueToSpell(GetId());
                         return;
@@ -8565,7 +8569,7 @@ void Aura::PeriodicTick()
                         GetEffIndex() < EFFECT_INDEX_2 && spellProto->Effect[GetEffIndex()] == SPELL_EFFECT_DUMMY ?
                         pCaster->CalculateSpellDamage(target, spellProto, SpellEffectIndex(GetEffIndex() + 1)) :
                         100;
-                    if (target->GetHealth() * 100 >= target->GetMaxHealth() * percent )
+                    if (target->GetHealth() * 100 >= target->GetMaxHealth() * percent)
                     {
                         target->RemoveAurasDueToSpell(GetId());
                         return;
@@ -8722,27 +8726,25 @@ void Aura::PeriodicTick()
 
             pCaster->DealDamageMods(&damageInfo);
 
+            uint32 overkill = damageInfo.damage > target->GetHealth() ? damageInfo.damage - target->GetHealth() : 0;
+            SpellPeriodicAuraLogInfo pInfo(this, damageInfo.damage, overkill, damageInfo.absorb, damageInfo.resist, 0.0f, isCrit);
+            target->SendPeriodicAuraLog(&pInfo);
+
             // Set trigger flag
             damageInfo.procAttacker = PROC_FLAG_ON_DO_PERIODIC; //  | PROC_FLAG_SUCCESSFUL_HARMFUL_SPELL_HIT;
             damageInfo.procVictim   = PROC_FLAG_ON_TAKE_PERIODIC;// | PROC_FLAG_TAKEN_HARMFUL_SPELL_HIT;
             damageInfo.procEx = isCrit ? PROC_EX_CRITICAL_HIT : PROC_EX_NORMAL_HIT;
 
-            damageInfo.damage = (damageInfo.damage <= damageInfo.absorb + damageInfo.resist) ? 0 : (damageInfo.damage - damageInfo.absorb - damageInfo.resist);
-
-            if (damageInfo.damage <= 0)
-                damageInfo.procEx &= ~PROC_EX_DIRECT_DAMAGE;
+            // damage may be changed in DealDamageMods above, so change flags
+            if (!damageInfo.damage)
+                damageInfo.procEx     &= ~PROC_EX_DIRECT_DAMAGE;
             else
-                damageInfo.procEx |= PROC_EX_DIRECT_DAMAGE;
-
-            uint32 overkill = damageInfo.damage > target->GetHealth() ? damageInfo.damage - target->GetHealth() : 0;
-            SpellPeriodicAuraLogInfo pInfo(this, damageInfo.damage, overkill, damageInfo.absorb, damageInfo.resist, 0.0f, isCrit);
-            target->SendPeriodicAuraLog(&pInfo);
-
-            if (damageInfo.damage)
+            {
                 damageInfo.procVictim |= PROC_FLAG_TAKEN_ANY_DAMAGE;
+                damageInfo.procEx     |= PROC_EX_DIRECT_DAMAGE;
+            }
 
             pCaster->ProcDamageAndSpell(&damageInfo);
-
             pCaster->DealDamage(target, &damageInfo, true);
 
             // Drain Soul (chance soul shard)
@@ -8763,10 +8765,10 @@ void Aura::PeriodicTick()
         case SPELL_AURA_PERIODIC_HEALTH_FUNNEL:
         {
             // don't damage target if not alive, possible death persistent effects
-            if (!target->IsInWorld() ||  !target->isAlive())
+            if (!target->IsInWorld() || !target->isAlive())
                 return;
 
-            Unit *pCaster = GetAffectiveCaster();
+            Unit* pCaster = GetAffectiveCaster();
             if (!pCaster)
                 return;
 
@@ -8821,16 +8823,19 @@ void Aura::PeriodicTick()
 
             pCaster->SendSpellNonMeleeDamageLog(target, GetId(), damageInfo.damage, damageInfo.SchoolMask(), damageInfo.absorb, damageInfo.resist, false, 0, isCrit);
 
-            float multiplier = spellProto->EffectMultipleValue[GetEffIndex()] > 0 ? spellProto->EffectMultipleValue[GetEffIndex()] : 1;
-
             // Set trigger flag
             damageInfo.procAttacker = PROC_FLAG_ON_DO_PERIODIC; //  | PROC_FLAG_SUCCESSFUL_HARMFUL_SPELL_HIT;
             damageInfo.procVictim   = PROC_FLAG_ON_TAKE_PERIODIC;// | PROC_FLAG_TAKEN_HARMFUL_SPELL_HIT;
             damageInfo.procEx = isCrit ? PROC_EX_CRITICAL_HIT : PROC_EX_NORMAL_HIT;
 
-            damageInfo.damage = (damageInfo.damage <= damageInfo.absorb + damageInfo.resist) ? 0 : (damageInfo.damage - damageInfo.absorb - damageInfo.resist);
-            if (damageInfo.damage)
+            // damage may be changed in DealDamageMods above, so change flags
+            if (!damageInfo.damage)
+                damageInfo.procEx     &= ~PROC_EX_DIRECT_DAMAGE;
+            else
+            {
                 damageInfo.procVictim |= PROC_FLAG_TAKEN_ANY_DAMAGE;
+                damageInfo.procEx     |= PROC_EX_DIRECT_DAMAGE;
+            }
 
             pCaster->ProcDamageAndSpell(&damageInfo);
             int32 new_damage = pCaster->DealDamage(target, &damageInfo, false);
@@ -8841,7 +8846,9 @@ void Aura::PeriodicTick()
                         if (spell->m_spellInfo->Id == GetId())
                             spell->cancel();
 
-            if (Player *modOwner = pCaster->GetSpellModOwner())
+            float multiplier = spellProto->EffectMultipleValue[GetEffIndex()] > 0 ? spellProto->EffectMultipleValue[GetEffIndex()] : 1;
+
+            if (Player* modOwner = pCaster->GetSpellModOwner())
                 modOwner->ApplySpellMod(GetId(), SPELLMOD_MULTIPLE_VALUE, multiplier);
 
             int32 heal = pCaster->SpellHealingBonusTaken(pCaster, spellProto, int32(new_damage * multiplier), DOT, GetStackAmount());

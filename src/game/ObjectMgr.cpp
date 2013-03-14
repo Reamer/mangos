@@ -18,8 +18,8 @@
 
 #include "ObjectMgr.h"
 #include "Database/DatabaseEnv.h"
-#include "Policies/SingletonImp.h"
 #include "SystemConfig.h"
+#include "Policies/Singleton.h"
 
 #include "SQLStorages.h"
 #include "Log.h"
@@ -625,6 +625,18 @@ void ObjectMgr::LoadCreatureTemplates()
         {
             sLog.outErrorDb("Creature (Entry: %u) has invalid power type (%u)", cInfo->Entry, cInfo->powerType);
             const_cast<CreatureInfo*>(cInfo)->powerType = POWER_MANA;
+        }
+
+        if (!cInfo->minlevel)
+        {
+            sLog.outErrorDb("Creature (Entry: %u) has invalid minlevel, set to 1", cInfo->Entry);
+            const_cast<CreatureInfo*>(cInfo)->minlevel = 1;
+        }
+
+        if (cInfo->minlevel > cInfo->maxlevel)
+        {
+            sLog.outErrorDb("Creature (Entry: %u) has invalid maxlevel, set to minlevel", cInfo->Entry);
+            const_cast<CreatureInfo*>(cInfo)->maxlevel = cInfo->minlevel;
         }
 
         // use below code for 0-checks for unit_class
@@ -2510,7 +2522,7 @@ void ObjectMgr::LoadItemRequiredTarget()
             {
                 if (pItemProto->Spells[i].SpellTrigger == ITEM_SPELLTRIGGER_ON_USE)
                 {
-                    SpellScriptTargetBounds bounds = sSpellMgr.GetSpellScriptTargetBounds(pSpellInfo->Id);
+                    SQLMultiStorage::SQLMSIteratorBounds<SpellTargetEntry> bounds = sSpellScriptTargetStorage.getBounds<SpellTargetEntry>(pSpellInfo->Id);
                     if (bounds.first != bounds.second)
                         break;
 
@@ -3451,11 +3463,11 @@ void ObjectMgr::LoadPlayerInfo()
                 continue;
 
             // skip expansion races if not playing with expansion
-            if (sWorld.getConfig(CONFIG_UINT32_EXPANSION) < 1 && (race == RACE_BLOODELF || race == RACE_DRAENEI))
+            if (sWorld.getConfig(CONFIG_UINT32_EXPANSION) < EXPANSION_TBC && (race == RACE_BLOODELF || race == RACE_DRAENEI))
                 continue;
 
             // skip expansion classes if not playing with expansion
-            if (sWorld.getConfig(CONFIG_UINT32_EXPANSION) < 2 && class_ == CLASS_DEATH_KNIGHT)
+            if (sWorld.getConfig(CONFIG_UINT32_EXPANSION) < EXPANSION_WOTLK && class_ == CLASS_DEATH_KNIGHT)
                 continue;
 
             // fatal error if no level 1 data
@@ -8034,14 +8046,16 @@ char const* conditionSourceToStr[] =
     "referencing loot",
     "gossip menu",
     "gossip menu option",
-    "event AI"
+    "event AI",
+    "hardcoded",
+    "vendor's item check"
 };
 
 // Checks if player meets the condition
 bool PlayerCondition::Meets(Player const* player, Map const* map, WorldObject const* source, ConditionSource conditionSourceType) const
 {
     DEBUG_LOG("Condition-System: Check condition %u, type %i - called from %s with params plr: %s, map %i, src %s",
-                                    m_entry, m_condition, conditionSourceToStr[conditionSourceType], player ? player->GetGuidStr().c_str() : "<NULL>", map ? map->GetId() : -1, source ? source->GetGuidStr().c_str() : "<NULL>");
+        m_entry, m_condition, conditionSourceToStr[conditionSourceType], player ? player->GetGuidStr().c_str() : "<NULL>", map ? map->GetId() : -1, source ? source->GetGuidStr().c_str() : "<NULL>");
 
     if (!CheckParamRequirements(player, map, source, conditionSourceType))
         return false;
@@ -8113,7 +8127,7 @@ bool PlayerCondition::Meets(Player const* player, Map const* map, WorldObject co
             return false;
         case CONDITION_LEVEL:
         {
-            switch(m_value2)
+            switch (m_value2)
             {
                 case 0: return player->getLevel() == m_value1;
                 case 1: return player->getLevel() >= m_value1;
@@ -8125,7 +8139,7 @@ bool PlayerCondition::Meets(Player const* player, Map const* map, WorldObject co
             return !player->HasItemCount(m_value1, m_value2);
         case CONDITION_SPELL:
         {
-            switch(m_value2)
+            switch (m_value2)
             {
                 case 0: return player->HasSpell(m_value1);
                 case 1: return !player->HasSpell(m_value1);
@@ -8135,10 +8149,17 @@ bool PlayerCondition::Meets(Player const* player, Map const* map, WorldObject co
         case CONDITION_INSTANCE_SCRIPT:
         {
             if (!map)
-                map = player ? player->GetMap() : source->GetMap();
+                map = player ? player->GetMap() : source ? source->GetMap() : NULL;
+
+            if (!map)
+            {
+                sLog.outErrorDb("CONDITION_INSTANCE_SCRIPT (entry %u) is used without map by %s", m_entry, player ? player->GetGuidStr().c_str() : source ? source->GetGuidStr().c_str() : "<none>");
+                return false;
+            }
 
             if (InstanceData* data = map->GetInstanceData())
                 return data->CheckConditionCriteriaMeet(player, m_value1, source, conditionSourceType);
+
             return false;
         }
         case CONDITION_QUESTAVAILABLE:
@@ -8147,7 +8168,7 @@ bool PlayerCondition::Meets(Player const* player, Map const* map, WorldObject co
         }
         case CONDITION_ACHIEVEMENT:
         {
-            switch(m_value2)
+            switch (m_value2)
             {
                 case 0: return player->GetAchievementMgr().HasAchievement(m_value1);
                 case 1: return !player->GetAchievementMgr().HasAchievement(m_value1);
@@ -8157,7 +8178,7 @@ bool PlayerCondition::Meets(Player const* player, Map const* map, WorldObject co
         case CONDITION_ACHIEVEMENT_REALM:
         {
             AchievementEntry const* ach = sAchievementStore.LookupEntry(m_value1);
-            switch(m_value2)
+            switch (m_value2)
             {
                 case 0: return sAchievementMgr.IsRealmCompleted(ach);
                 case 1: return !sAchievementMgr.IsRealmCompleted(ach);
@@ -8200,7 +8221,7 @@ bool PlayerCondition::Meets(Player const* player, Map const* map, WorldObject co
 
             SkillLineAbilityMapBounds bounds = sSpellMgr.GetSkillLineAbilityMapBounds(m_value1);
 
-            for(SkillLineAbilityMap::const_iterator itr = bounds.first; itr != bounds.second; ++itr)
+            for (SkillLineAbilityMap::const_iterator itr = bounds.first; itr != bounds.second; ++itr)
             {
                 const SkillLineAbilityEntry* skillInfo = itr->second;
 
@@ -8247,7 +8268,14 @@ bool PlayerCondition::Meets(Player const* player, Map const* map, WorldObject co
         case CONDITION_COMPLETED_ENCOUNTER:
         {
             if (!map)
-                map = player ? player->GetMap() : source->GetMap();
+                map = player ? player->GetMap() : source ? source->GetMap() : NULL;
+
+            if (!map)
+            {
+                sLog.outErrorDb("CONDITION_COMPLETED_ENCOUNTER (entry %u) is used without dungeon map by %s", m_entry, player ? player->GetGuidStr().c_str() : source ? source->GetGuidStr().c_str() : "<none>");
+                return false;
+            }
+
             if (!map->IsDungeon())
             {
                 sLog.outErrorDb("CONDITION_COMPLETED_ENCOUNTER (entry %u) is used outside of a dungeon (on Map %u) by %s", m_entry, player->GetMapId(), player->GetGuidStr().c_str());
@@ -9166,7 +9194,7 @@ void ObjectMgr::LoadVendors(char const* tableName, bool isTemplates)
 
     std::set<uint32> skip_vendors;
 
-    QueryResult *result = WorldDatabase.PQuery("SELECT entry, item, maxcount, incrtime, ExtendedCost FROM %s", tableName);
+    QueryResult* result = WorldDatabase.PQuery("SELECT entry, item, maxcount, incrtime, ExtendedCost, condition_id FROM %s", tableName);
     if (!result)
     {
         BarGoLink bar(1);
@@ -9191,13 +9219,14 @@ void ObjectMgr::LoadVendors(char const* tableName, bool isTemplates)
         uint32 maxcount     = fields[2].GetUInt32();
         uint32 incrtime     = fields[3].GetUInt32();
         uint32 ExtendedCost = fields[4].GetUInt32();
+        uint16 conditionId  = fields[5].GetUInt16();
 
-        if (!IsVendorItemValid(isTemplates, tableName, entry, item_id, maxcount, incrtime, ExtendedCost, NULL, &skip_vendors))
+        if (!IsVendorItemValid(isTemplates, tableName, entry, item_id, maxcount, incrtime, ExtendedCost, conditionId, NULL, &skip_vendors))
             continue;
 
         VendorItemData& vList = vendorList[entry];
 
-        vList.AddItem(item_id, maxcount, incrtime, ExtendedCost);
+        vList.AddItem(item_id, maxcount, incrtime, ExtendedCost, conditionId);
         ++count;
 
     } while (result->NextRow());
@@ -9519,7 +9548,7 @@ void ObjectMgr::LoadGossipMenus()
 void ObjectMgr::AddVendorItem( uint32 entry,uint32 item, uint32 maxcount, uint32 incrtime, uint32 extendedcost )
 {
     VendorItemData& vList = m_mCacheVendorItemMap[entry];
-    vList.AddItem(item,maxcount,incrtime,extendedcost);
+    vList.AddItem(item, maxcount, incrtime, extendedcost, 0);
 
     WorldDatabase.PExecuteLog("INSERT INTO npc_vendor (entry,item,maxcount,incrtime,extendedcost) VALUES('%u','%u','%u','%u','%u')",entry, item, maxcount,incrtime,extendedcost);
 }
@@ -9537,7 +9566,7 @@ bool ObjectMgr::RemoveVendorItem( uint32 entry,uint32 item )
     return true;
 }
 
-bool ObjectMgr::IsVendorItemValid(bool isTemplate, char const* tableName, uint32 vendor_entry, uint32 item_id, uint32 maxcount, uint32 incrtime, uint32 ExtendedCost, Player* pl, std::set<uint32>* skip_vendors ) const
+bool ObjectMgr::IsVendorItemValid(bool isTemplate, char const* tableName, uint32 vendor_entry, uint32 item_id, uint32 maxcount, uint32 incrtime, uint32 ExtendedCost, uint16 conditionId, Player* pl, std::set<uint32>* skip_vendors) const
 {
     char const* idStr = isTemplate ? "vendor template" : "vendor";
     CreatureInfo const* cInfo = NULL;
@@ -9606,6 +9635,12 @@ bool ObjectMgr::IsVendorItemValid(bool isTemplate, char const* tableName, uint32
         else
             sLog.outErrorDb( "Table `%s` has `maxcount`=0 for item %u of %s %u but `incrtime`<>0, ignoring",
                 tableName, item_id, idStr, vendor_entry);
+        return false;
+    }
+
+    if (conditionId && !sConditionStorage.LookupEntry<PlayerCondition>(conditionId))
+    {
+        sLog.outErrorDb("Table `%s` has `condition_id`=%u for item %u of %s %u but this condition is not valid, ignoring", tableName, conditionId, item_id, idStr, vendor_entry);
         return false;
     }
 

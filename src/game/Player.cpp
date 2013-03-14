@@ -413,6 +413,7 @@ Player::Player (WorldSession *session): Unit(), m_mover(this), m_camera(NULL), m
 
     m_zoneUpdateId = 0;
     m_zoneUpdateTimer = 0;
+    m_positionStatusUpdateTimer = 0;
 
     m_areaUpdateId = 0;
 
@@ -1332,6 +1333,14 @@ void Player::Update(uint32 update_diff, uint32 p_time)
             m_regenTimer -= update_diff;
     }
 
+    if (m_positionStatusUpdateTimer)
+    {
+        if (update_diff >= m_positionStatusUpdateTimer)
+            m_positionStatusUpdateTimer = 0;
+        else
+            m_positionStatusUpdateTimer -= update_diff;
+    }
+
     if (m_weaponChangeTimer > 0)
     {
         if (update_diff >= m_weaponChangeTimer)
@@ -1865,7 +1874,7 @@ bool Player::TeleportTo(WorldLocation const& loc, uint32 options)
         if (!GetSession()->PlayerLogout())
         {
             WorldPacket data;
-            BuildTeleportAckMsg(data, loc.coord_x, loc.coord_y, loc.coord_z, loc.orientation);
+            BuildTeleportAckMsg(data, loc.getX(), loc.getY(), loc.getZ(), loc.orientation);
             GetSession()->SendPacket(&data);
         }
     }
@@ -6269,18 +6278,26 @@ ActionButton const* Player::GetActionButton(uint8 button)
 
 bool Player::SetPosition(float x, float y, float z, float orientation, bool teleport)
 {
+    bool groupUpdate = (GetGroup() && (teleport || abs(GetPositionX() - x) > 1.0f || abs(GetPositionY() - y) > 1.0f));
+
     if (!Unit::SetPosition(x, y, z, orientation, teleport))
         return false;
-
-    // group update
-    if (GetGroup())
-        SetGroupUpdateFlag(GROUP_UPDATE_FLAG_POSITION);
 
     if (GetTrader() && !IsWithinDistInMap(GetTrader(), INTERACTION_DISTANCE))
         GetSession()->SendCancelTrade();   // will close both side trade windows
 
+    if (m_positionStatusUpdateTimer)                        // Update position's state only on interval
+        return true;
+    m_positionStatusUpdateTimer = 100;
+
+    // group update
+    if (groupUpdate)
+        SetGroupUpdateFlag(GROUP_UPDATE_FLAG_POSITION);
+
     // code block for underwater state update
     UpdateUnderwaterState(GetMap(), x, y, z);
+
+    // code block for outdoor state and area-explore check
     CheckAreaExploreAndOutdoor();
 
     return true;
@@ -6288,11 +6305,7 @@ bool Player::SetPosition(float x, float y, float z, float orientation, bool tele
 
 void Player::SaveRecallPosition()
 {
-    m_recallMap = GetMapId();
-    m_recallX = GetPositionX();
-    m_recallY = GetPositionY();
-    m_recallZ = GetPositionZ();
-    m_recallO = GetOrientation();
+    m_recall = GetPosition();
 }
 
 void Player::SendMessageToSet(WorldPacket *data, bool self)
@@ -6367,7 +6380,10 @@ void Player::CheckAreaExploreAndOutdoor()
         }
     }
     else if (sWorld.getConfig(CONFIG_BOOL_VMAP_INDOOR_CHECK) && !isGameMaster())
-        RemoveAurasWithAttribute(SPELL_ATTR_OUTDOORS_ONLY);
+        RemoveAurasWithAttribute(SPELL_ATTR_OUTDOORS_ONLY, SPELL_ATTR_PASSIVE);
+
+    if (sWorld.getConfig(CONFIG_BOOL_VMAP_INDOOR_CHECK))
+        TriggerPassiveAurasWithAttribute(isOutdoor, SPELL_ATTR_OUTDOORS_ONLY);
 
     if (areaFlag==0xffff)
         return;
@@ -13204,14 +13220,17 @@ void Player::PrepareGossipMenu(WorldObject* pSource, uint32 menuId)
     for (GossipMenuItemsMap::const_iterator itr = pMenuItemBounds.first; itr != pMenuItemBounds.second; ++itr)
     {
         bool hasMenuItem = true;
+        bool isGMSkipConditionCheck = false;
 
-        if (!isGameMaster())                                // Let GM always see menu items regardless of conditions
+        if (itr->second.conditionId && !sObjectMgr.IsPlayerMeetToCondition(itr->second.conditionId, this, GetMap(), pSource, CONDITION_FROM_GOSSIP_OPTION))
         {
-            if (itr->second.conditionId && !sObjectMgr.IsPlayerMeetToCondition(itr->second.conditionId, this, GetMap(), pSource, CONDITION_FROM_GOSSIP_OPTION))
+            if (isGameMaster())                             // Let GM always see menu items regardless of conditions
+                isGMSkipConditionCheck = true;
+            else
             {
                 if (itr->second.option_id == GOSSIP_OPTION_QUESTGIVER)
                     canSeeQuests = false;
-                continue;
+                continue;                                   // Skip this option
             }
         }
 
@@ -13337,6 +13356,13 @@ void Player::PrepareGossipMenu(WorldObject* pSource, uint32 menuId)
                     if (no->BoxText.size() > (size_t)loc_idx && !no->BoxText[loc_idx].empty())
                         strBoxText = no->BoxText[loc_idx];
                 }
+            }
+
+            if (isGMSkipConditionCheck)
+            {
+                strOptionText.append(" (");
+                strOptionText.append(GetSession()->GetMangosString(LANG_GM_ON));
+                strOptionText.append(")");
             }
 
             pMenu->GetGossipMenu().AddMenuItem(itr->second.option_icon, strOptionText, 0, itr->second.option_id, strBoxText, itr->second.box_money, itr->second.box_coded);
@@ -16218,11 +16244,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder *holder)
         // save source node as recall coord to prevent recall and fall from sky
         TaxiNodesEntry const* nodeEntry = sTaxiNodesStore.LookupEntry(node_id);
         MANGOS_ASSERT(nodeEntry);                           // checked in m_taxi.LoadTaxiDestinationsFromString
-        m_recallMap = nodeEntry->map_id;
-        m_recallX = nodeEntry->x;
-        m_recallY = nodeEntry->y;
-        m_recallZ = nodeEntry->z;
-
+        m_recall = WorldLocation(nodeEntry->map_id, nodeEntry->x, nodeEntry->y, nodeEntry->z);
         // flight will started later
     }
 
@@ -19943,7 +19965,13 @@ bool Player::BuyItemFromVendorSlot(ObjectGuid vendorGuid, uint32 vendorslot, uin
         }
     }
 
-    uint32 price = (crItem->ExtendedCost == 0 || (pProto->Flags2 & ITEM_FLAG2_EXT_COST_REQUIRES_GOLD)) ? pProto->BuyPrice * count : 0;
+    if (crItem->conditionId && !isGameMaster() && !sObjectMgr.IsPlayerMeetToCondition(crItem->conditionId, this, pVendor->GetMap(), pVendor, CONDITION_FROM_VENDOR))
+    {
+        SendBuyError(BUY_ERR_CANT_FIND_ITEM, pVendor, item, 0);
+        return false;
+    }
+
+    uint32 price = (crItem->ExtendedCost == 0 || pProto->Flags2 & ITEM_FLAG2_EXT_COST_REQUIRES_GOLD) ? pProto->BuyPrice * count : 0;
 
     // reputation discount
     if (price)
@@ -21323,6 +21351,88 @@ bool Player::HasItemFitToSpellReqirements(SpellEntry const* spellInfo, Item cons
     return false;
 }
 
+bool Player::HasItemFitToAreaTriggerReqirements(AreaTrigger const* at) const
+{
+    if (at->requiredItem)
+    {
+        if (!HasItemCount(at->requiredItem, 1) && (!at->requiredItem2 || !HasItemCount(at->requiredItem2, 1)))
+            return false;
+    }
+    else if (at->requiredItem2 && !HasItemCount(at->requiredItem2, 1))
+        return false;
+
+    return true;
+}
+
+bool Player::HasHeroicKeyFitToAreaTriggerReqirements(AreaTrigger const* at) const
+{
+    if (at->heroicKey)
+    {
+        if (!HasItemCount(at->heroicKey, 1) && (!at->heroicKey2 || !HasItemCount(at->heroicKey2, 1)))
+            return false;
+    }
+    else if (at->heroicKey2 && !HasItemCount(at->heroicKey2, 1))
+        return false;
+
+    return true;
+}
+
+bool Player::HasQuestFitToAreaTriggerReqirements(AreaTrigger const* at, bool isRegularTargetMap) const
+{
+    if (GetTeam() == ALLIANCE)
+    {
+        if ((!isRegularTargetMap &&
+            (at->requiredQuestHeroicA && !GetQuestRewardStatus(at->requiredQuestHeroicA))) ||
+            (isRegularTargetMap &&
+            (at->requiredQuestA && !GetQuestRewardStatus(at->requiredQuestA))))
+        {
+            return false;
+        }
+    }
+    else if (GetTeam() == HORDE)
+    {
+        if ((!isRegularTargetMap &&
+            (at->requiredQuestHeroicH && !GetQuestRewardStatus(at->requiredQuestHeroicH))) ||
+            (isRegularTargetMap &&
+            (at->requiredQuestH && !GetQuestRewardStatus(at->requiredQuestH))))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool Player::HasAchievementFitToAreaTriggerReqirements(AreaTrigger const* at, Difficulty difficulty)
+{
+    uint32 uiAchievementID = 0;
+    if (difficulty == RAID_DIFFICULTY_10MAN_HEROIC)
+        uiAchievementID = at->achiev0;
+    else if (difficulty == RAID_DIFFICULTY_25MAN_HEROIC)
+        uiAchievementID = at->achiev1;
+
+    if (!uiAchievementID)
+        return true;
+
+    if (GetAchievementMgr().HasAchievement(uiAchievementID))
+        return true;
+
+    if (Group* group = GetGroup())
+    {
+        for (GroupReference* itr = group->GetFirstMember(); itr != NULL; itr = itr->next())
+        {
+            Player* member = itr->getSource();
+            if (member && member->IsInWorld())
+            {
+                if (member->GetAchievementMgr().HasAchievement(uiAchievementID))
+                    return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 bool Player::CanNoReagentCast(SpellEntry const* spellInfo) const
 {
     // don't take reagents for spells with SPELL_ATTR_EX5_NO_REAGENT_WHILE_PREP
@@ -21822,10 +21932,10 @@ void Player::UpdateUnderwaterState(Map* m, float x, float y, float z)
         m_MirrorTimerFlags &= ~(UNDERWATER_INWATER | UNDERWATER_INLAVA | UNDERWATER_INSLIME | UNDERWATER_INDARKWATER);
         if (m_lastLiquid && m_lastLiquid->SpellId)
         {
-            RemoveAurasDueToSpell(m_lastLiquid->SpellId);
+            RemoveAurasDueToSpell(m_lastLiquid->SpellId == 37025 ? 37284 : m_lastLiquid->SpellId);
             if (GetVehicle() && GetVehicle()->GetBase())
             {
-                GetVehicle()->GetBase()->RemoveAurasDueToSpell(m_lastLiquid->SpellId);
+                GetVehicle()->GetBase()->RemoveAurasDueToSpell(m_lastLiquid->SpellId == 37025 ? 37284 : m_lastLiquid->SpellId);
             }
         }
         m_lastLiquid = NULL;
@@ -21848,21 +21958,39 @@ void Player::UpdateUnderwaterState(Map* m, float x, float y, float z)
 
         if (liquid && liquid->SpellId)
         {
+            // Exception for SSC water
+            uint32 liquidSpellId = liquid->SpellId == 37025 ? 37284 : liquid->SpellId;
+
             if (res & (LIQUID_MAP_UNDER_WATER | LIQUID_MAP_IN_WATER))
             {
-                if (SpellEntry const *pSpellEntry = sSpellStore.LookupEntry(liquid->SpellId))
+                if (SpellEntry const *pSpellEntry = sSpellStore.LookupEntry(liquidSpellId))
                 {
-                    // check aura for no double cast
+                    // check aura for no double cast (FIXME! seems as big hack...)
                     if (!HasAura(liquid->SpellId))
                     {
-                        if (SpellMgr::IsTargetMatchedWithCreatureType(pSpellEntry, this))
+                        if (InstanceData* pInst = GetInstanceData())
+                        {
+                            if (pInst->CheckConditionCriteriaMeet(this, INSTANCE_CONDITION_ID_LURKER, NULL, CONDITION_FROM_HARDCODED))
+                            {
+                                if (pInst->CheckConditionCriteriaMeet(this, INSTANCE_CONDITION_ID_SCALDING_WATER, NULL, CONDITION_FROM_HARDCODED))
+                                    CastSpell(this, liquidSpellId, true);
+                                else
+                                {
+                                    SummonCreature(21508, 0, 0, 0, 0, TEMPSUMMON_TIMED_OOC_DESPAWN, 2000);
+                                    // Special update timer for the SSC water
+                                    m_positionStatusUpdateTimer = 2000;
+                                }
+                            }
+                        }
+                        else if (SpellMgr::IsTargetMatchedWithCreatureType(pSpellEntry, this))
                         {
                             CastSpell(this, pSpellEntry, true);
                         }
+
                     }
                     if (GetVehicle() && GetVehicle()->GetBase())
                     {
-                        if (!GetVehicle()->GetBase()->HasAura(liquid->SpellId))
+                        if (!GetVehicle()->GetBase()->HasAura(liquidSpellId))
                         {
                             if (SpellMgr::IsTargetMatchedWithCreatureType(pSpellEntry, GetVehicle()->GetBase()))
                             {
@@ -21875,10 +22003,10 @@ void Player::UpdateUnderwaterState(Map* m, float x, float y, float z)
             else
             {
                 // Player is above Water or walk on Water
-                RemoveAurasDueToSpell(liquid->SpellId);
+                RemoveAurasDueToSpell(liquidSpellId);
                 if (GetVehicle() && GetVehicle()->GetBase())
                 {
-                    GetVehicle()->GetBase()->RemoveAurasDueToSpell(liquid->SpellId);
+                    GetVehicle()->GetBase()->RemoveAurasDueToSpell(liquidSpellId);
                 }
             }
         }
@@ -21888,11 +22016,12 @@ void Player::UpdateUnderwaterState(Map* m, float x, float y, float z)
     else if (m_lastLiquid && m_lastLiquid->SpellId)
     {
         // Player change to no specific LiquidEntry (= 0)
-        RemoveAurasDueToSpell(m_lastLiquid->SpellId);
+        RemoveAurasDueToSpell(m_lastLiquid->SpellId == 37025 ? 37284 : m_lastLiquid->SpellId);
         if (GetVehicle() && GetVehicle()->GetBase())
         {
-            GetVehicle()->GetBase()->RemoveAurasDueToSpell(m_lastLiquid->SpellId);
+            GetVehicle()->GetBase()->RemoveAurasDueToSpell(m_lastLiquid->SpellId == 37025 ? 37284 : m_lastLiquid->SpellId);
         }
+        m_lastLiquid = NULL;
     }
 
     // All liquids type - check under water position
@@ -23952,70 +24081,19 @@ AreaLockStatus Player::GetAreaTriggerLockStatus(AreaTrigger const* at, Difficult
             return AREA_LOCKSTATUS_RAID_LOCKED;
 
     // must have one or the other, report the first one that's missing
-    if (at->requiredItem)
-    {
-        if (!HasItemCount(at->requiredItem, 1) &&
-            (!at->requiredItem2 || !HasItemCount(at->requiredItem2, 1)))
-            return AREA_LOCKSTATUS_MISSING_ITEM;
-    }
-    else if (at->requiredItem2 && !HasItemCount(at->requiredItem2, 1))
+    if (!HasItemFitToAreaTriggerReqirements(at))
         return AREA_LOCKSTATUS_MISSING_ITEM;
 
     bool isRegularTargetMap = GetDifficulty(mapEntry->IsRaid()) == REGULAR_DIFFICULTY;
 
-    if (!isRegularTargetMap)
-    {
-        if (at->heroicKey)
-        {
-            if (!HasItemCount(at->heroicKey, 1) &&
-                (!at->heroicKey2 || !HasItemCount(at->heroicKey2, 1)))
-                return AREA_LOCKSTATUS_MISSING_ITEM;
-        }
-        else if (at->heroicKey2 && !HasItemCount(at->heroicKey2, 1))
-            return AREA_LOCKSTATUS_MISSING_ITEM;
-    }
+    if (!isRegularTargetMap && !HasHeroicKeyFitToAreaTriggerReqirements(at))
+        return AREA_LOCKSTATUS_MISSING_ITEM;
 
-    if (GetTeam() == ALLIANCE)
-    {
-        if ((!isRegularTargetMap &&
-            (at->requiredQuestHeroicA && !GetQuestRewardStatus(at->requiredQuestHeroicA))) ||
-            (isRegularTargetMap &&
-            (at->requiredQuestA && !GetQuestRewardStatus(at->requiredQuestA))))
-            return AREA_LOCKSTATUS_QUEST_NOT_COMPLETED;
-    }
-    else if (GetTeam() == HORDE)
-    {
-        if ((!isRegularTargetMap &&
-            (at->requiredQuestHeroicH && !GetQuestRewardStatus(at->requiredQuestHeroicH))) ||
-            (isRegularTargetMap &&
-            (at->requiredQuestH && !GetQuestRewardStatus(at->requiredQuestH))))
-            return AREA_LOCKSTATUS_QUEST_NOT_COMPLETED;
-    }
+    if (!HasQuestFitToAreaTriggerReqirements(at, isRegularTargetMap))
+        return AREA_LOCKSTATUS_QUEST_NOT_COMPLETED;
 
-    uint32 achievCheck = 0;
-    if (difficulty == RAID_DIFFICULTY_10MAN_HEROIC)
-        achievCheck = at->achiev0;
-    else if (difficulty == RAID_DIFFICULTY_25MAN_HEROIC)
-        achievCheck = at->achiev1;
-
-    if (achievCheck)
-    {
-        bool bHasAchiev = false;
-        if (GetAchievementMgr().HasAchievement(achievCheck))
-            bHasAchiev = true;
-        else if (Group* group = GetGroup())
-        {
-            for (GroupReference* itr = group->GetFirstMember(); itr != NULL; itr = itr->next())
-            {
-                Player* member = itr->getSource();
-                if (member && member->IsInWorld())
-                    if (member->GetAchievementMgr().HasAchievement(achievCheck))
-                        bHasAchiev = true;
-            }
-        }
-        if (!bHasAchiev)
-            return AREA_LOCKSTATUS_QUEST_NOT_COMPLETED;
-    }
+    if (!HasAchievementFitToAreaTriggerReqirements(at, difficulty))
+        return AREA_LOCKSTATUS_QUEST_NOT_COMPLETED;
 
     // If the map is not created, assume it is possible to enter it.
     DungeonPersistentState* state = GetBoundInstanceSaveForSelfOrGroup(at->loc.GetMapId());
@@ -24032,7 +24110,7 @@ AreaLockStatus Player::GetAreaTriggerLockStatus(AreaTrigger const* at, Difficult
     if (map && map->IsDungeon())
     {
         // cannot enter if the instance is full (player cap), GMs don't count
-        if (((DungeonMap*)map)->GetPlayersCountExceptGMs() >= ((DungeonMap*)map)->GetMaxPlayers())
+        if (((DungeonMap*)map)->isFull())
             return AREA_LOCKSTATUS_INSTANCE_IS_FULL;
 
         InstancePlayerBind* pBind = GetBoundInstance(at->loc.GetMapId(), GetDifficulty(mapEntry->IsRaid()));
@@ -24229,7 +24307,7 @@ bool Player::CheckTransferPossibility(AreaTrigger const*& at, bool b_onlyMainReq
     return false;
 };
 
-bool Player::NeedGoingToHomebind()
+bool Player::NeedEjectFromThisMap()
 {
     MapEntry const* mapEntry = sMapStore.LookupEntry(GetMapId());
 
@@ -24259,7 +24337,7 @@ bool Player::NeedGoingToHomebind()
         if (!isAlive())
             return false;
 
-        if (((DungeonMap*)map)->GetPlayersCountExceptGMs() >= ((DungeonMap*)map)->GetMaxPlayers())
+        if (((DungeonMap*)map)->isFull())
             return true;
 
         InstancePlayerBind* pBind = GetBoundInstance(GetMapId(), GetDifficulty(mapEntry->IsRaid()));
@@ -24268,6 +24346,25 @@ bool Player::NeedGoingToHomebind()
 
         if ((mapEntry->IsRaid() && !sWorld.getConfig(CONFIG_BOOL_INSTANCE_IGNORE_RAID)) && (!GetGroup() || !GetGroup()->isRaidGroup()))
             return true;
+
+        AreaTrigger const* at = sObjectMgr.GetMapEntranceTrigger(GetMapId());
+        if (at)
+        {
+            if (!HasItemFitToAreaTriggerReqirements(at))
+                return true;
+
+            Difficulty difficulty = GetDifficulty(mapEntry->IsRaid());
+
+            if (difficulty != REGULAR_DIFFICULTY && !HasHeroicKeyFitToAreaTriggerReqirements(at))
+                return true;
+
+            if (!HasQuestFitToAreaTriggerReqirements(at, difficulty == REGULAR_DIFFICULTY))
+                return true;
+
+            if (!HasAchievementFitToAreaTriggerReqirements(at, difficulty))
+                return true;
+        }
+
     }
 
     return false;

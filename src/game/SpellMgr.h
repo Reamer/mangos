@@ -218,9 +218,9 @@ inline bool IsExplicitDiscoverySpell(SpellEntry const *spellInfo)
 inline bool IsLootCraftingSpell(SpellEntry const *spellInfo)
 {
     return (spellInfo->Effect[EFFECT_INDEX_0] == SPELL_EFFECT_CREATE_RANDOM_ITEM ||
-        // different random cards from Inscription (121==Virtuoso Inking Set category) r without explicit item
-        (spellInfo->Effect[EFFECT_INDEX_0] == SPELL_EFFECT_CREATE_ITEM_2 &&
-        (spellInfo->TotemCategory[0] != 0 || spellInfo->EffectItemType[0]==0)));
+            // different random cards from Inscription (121==Virtuoso Inking Set category) or without explicit item or explicit spells
+            (spellInfo->Effect[EFFECT_INDEX_0] == SPELL_EFFECT_CREATE_ITEM_2 &&
+             (spellInfo->TotemCategory[0] != 0 || spellInfo->EffectItemType[0] == 0 || spellInfo->Id == 62941)));
 }
 
 int32 CompareAuraRanks(uint32 spellId_1, uint32 spellId_2);
@@ -941,21 +941,16 @@ enum SpellTargetType
 
 #define MAX_SPELL_TARGET_TYPE 3
 
+// pre-defined targeting for spells
 struct SpellTargetEntry
 {
-    SpellTargetEntry(SpellTargetType type_,uint32 targetEntry_, uint32 invEffectMask_ = 0) : type(type_), targetEntry(targetEntry_), invEffectMask(invEffectMask_) {}
-    SpellTargetType type;
+    uint32 spellId;
+    uint32 type;
     uint32 targetEntry;
-    uint32 invEffectMask;
+    uint32 inverseEffectMask;
 
-    bool CanHitWithSpellEffect(SpellEffectIndex effect) const
-    {
-        return invEffectMask ? !(invEffectMask & 1 << effect) :  true;
-    }
+    bool CanNotHitWithSpellEffect(SpellEffectIndex effect) const { return inverseEffectMask & (1 << effect); }
 };
-
-typedef UNORDERED_MULTIMAP<uint32,SpellTargetEntry> SpellScriptTarget;
-typedef std::pair<SpellScriptTarget::const_iterator,SpellScriptTarget::const_iterator> SpellScriptTargetBounds;
 
 typedef UNORDERED_MAP<uint32, WorldLocation> SpellTargetPositionMap;
 
@@ -1395,13 +1390,6 @@ class SpellMgr
 
         bool IsSkillBonusSpell(uint32 spellId) const;
 
-
-        // Spell script targets
-        SpellScriptTargetBounds GetSpellScriptTargetBounds(uint32 spell_id) const
-        {
-            return mSpellScriptTarget.equal_range(spell_id);
-        }
-
         // Spell correctness for client using
         static bool IsSpellValid(SpellEntry const * spellInfo, Player* pl = NULL, bool msg = true);
 
@@ -1525,7 +1513,6 @@ class SpellMgr
     private:
         bool LoadPetDefaultSpells_helper(CreatureInfo const* cInfo, PetDefaultSpellsEntry& petDefSpells);
 
-        SpellScriptTarget  mSpellScriptTarget;
         SpellChainMap      mSpellChains;
         SpellChainMapNext  mSpellChainsNext;
         SpellLearnSkillMap mSpellLearnSkills;
